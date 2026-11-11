@@ -86,6 +86,8 @@ export type EvidenceApproval = {
 export type EvidenceResult =
   | { status: 'refused' }
   | { status: 'pending_approval' }
+  /** Decided to pay; the transaction has not been confirmed yet. */
+  | { status: 'executing' }
   | {
       status: 'paid';
       transactionHash: Hex;
