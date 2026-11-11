@@ -1,0 +1,377 @@
+import { type Address, type Hex, type PublicClient, isAddressEqual, parseEventLogs } from 'viem';
+
+import { identityRegistryAbi, mandateVaultAbi } from './chain/abis';
+import { recoverApprovalSigner } from './protocol/approval';
+import {
+  type EvidenceFile,
+  type EvidenceRecord,
+  decisionFromChecks,
+  evidenceHash,
+} from './protocol/evidence';
+import { evidenceFileSchema } from './protocol/evidenceSchema';
+import { intentId, recoverIntentSigner } from './protocol/intent';
+import { type LedgerEntry, verifyEntries } from './store/ledger';
+
+/**
+ * Checks one evidence file: first against itself, then against the chain, then against the ledger.
+ * Every check is independent of the gateway that wrote the file.
+ */
+
+export type Verdict = 'pass' | 'fail' | 'skipped';
+export type VerifyCheck = { verdict: Verdict; label: string; detail: string };
+
+/** What the verifier needs from the chain. */
+export type VerifierChain = {
+  chainId(): Promise<number>;
+  vaultSettings(
+    vault: Address,
+  ): Promise<{ principal: Address; token: Address; identityRegistry: Address }>;
+  agentWallet(registry: Address, agentId: bigint): Promise<Address | null>;
+  evidenceUsed(vault: Address, hash: Hex): Promise<boolean>;
+  payment(
+    vault: Address,
+    transactionHash: Hex,
+  ): Promise<{
+    found: boolean;
+    succeeded: boolean;
+    to: Address | null;
+    from: Address | null;
+    blockNumber: bigint | null;
+    events: {
+      name: 'MandatePayment' | 'ApprovedPayment';
+      mandateId: bigint;
+      agentId: bigint;
+      payee: Address;
+      amount: bigint;
+      evidenceHash: Hex;
+      approver: Address | null;
+      nonce: bigint | null;
+    }[];
+  }>;
+};
+
+export type VerifyOptions = {
+  /** Null runs the offline checks only. */
+  chain: VerifierChain | null;
+  /** The gateway's ledger, if the verifier has it. */
+  ledger?: readonly LedgerEntry[];
+};
+
+export type VerifyReport = {
+  file: EvidenceFile | null;
+  checks: VerifyCheck[];
+  verified: boolean;
+};
+
+const same = (a: Address | null, b: Address | null) =>
+  a !== null && b !== null && isAddressEqual(a, b);
+
+export async function verifyEvidence(
+  input: unknown,
+  options: VerifyOptions,
+): Promise<VerifyReport> {
+  const parsed = evidenceFileSchema.safeParse(input);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return {
+      file: null,
+      checks: [
+        {
+          verdict: 'fail',
+          label: 'File is built like an evidence file',
+          detail: first === undefined ? 'unreadable' : `${first.path.join('.')}: ${first.message}`,
+        },
+      ],
+      verified: false,
+    };
+  }
+
+  const file = parsed.data;
+  const { record, result, approval } = file;
+  const checks: VerifyCheck[] = [];
+  const add = (ok: boolean | 'skipped', label: string, detail = '') => {
+    checks.push({ verdict: ok === 'skipped' ? 'skipped' : ok ? 'pass' : 'fail', label, detail });
+  };
+
+  // --- The file against itself ---------------------------------------------------------------------
+
+  // Hash the record exactly as it stands in the file, not a tidied copy of it.
+  const recomputed = evidenceHash((input as { record: EvidenceRecord }).record);
+  add(recomputed === file.evidenceHash, 'Evidence hash is the hash of the record', recomputed);
+
+  const domain = { chainId: record.chain.chainId, vault: record.chain.vault };
+  const signedIntent = { intent: record.request.intent, signature: record.request.signature };
+  add(
+    intentId(domain, record.request.intent) === record.intentId,
+    'Intent id is the hash of the signed request',
+  );
+
+  const signer = await recoverIntentSigner(domain, signedIntent);
+  add(
+    signer !== null && same(signer, record.request.signer),
+    'Request signature recovers the recorded signer',
+    signer ?? 'unreadable signature',
+  );
+
+  const agrees =
+    record.request.intent.agentId === record.who.agentId &&
+    record.request.intent.payee === record.what.payee &&
+    record.request.intent.amount === record.what.amount &&
+    record.request.intent.purpose === record.what.purpose &&
+    record.request.intent.invoiceId === record.what.invoiceId;
+  add(agrees, 'Recorded agent, payee, amount and purpose are the ones the agent signed');
+
+  add(
+    decisionFromChecks(record.why.checks) === record.why.decision,
+    'Decision follows from the recorded checks',
+    `${record.why.decision}; ${record.why.checks.filter((check) => check.result === 'fail').length} failed checks`,
+  );
+
+  const signedByAgent = same(record.request.signer, record.who.agentWallet);
+  if (record.why.decision === 'refused') {
+    add(
+      result.status === 'refused',
+      'A refused request has no payment',
+      `status: ${result.status}`,
+    );
+  } else {
+    add(signedByAgent, "A request that was not refused is signed by the agent's registered wallet");
+    const expected =
+      record.why.decision === 'auto'
+        ? ['paid', 'failed', 'executing']
+        : ['paid', 'failed', 'pending_approval'];
+    add(
+      expected.includes(result.status),
+      'Result fits the decision',
+      `${record.why.decision} then ${result.status}`,
+    );
+  }
+
+  const paidOutsideMandate = result.status === 'paid' && result.event === 'ApprovedPayment';
+  if (record.why.decision === 'needs_approval' && result.status === 'paid') {
+    add(
+      paidOutsideMandate && approval !== null,
+      'A payment that needed approval carries the approval',
+    );
+  }
+  if (record.why.decision === 'auto' && result.status === 'paid') {
+    add(
+      result.event === 'MandatePayment' && approval === null,
+      'A payment inside the mandate needed no approval',
+    );
+  }
+
+  if (approval !== null) {
+    const approvalSigner =
+      record.who.mandateId === null
+        ? null
+        : await recoverApprovalSigner(
+            { chainId: record.chain.chainId, address: record.chain.vault },
+            {
+              mandateId: BigInt(record.who.mandateId),
+              payee: record.what.payee,
+              amount: BigInt(record.what.amount),
+              evidenceHash: file.evidenceHash,
+              nonce: BigInt(approval.nonce),
+              deadline: BigInt(approval.deadline),
+            },
+            approval.signature,
+          );
+    add(
+      same(approvalSigner, record.who.approver) && same(approval.approver, record.who.approver),
+      "Approval is signed by the mandate's approver, for this payee, amount and evidence hash",
+      approvalSigner ?? 'unreadable signature',
+    );
+  }
+
+  // --- The file against the chain ------------------------------------------------------------------
+
+  const { chain } = options;
+  const offline = 'not checked: offline';
+  if (chain === null) {
+    add('skipped', 'Vault settings onchain match the record', offline);
+    add('skipped', 'ERC-8004 registry names the recorded agent wallet', offline);
+    add('skipped', 'Payment transaction and vault event match the record', offline);
+  } else if ((await chain.chainId()) !== record.chain.chainId) {
+    add(
+      false,
+      'RPC endpoint is on the chain named in the record',
+      `record says chain ${record.chain.chainId}`,
+    );
+  } else {
+    const settings = await chain.vaultSettings(record.chain.vault);
+    add(
+      same(settings.principal, record.who.principal) &&
+        same(settings.token, record.chain.token) &&
+        same(settings.identityRegistry, record.chain.identityRegistry),
+      'Vault settings onchain match the record',
+      `principal ${settings.principal}`,
+    );
+
+    const wallet = await chain.agentWallet(
+      record.chain.identityRegistry,
+      BigInt(record.who.agentId),
+    );
+    add(
+      record.who.agentWallet === null ? wallet === null : same(wallet, record.who.agentWallet),
+      'ERC-8004 registry names the recorded agent wallet',
+      `today the registry says ${wallet ?? 'no wallet'}`,
+    );
+
+    const used = await chain.evidenceUsed(record.chain.vault, file.evidenceHash);
+    if (result.status === 'paid') {
+      const payment = await chain.payment(record.chain.vault, result.transactionHash);
+      add(
+        payment.found && payment.succeeded,
+        'Payment transaction exists and succeeded',
+        result.transactionHash,
+      );
+      add(
+        same(payment.to, record.chain.vault) && same(payment.from, record.who.executor),
+        "Transaction was sent to the vault by the mandate's executor",
+      );
+      const event = payment.events.find((item) => item.evidenceHash === file.evidenceHash);
+      add(
+        event !== undefined &&
+          event.name === result.event &&
+          event.mandateId.toString() === record.who.mandateId &&
+          event.agentId.toString() === record.who.agentId &&
+          same(event.payee, record.what.payee) &&
+          event.amount.toString() === record.what.amount,
+        'Vault event carries this evidence hash and the same mandate, agent, payee and amount',
+        event === undefined ? 'no event with this evidence hash' : event.name,
+      );
+      add(
+        payment.blockNumber !== null && payment.blockNumber.toString() === result.blockNumber,
+        'Block number matches',
+        `block ${result.blockNumber}`,
+      );
+      if (approval !== null) {
+        add(
+          event !== undefined &&
+            same(event.approver, record.who.approver) &&
+            event.nonce?.toString() === approval.nonce,
+          'Vault event names the approver and the approval nonce',
+        );
+      }
+      add(used, 'Vault marks this evidence hash as used');
+    } else {
+      add(!used, 'Vault has not paid anything on this evidence hash', `status: ${result.status}`);
+    }
+  }
+
+  // --- The file against the ledger -----------------------------------------------------------------
+
+  if (options.ledger !== undefined) {
+    const chainCheck = verifyEntries(options.ledger);
+    add(
+      chainCheck.ok,
+      'Ledger hash chain is intact',
+      chainCheck.ok ? `${chainCheck.count} entries` : chainCheck.why,
+    );
+    const mine = options.ledger.filter((entry) => entry.data.intentId === record.intentId);
+    add(
+      mine.some(
+        (entry) =>
+          entry.kind === 'INTENT_DECIDED' &&
+          entry.data.evidenceHash === file.evidenceHash &&
+          entry.data.decision === record.why.decision,
+      ),
+      'Ledger records this decision',
+    );
+    if (result.status === 'paid') {
+      add(
+        mine.some(
+          (entry) =>
+            entry.kind === 'PAYMENT_EXECUTED' &&
+            entry.data.transactionHash === result.transactionHash,
+        ),
+        'Ledger records this payment',
+      );
+    }
+  }
+
+  return { file, checks, verified: checks.every((check) => check.verdict !== 'fail') };
+}
+
+/** Reads what the verifier needs through a viem client. */
+export function createVerifierChain(client: PublicClient): VerifierChain {
+  return {
+    chainId: () => client.getChainId(),
+
+    async vaultSettings(vault) {
+      const contract = { address: vault, abi: mandateVaultAbi } as const;
+      const [principal, token, identityRegistry] = await Promise.all([
+        client.readContract({ ...contract, functionName: 'principal' }),
+        client.readContract({ ...contract, functionName: 'token' }),
+        client.readContract({ ...contract, functionName: 'identityRegistry' }),
+      ]);
+      return { principal, token, identityRegistry };
+    },
+
+    async agentWallet(registry, agentId) {
+      try {
+        const wallet = await client.readContract({
+          address: registry,
+          abi: identityRegistryAbi,
+          functionName: 'getAgentWallet',
+          args: [agentId],
+        });
+        return /^0x0{40}$/.test(wallet) ? null : wallet;
+      } catch {
+        return null;
+      }
+    },
+
+    evidenceUsed: (vault, hash) =>
+      client.readContract({
+        address: vault,
+        abi: mandateVaultAbi,
+        functionName: 'evidenceUsed',
+        args: [hash],
+      }),
+
+    async payment(vault, transactionHash) {
+      let receipt;
+      try {
+        receipt = await client.getTransactionReceipt({ hash: transactionHash });
+      } catch {
+        return {
+          found: false,
+          succeeded: false,
+          to: null,
+          from: null,
+          blockNumber: null,
+          events: [],
+        };
+      }
+      const logs = receipt.logs.filter((log) => isAddressEqual(log.address, vault));
+      const inside = parseEventLogs({
+        abi: mandateVaultAbi,
+        logs,
+        eventName: 'MandatePayment',
+      }).map((log) => ({
+        name: 'MandatePayment' as const,
+        ...log.args,
+        approver: null,
+        nonce: null,
+      }));
+      const approved = parseEventLogs({
+        abi: mandateVaultAbi,
+        logs,
+        eventName: 'ApprovedPayment',
+      }).map((log) => ({
+        name: 'ApprovedPayment' as const,
+        ...log.args,
+      }));
+      return {
+        found: true,
+        succeeded: receipt.status === 'success',
+        to: receipt.to,
+        from: receipt.from,
+        blockNumber: receipt.blockNumber,
+        events: [...inside, ...approved],
+      };
+    },
+  };
+}
