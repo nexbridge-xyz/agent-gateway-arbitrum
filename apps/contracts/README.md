@@ -5,6 +5,21 @@ It is the onchain half of Agent Gateway: the gateway service decides and records
 
 > Testnet demo. Not audited. Do not use with real funds.
 
+## Deployed on Arbitrum Sepolia
+
+| Item                   | Value                                                                                                                                                       |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MandateVault`         | [`0x7293763f6b73783834484cd976528D01Cb6c8CCf`](https://sepolia.arbiscan.io/address/0x7293763f6b73783834484cd976528D01Cb6c8CCf#code)                         |
+| Source                 | Verified on Arbiscan. Exact match on [Sourcify](https://repo.sourcify.dev/421614/0x7293763f6b73783834484cd976528D01Cb6c8CCf).                               |
+| Deployment transaction | [`0x603faebb…e9ba2834`](https://sepolia.arbiscan.io/tx/0x603faebb93056f90439d871951ebdd449775a6c7ac2856de9398cef7e9ba2834), block 328251484, 2026-11-11 UTC |
+| Principal              | `0xd42f974802a327789F217Db9f61DeA26EA5418A5`, a demo key                                                                                                    |
+| Token                  | Circle test USDC, `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`                                                                                              |
+| Identity Registry      | ERC-8004, `0x8004A818BFB912233c491871b3d84c89A494BD9e`                                                                                                      |
+
+The same data is in [`deployments/arbitrum-sepolia.json`](deployments/arbitrum-sepolia.json), and Foundry's
+broadcast log is in `broadcast/`. `pnpm test:fork` checks that the code at this address is byte for byte
+what this repository builds.
+
 ## Roles
 
 | Role      | Who                                          | Can do                                                                                   |
@@ -64,16 +79,16 @@ Needs [Foundry](https://getfoundry.sh) 1.0 or later.
 git submodule update --init --recursive
 cd apps/contracts
 forge test                 # unit, fuzz and invariant tests
-pnpm test:fork             # the demo's onchain steps on a fork of Arbitrum Sepolia
+pnpm test:fork             # the demo's onchain steps and the live deployment, on a fork of Arbitrum Sepolia
 pnpm coverage
 ```
 
-| Suite                               | What it checks                                                                                  |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `test/MandateVault.t.sol`           | 80 unit tests: every function, every revert, and the "gateway compromised" drill.               |
-| `test/MandateVault.fuzz.t.sol`      | 22 property tests over random inputs: caps, expiry, allowlist, roles, approvals, revoke, pause. |
-| `test/MandateVault.invariant.t.sol` | 5 invariants over random call sequences by every role, checked against the test's own books.    |
-| `test/fork/`                        | 3 tests against Circle's test USDC and the live ERC-8004 Identity Registry on Arbitrum Sepolia. |
+| Suite                               | What it checks                                                                                                                                                                                   |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `test/MandateVault.t.sol`           | 80 unit tests: every function, every revert, and the "gateway compromised" drill.                                                                                                                |
+| `test/MandateVault.fuzz.t.sol`      | 22 property tests over random inputs: caps, expiry, allowlist, roles, approvals, revoke, pause.                                                                                                  |
+| `test/MandateVault.invariant.t.sol` | 5 invariants over random call sequences by every role, checked against the test's own books.                                                                                                     |
+| `test/fork/`                        | 5 tests on a fork of Arbitrum Sepolia: the demo's onchain steps against Circle's test USDC and the live ERC-8004 Identity Registry, and a check that the deployed vault matches this repository. |
 
 Coverage of `src/MandateVault.sol` (`pnpm coverage`):
 

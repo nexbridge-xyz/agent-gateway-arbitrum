@@ -8,6 +8,10 @@ and until when. Payments inside the mandate go through on their own. Payments ou
 to approve. Payments against the rules are refused. Every decision leaves an evidence record whose hash is
 anchored onchain.
 
+**Live on Arbitrum Sepolia:** `MandateVault` at
+[`0x7293763f6b73783834484cd976528D01Cb6c8CCf`](https://sepolia.arbiscan.io/address/0x7293763f6b73783834484cd976528D01Cb6c8CCf#code),
+source verified on Arbiscan.
+
 > Status: work in progress. Testnet demo only. Not audited. Do not use with real funds.
 
 ## How it fits together
@@ -23,13 +27,13 @@ The company owns the vault and the funds. The gateway holds only a capped execut
 
 ## Repository layout
 
-| Path             | What                                                                | Status             |
-| ---------------- | ------------------------------------------------------------------- | ------------------ |
-| `apps/contracts` | `MandateVault` and its tests (Solidity, Foundry)                    | Contract and tests |
-| `apps/gateway`   | Identity, policy, approvals and evidence service (TypeScript, viem) | Planned            |
-| `apps/merchant`  | Demo market-data API paid per call                                  | Planned            |
-| `apps/agent`     | Demo research and procurement agent                                 | Planned            |
-| `apps/console`   | Web console for mandates, approvals and evidence (React, wagmi)     | Planned            |
+| Path             | What                                                                | Status                                    |
+| ---------------- | ------------------------------------------------------------------- | ----------------------------------------- |
+| `apps/contracts` | `MandateVault` and its tests (Solidity, Foundry)                    | Deployed and verified on Arbitrum Sepolia |
+| `apps/gateway`   | Identity, policy, approvals and evidence service (TypeScript, viem) | Planned                                   |
+| `apps/merchant`  | Demo market-data API paid per call                                  | Planned                                   |
+| `apps/agent`     | Demo research and procurement agent                                 | Planned                                   |
+| `apps/console`   | Web console for mandates, approvals and evidence (React, wagmi)     | Planned                                   |
 
 ## Quickstart
 
