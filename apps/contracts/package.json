@@ -1,0 +1,24 @@
+{
+  "name": "@agent-gateway/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MandateVault: onchain mandates and hard limits for AI agent payments (Solidity, Foundry).",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./abi": "./abi/MandateVault.ts",
+    "./abi/MandateVault.json": "./abi/MandateVault.json"
+  },
+  "scripts": {
+    "build": "forge build && node scripts/export-abi.mjs",
+    "test": "forge test",
+    "test:fork": "ARBITRUM_SEPOLIA_RPC_URL=${ARBITRUM_SEPOLIA_RPC_URL:-https://sepolia-rollup.arbitrum.io/rpc} forge test --match-path 'test/fork/*' -vv",
+    "coverage": "forge coverage --no-match-coverage '(test|script)/'",
+    "lint": "forge fmt --check && forge build --deny warnings",
+    "format": "forge fmt",
+    "abi:check": "node scripts/export-abi.mjs --check",
+    "deploy:sepolia:dry-run": "bash scripts/deploy-sepolia.sh --dry-run",
+    "deploy:sepolia": "bash scripts/deploy-sepolia.sh",
+    "verify:sepolia": "bash scripts/deploy-sepolia.sh --verify-only"
+  }
+}
