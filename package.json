@@ -23,8 +23,9 @@
     "lint": "pnpm -r --if-present run lint && eslint . && tsc --noEmit && prettier --check .",
     "format": "pnpm -r --if-present run format && prettier --write .",
     "keys:generate": "bash scripts/generate-keys.sh",
+    "demo": "tsx scripts/demo.ts",
     "gateway": "pnpm --filter @agent-gateway/gateway run start",
-    "verify-evidence": "pnpm --filter @agent-gateway/gateway run verify-evidence",
+    "verify-evidence": "tsx apps/gateway/src/cli/verify-evidence.ts",
     "contracts:test": "pnpm --filter @agent-gateway/contracts run test",
     "contracts:coverage": "pnpm --filter @agent-gateway/contracts run coverage",
     "contracts:deploy:sepolia": "pnpm --filter @agent-gateway/contracts run deploy:sepolia"

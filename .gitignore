@@ -20,6 +20,9 @@ apps/contracts/broadcast/**/dry-run/
 apps/contracts/broadcast/**/run-[0-9]*.json
 apps/contracts/broadcast/**/*.lock
 
+# Gateway runtime data: ledger, evidence files, payee lists, demo state
+apps/gateway/data/
+
 # Editors and OS
 .DS_Store
 .idea/

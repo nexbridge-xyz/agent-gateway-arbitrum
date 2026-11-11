@@ -12,7 +12,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$ROOT/.env}"
-ROLES="DEPLOYER PRINCIPAL EXECUTOR APPROVER SPEND_WALLET MERCHANT AGENT"
+ROLES="DEPLOYER PRINCIPAL EXECUTOR APPROVER SPEND_WALLET MERCHANT AGENT VENDOR_A VENDOR_B"
 
 CAST="$(command -v cast || true)"
 [ -n "$CAST" ] || CAST="$HOME/.foundry/bin/cast"
