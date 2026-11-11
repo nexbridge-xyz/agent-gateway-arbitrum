@@ -1,0 +1,20 @@
+{
+  "vendors": [
+    {
+      "name": "Tsukimi Data",
+      "address": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
+      "note": "market data"
+    },
+    {
+      "name": "Koishi Supply",
+      "address": "0xDd76243f8563ea5D6E6186C0e26804F761A18792",
+      "note": "office supplies"
+    },
+    {
+      "name": "Agent Gateway spend wallet",
+      "address": "0xcd08ecaA7FF642ffEdc77514C1442E59ddbb4CF9",
+      "note": "pays per-call API charges"
+    }
+  ],
+  "denylist": []
+}

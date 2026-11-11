@@ -1,0 +1,165 @@
+{
+  "format": "agent-gateway-arbitrum/evidence/v1",
+  "evidenceHash": "0x82583c559df60953633e35c76c321d0138c2059097f7a2aef60a760307e3ad59",
+  "record": {
+    "format": "agent-gateway-arbitrum/evidence-record/v1",
+    "intentId": "0x93d05350a8fbc1178eb1c66a907470018207dcc7a69d84c40aeb41689704b997",
+    "decidedAt": "2026-11-11T18:03:55.963Z",
+    "chain": {
+      "chainId": 421614,
+      "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
+      "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+      "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      "blockNumber": "328260922",
+      "blockTimestamp": 1794420234
+    },
+    "who": {
+      "agentId": "354",
+      "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
+      "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
+      "mandateId": "1",
+      "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
+      "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
+    },
+    "what": {
+      "payee": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
+      "payeeName": "Tsukimi Data",
+      "amount": "1500000",
+      "tokenSymbol": "USDC",
+      "tokenDecimals": 6,
+      "purpose": "Invoice INV-2026-1107: market data feed, November",
+      "invoiceId": "INV-2026-1107"
+    },
+    "request": {
+      "intent": {
+        "agentId": "354",
+        "payee": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
+        "amount": "1500000",
+        "purpose": "Invoice INV-2026-1107: market data feed, November",
+        "invoiceId": "INV-2026-1107",
+        "context": {
+          "source": "vendor invoice"
+        },
+        "nonce": "0x7a0b185c4eca6d6372ba1b462f3e2a0684bc91da04a972f49b04ea33f33e71df",
+        "expiresAt": 1794420534
+      },
+      "signature": "0xaee6ff55e347e6580fec81b78baa307785eb86e95b9e0660a112e5966ea67fae16fa779923eeaa1877c442db124f9881aa56e59ae9feb928d9b06da6fc2676411c",
+      "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
+    },
+    "why": {
+      "decision": "auto",
+      "reasons": [
+        "All 14 checks passed"
+      ],
+      "checks": [
+        {
+          "key": "request_current",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Request is current",
+          "detail": "expires in 300 seconds; at most 900 are accepted"
+        },
+        {
+          "key": "agent_registered",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent is registered in the ERC-8004 Identity Registry",
+          "detail": "agent id found"
+        },
+        {
+          "key": "agent_active",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent is not marked inactive",
+          "detail": "registration file says active: true"
+        },
+        {
+          "key": "agent_signature",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Request is signed by the agent's registered wallet",
+          "detail": "signed by 0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a; registered wallet is 0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
+        },
+        {
+          "key": "mandate_active",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent has an active mandate with this gateway as executor",
+          "detail": "mandate 1, valid until 2026-12-11T18:03:51Z"
+        },
+        {
+          "key": "vault_open",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Vault is not paused",
+          "detail": "not paused"
+        },
+        {
+          "key": "payee_not_denied",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Payee is not on the denylist",
+          "detail": "not listed"
+        },
+        {
+          "key": "payee_in_vendor_registry",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Payee is in the principal's vendor registry",
+          "detail": "registered as Tsukimi Data"
+        },
+        {
+          "key": "amount_positive",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Amount is more than zero",
+          "detail": "1.5 USDC"
+        },
+        {
+          "key": "within_hard_ceiling",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Day total stays within the mandate's hard ceiling",
+          "detail": "0 USDC paid today + 1.5 USDC vs ceiling 20 USDC"
+        },
+        {
+          "key": "vault_funded",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Vault holds enough funds",
+          "detail": "vault holds 10 USDC"
+        },
+        {
+          "key": "payee_on_allowlist",
+          "kind": "soft",
+          "result": "pass",
+          "label": "Payee is on the mandate's allowlist",
+          "detail": "on the allowlist"
+        },
+        {
+          "key": "within_per_payment_cap",
+          "kind": "soft",
+          "result": "pass",
+          "label": "Amount is within the per-payment cap",
+          "detail": "1.5 USDC vs cap 2 USDC"
+        },
+        {
+          "key": "within_daily_cap",
+          "kind": "soft",
+          "result": "pass",
+          "label": "Day total stays within the daily cap",
+          "detail": "0 USDC paid today + 1.5 USDC vs cap 8 USDC"
+        }
+      ]
+    }
+  },
+  "approval": null,
+  "result": {
+    "status": "paid",
+    "transactionHash": "0xac89ad80d6bc378e845057ea61eaae0dee32d9da32564e9f80c1dae5301079bf",
+    "blockNumber": "328260933",
+    "event": "MandatePayment",
+    "executedAt": "2026-11-11T18:03:58.307Z"
+  },
+  "updatedAt": "2026-11-11T18:03:58.308Z"
+}

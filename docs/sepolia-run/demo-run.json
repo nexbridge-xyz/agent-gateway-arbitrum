@@ -1,0 +1,93 @@
+{
+  "chainId": 421614,
+  "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
+  "finishedAt": "2026-11-11T18:04:02.064Z",
+  "steps": [
+    "gas",
+    "1",
+    "3",
+    "6"
+  ],
+  "transactions": [
+    {
+      "step": "gas",
+      "label": "deployer sends 0.003 ETH to the principal",
+      "transactionHash": "0x0f54f0842a7bd3e1cc01dc321b3f4a8e053c6d4a1b114f716b671511d3a7fe9e",
+      "status": "success",
+      "blockNumber": "328260864",
+      "url": "https://sepolia.arbiscan.io/tx/0x0f54f0842a7bd3e1cc01dc321b3f4a8e053c6d4a1b114f716b671511d3a7fe9e"
+    },
+    {
+      "step": "gas",
+      "label": "deployer sends 0.003 ETH to the executor",
+      "transactionHash": "0x3d30f344a3cac106cb3cc0d82f816e10dbe2b71f23481b7911b8891620fc997f",
+      "status": "success",
+      "blockNumber": "328260872",
+      "url": "https://sepolia.arbiscan.io/tx/0x3d30f344a3cac106cb3cc0d82f816e10dbe2b71f23481b7911b8891620fc997f"
+    },
+    {
+      "step": "1",
+      "label": "principal allows the vault to take 10 USDC",
+      "transactionHash": "0xc4fa97fadf6abf15c265e13d28ba2a4b9469c238409dfe2a9aae8e60921487f1",
+      "status": "success",
+      "blockNumber": "328260883",
+      "url": "https://sepolia.arbiscan.io/tx/0xc4fa97fadf6abf15c265e13d28ba2a4b9469c238409dfe2a9aae8e60921487f1"
+    },
+    {
+      "step": "1",
+      "label": "principal deposits 10 USDC into the vault",
+      "transactionHash": "0xf2c2e089b94d805bd9d6f3de19da4d687e5fc444d6ec36bd238ce21a0de4d6eb",
+      "status": "success",
+      "blockNumber": "328260890",
+      "url": "https://sepolia.arbiscan.io/tx/0xf2c2e089b94d805bd9d6f3de19da4d687e5fc444d6ec36bd238ce21a0de4d6eb"
+    },
+    {
+      "step": "1",
+      "label": "principal registers the agent in the ERC-8004 Identity Registry",
+      "transactionHash": "0xc5bb229fa23bb579d29ff41975b0b103e551abc2c1999f3a9f2b94e8354f07e4",
+      "status": "success",
+      "blockNumber": "328260897",
+      "url": "https://sepolia.arbiscan.io/tx/0xc5bb229fa23bb579d29ff41975b0b103e551abc2c1999f3a9f2b94e8354f07e4"
+    },
+    {
+      "step": "1",
+      "label": "principal stores the registration file for agent 354 onchain",
+      "transactionHash": "0xca9e44e6df78da0bd00e8cc423a428226a06bc616bca8ed4c4410ceec8aeae55",
+      "status": "success",
+      "blockNumber": "328260905",
+      "url": "https://sepolia.arbiscan.io/tx/0xca9e44e6df78da0bd00e8cc423a428226a06bc616bca8ed4c4410ceec8aeae55"
+    },
+    {
+      "step": "1",
+      "label": "principal sets the agent's request-signing key as the agent wallet",
+      "transactionHash": "0x2131b03dd61b1e27e943272ca4460f48ea14b31233b250c05f4e79dc7836dd54",
+      "status": "success",
+      "blockNumber": "328260914",
+      "url": "https://sepolia.arbiscan.io/tx/0x2131b03dd61b1e27e943272ca4460f48ea14b31233b250c05f4e79dc7836dd54"
+    },
+    {
+      "step": "1",
+      "label": "principal creates the mandate: 2 per payment, 8 per day, ceiling 20 USDC, 30 days",
+      "transactionHash": "0x4dbc45bf09563c6a96ae1a5cec92ab1484f7879663fa8704489a03ec253bbe19",
+      "status": "success",
+      "blockNumber": "328260921",
+      "url": "https://sepolia.arbiscan.io/tx/0x4dbc45bf09563c6a96ae1a5cec92ab1484f7879663fa8704489a03ec253bbe19"
+    },
+    {
+      "step": "3",
+      "label": "gateway pays 1.50 USDC to Tsukimi Data inside the mandate",
+      "transactionHash": "0xac89ad80d6bc378e845057ea61eaae0dee32d9da32564e9f80c1dae5301079bf",
+      "status": "success",
+      "blockNumber": "328260933",
+      "url": "https://sepolia.arbiscan.io/tx/0xac89ad80d6bc378e845057ea61eaae0dee32d9da32564e9f80c1dae5301079bf"
+    },
+    {
+      "step": "6",
+      "label": "executor key tries to pay 9 USDC to the attacker; the vault reverts",
+      "transactionHash": "0xf462a6c733e6578febcc8a49d818932a593cb83803cee790662a5c227f7e043d",
+      "status": "reverted",
+      "blockNumber": "328260945",
+      "url": "https://sepolia.arbiscan.io/tx/0xf462a6c733e6578febcc8a49d818932a593cb83803cee790662a5c227f7e043d"
+    }
+  ]
+}

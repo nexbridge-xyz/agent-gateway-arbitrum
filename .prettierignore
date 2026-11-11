@@ -12,3 +12,6 @@ apps/contracts/coverage/
 
 # Generated
 apps/contracts/abi/
+
+# A recorded run: kept byte for byte as the gateway wrote it
+docs/sepolia-run/
