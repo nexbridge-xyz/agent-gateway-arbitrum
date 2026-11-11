@@ -27,13 +27,13 @@ The company owns the vault and the funds. The gateway holds only a capped execut
 
 ## Repository layout
 
-| Path             | What                                                                | Status                                    |
-| ---------------- | ------------------------------------------------------------------- | ----------------------------------------- |
-| `apps/contracts` | `MandateVault` and its tests (Solidity, Foundry)                    | Deployed and verified on Arbitrum Sepolia |
-| `apps/gateway`   | Identity, policy, approvals and evidence service (TypeScript, viem) | Planned                                   |
-| `apps/merchant`  | Demo market-data API paid per call                                  | Planned                                   |
-| `apps/agent`     | Demo research and procurement agent                                 | Planned                                   |
-| `apps/console`   | Web console for mandates, approvals and evidence (React, wagmi)     | Planned                                   |
+| Path             | What                                                                | Status                                                                         |
+| ---------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `apps/contracts` | `MandateVault` and its tests (Solidity, Foundry)                    | Deployed and verified on Arbitrum Sepolia                                      |
+| `apps/gateway`   | Identity, policy, approvals and evidence service (TypeScript, viem) | Identity, policy, payment and evidence run on Arbitrum Sepolia; approvals next |
+| `apps/merchant`  | Demo market-data API paid per call                                  | Planned                                                                        |
+| `apps/agent`     | Demo research and procurement agent                                 | Planned                                                                        |
+| `apps/console`   | Web console for mandates, approvals and evidence (React, wagmi)     | Planned                                                                        |
 
 ## Quickstart
 
@@ -49,11 +49,31 @@ cd agent-gateway-arbitrum
 nvm use                # Node 22, from .nvmrc
 corepack enable        # pnpm, at the version pinned in package.json
 pnpm install
-pnpm contracts:test
+pnpm test              # contract tests (Foundry) and gateway tests (vitest)
 ```
 
-See [`apps/contracts`](apps/contracts/README.md) for what the vault enforces, how it is tested and how to
-deploy it to Arbitrum Sepolia.
+- [`apps/contracts`](apps/contracts/README.md): what the vault enforces, how it is tested and how to deploy it.
+- [`apps/gateway`](apps/gateway/README.md): the request format, the policy checks, the evidence format and
+  how to check an evidence file.
+
+## The demo so far
+
+`pnpm demo` runs on Arbitrum Sepolia and prints an Arbiscan link for every transaction. Three of the seven
+planned steps exist. This is the run recorded in [`docs/sepolia-run`](docs/sepolia-run/README.md):
+
+| Step | What happens                                                                                                  | Onchain                                                                                                                    |
+| ---- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1    | The principal funds the vault, registers the agent in the ERC-8004 Identity Registry and creates the mandate. | [mandate created](https://sepolia.arbiscan.io/tx/0x4dbc45bf09563c6a96ae1a5cec92ab1484f7879663fa8704489a03ec253bbe19)       |
+| 3    | The agent asks to pay a known vendor 1.50 USDC. The gateway decides `auto` and pays through the vault.        | [paid](https://sepolia.arbiscan.io/tx/0xac89ad80d6bc378e845057ea61eaae0dee32d9da32564e9f80c1dae5301079bf)                  |
+| 6    | "Gateway compromised" drill: the executor key is used directly to send 9 USDC to an unlisted address.         | [reverted by the vault](https://sepolia.arbiscan.io/tx/0xf462a6c733e6578febcc8a49d818932a593cb83803cee790662a5c227f7e043d) |
+
+Anyone can check the evidence for step 3 against the chain, without keys:
+
+```bash
+pnpm verify-evidence docs/sepolia-run/evidence/0x93d05350a8fbc1178eb1c66a907470018207dcc7a69d84c40aeb41689704b997.json
+```
+
+All company and vendor names in the demo are fictional.
 
 ## Versions
 
