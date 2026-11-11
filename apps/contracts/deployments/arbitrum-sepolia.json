@@ -1,0 +1,15 @@
+{
+  "network": "arbitrum-sepolia",
+  "chainId": 421614,
+  "contracts": {
+    "MandateVault": {
+      "address": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
+      "transactionHash": "0x603faebb93056f90439d871951ebdd449775a6c7ac2856de9398cef7e9ba2834",
+      "blockNumber": 328251484,
+      "deployer": "0x1BB673B2f52fdBc0A330E3820ffEfcBF0f627B53"
+    }
+  },
+  "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
+  "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+  "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e"
+}

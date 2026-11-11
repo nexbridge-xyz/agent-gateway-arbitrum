@@ -13,9 +13,12 @@ apps/contracts/out/
 apps/contracts/cache/
 apps/contracts/coverage/
 apps/contracts/lcov.info
-# Local and simulated runs. Real testnet broadcasts are kept as a deployment record.
+# Local and simulated runs. Real testnet broadcasts are kept as a deployment record:
+# run-latest.json is tracked, its timestamped copies and lock files are not.
 apps/contracts/broadcast/*/31337/
 apps/contracts/broadcast/**/dry-run/
+apps/contracts/broadcast/**/run-[0-9]*.json
+apps/contracts/broadcast/**/*.lock
 
 # Editors and OS
 .DS_Store
