@@ -1,0 +1,23 @@
+# Secrets: never commit. Only .env.example is tracked.
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Foundry
+apps/contracts/out/
+apps/contracts/cache/
+apps/contracts/coverage/
+apps/contracts/lcov.info
+# Local and simulated runs. Real testnet broadcasts are kept as a deployment record.
+apps/contracts/broadcast/*/31337/
+apps/contracts/broadcast/**/dry-run/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/

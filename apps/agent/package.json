@@ -1,0 +1,8 @@
+{
+  "name": "@agent-gateway/agent",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Demo research and procurement agent that pays only through the gateway.",
+  "license": "MIT",
+  "type": "module"
+}

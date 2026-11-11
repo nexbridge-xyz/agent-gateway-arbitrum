@@ -1,0 +1,8 @@
+{
+  "name": "@agent-gateway/gateway",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Gateway service: agent identity, mandate policy, approvals and evidence records (TypeScript, viem).",
+  "license": "MIT",
+  "type": "module"
+}

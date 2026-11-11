@@ -1,0 +1,26 @@
+{
+  "name": "agent-gateway-arbitrum",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Agent Gateway: mandates, approvals and evidence for AI agent payments, settled in stablecoins on Arbitrum.",
+  "license": "MIT",
+  "author": "NexBridge Inc.",
+  "type": "module",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present run build",
+    "test": "pnpm -r --if-present run test",
+    "lint": "pnpm -r --if-present run lint && prettier --check .",
+    "format": "pnpm -r --if-present run format && prettier --write .",
+    "keys:generate": "bash scripts/generate-keys.sh",
+    "contracts:test": "pnpm --filter @agent-gateway/contracts run test",
+    "contracts:coverage": "pnpm --filter @agent-gateway/contracts run coverage",
+    "contracts:deploy:sepolia": "pnpm --filter @agent-gateway/contracts run deploy:sepolia"
+  },
+  "devDependencies": {
+    "prettier": "3.9.10"
+  }
+}

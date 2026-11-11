@@ -1,0 +1,14 @@
+pnpm-lock.yaml
+node_modules/
+dist/
+
+# Foundry: Solidity is formatted with `forge fmt`
+apps/contracts/lib/
+apps/contracts/out/
+apps/contracts/cache/
+apps/contracts/broadcast/
+apps/contracts/coverage/
+*.sol
+
+# Generated
+apps/contracts/abi/
