@@ -20,14 +20,26 @@
   "scripts": {
     "build": "pnpm -r --if-present run build",
     "test": "pnpm -r --if-present run test",
-    "lint": "pnpm -r --if-present run lint && prettier --check .",
+    "lint": "pnpm -r --if-present run lint && eslint . && tsc --noEmit && prettier --check .",
     "format": "pnpm -r --if-present run format && prettier --write .",
     "keys:generate": "bash scripts/generate-keys.sh",
+    "gateway": "pnpm --filter @agent-gateway/gateway run start",
+    "verify-evidence": "pnpm --filter @agent-gateway/gateway run verify-evidence",
     "contracts:test": "pnpm --filter @agent-gateway/contracts run test",
     "contracts:coverage": "pnpm --filter @agent-gateway/contracts run coverage",
     "contracts:deploy:sepolia": "pnpm --filter @agent-gateway/contracts run deploy:sepolia"
   },
   "devDependencies": {
-    "prettier": "3.9.10"
+    "@agent-gateway/contracts": "workspace:*",
+    "@agent-gateway/gateway": "workspace:*",
+    "@eslint/js": "catalog:",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "prettier": "3.9.10",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "viem": "catalog:",
+    "zod": "catalog:"
   }
 }

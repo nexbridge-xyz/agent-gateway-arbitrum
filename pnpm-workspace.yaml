@@ -1,15 +1,34 @@
 packages:
   - 'apps/*'
 
-# Machine payments (MPP). One version of each package for the merchant and the gateway's client.
-#   @arbitrum/mpp 0.1.0 requires mppx ^0.6.7; 0.6.31 is the newest release in that line.
-#   mppx 0.6.31 needs viem 2.51.0 or later. viem 2.57.16 and later expect mppx 0.17 or later,
-#   so viem stays at 2.57.15 until @arbitrum/mpp supports a current mppx.
+# One version of each shared dependency for every package.
 catalog:
+  # Machine payments (MPP), used by the merchant and by the gateway's client.
+  #   @arbitrum/mpp 0.1.0 requires mppx ^0.6.7; 0.6.31 is the newest release in that line.
+  #   mppx 0.6.31 needs viem 2.51.0 or later. viem 2.57.16 and later expect mppx 0.17 or later,
+  #   so viem stays at 2.57.15 until @arbitrum/mpp supports a current mppx.
   '@arbitrum/mpp': 0.1.0
   mppx: 0.6.31
   viem: 2.57.15
 
+  # Services
+  express: 5.3.0
+  zod: 4.6.7
+
+  # Tooling. TypeScript 6 is the version @arbitrum/mpp and typescript-eslint are built against.
+  typescript: 6.0.3
+  tsx: 4.23.15
+  vitest: 5.1.0
+  eslint: 10.14.0
+  '@eslint/js': 10.0.1
+  typescript-eslint: 8.72.2
+  '@types/express': 5.0.6
+  '@types/node': 22.20.5
+
 # Every package in the dependency tree uses the same viem.
 overrides:
   viem: 'catalog:'
+
+# No dependency runs an install script. esbuild (used by tsx and vitest) works without its script.
+allowBuilds:
+  esbuild: false
