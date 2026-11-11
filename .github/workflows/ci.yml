@@ -56,3 +56,40 @@ jobs:
         env:
           ARBITRUM_SEPOLIA_RPC_URL: https://sepolia-rollup.arbitrum.io/rpc
         run: forge test --match-path 'test/fork/*' -vv
+
+  typescript:
+    name: Gateway and scripts (TypeScript)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Format
+        run: pnpm exec prettier --check .
+
+      - name: Lint
+        run: pnpm exec eslint .
+
+      - name: Typecheck
+        run: |
+          pnpm exec tsc --noEmit
+          pnpm --filter @agent-gateway/gateway run lint
+
+      - name: Test
+        run: pnpm --filter @agent-gateway/gateway run test
+
+      # No keys and no network: the recorded evidence must still agree with itself.
+      - name: Recorded evidence verifies
+        run: pnpm verify-evidence docs/sepolia-run/evidence/0x93d05350a8fbc1178eb1c66a907470018207dcc7a69d84c40aeb41689704b997.json --offline
