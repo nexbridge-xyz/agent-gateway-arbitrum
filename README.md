@@ -33,12 +33,18 @@ The company owns the vault and the funds. The gateway holds only a capped execut
 
 ## Quickstart
 
-Needs Node 22, pnpm (through `corepack enable`) and [Foundry](https://getfoundry.sh).
+Needs Node 22 or later, pnpm and [Foundry](https://getfoundry.sh) 1.0 or later.
+
+- **Node.** `.nvmrc` selects Node 22 for `nvm use` and `fnm use`. `package.json` states the same minimum in
+  `engines` and `devEngines`, and pnpm stops with a clear error on an older Node.
+- **pnpm.** `corepack enable` provides the version pinned in `package.json`.
 
 ```bash
 git clone --recurse-submodules https://github.com/nexbridge-xyz/agent-gateway-arbitrum.git
 cd agent-gateway-arbitrum
-corepack enable && pnpm install
+nvm use                # Node 22, from .nvmrc
+corepack enable        # pnpm, at the version pinned in package.json
+pnpm install
 pnpm contracts:test
 ```
 
