@@ -10,6 +10,8 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
     "forge-std/=lib/forge-std/src/",
 ]
+# Fork tests read the recorded deployment.
+fs_permissions = [{ access = "read", path = "./deployments" }]
 
 [fuzz]
 runs = 1000
