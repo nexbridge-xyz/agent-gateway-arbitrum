@@ -4,5 +4,10 @@
   "private": true,
   "description": "Demo market-data API that charges per call in USDC on Arbitrum Sepolia.",
   "license": "MIT",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@arbitrum/mpp": "catalog:",
+    "mppx": "catalog:",
+    "viem": "catalog:"
+  }
 }

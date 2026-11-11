@@ -45,6 +45,25 @@ pnpm contracts:test
 See [`apps/contracts`](apps/contracts/README.md) for what the vault enforces, how it is tested and how to
 deploy it to Arbitrum Sepolia.
 
+## Versions
+
+| Component              | Version | Where it is pinned                    |
+| ---------------------- | ------- | ------------------------------------- |
+| Solidity               | 0.8.30  | `apps/contracts/foundry.toml`         |
+| OpenZeppelin Contracts | 5.7.0   | git submodule in `apps/contracts/lib` |
+| forge-std              | 1.17.0  | git submodule in `apps/contracts/lib` |
+| `@arbitrum/mpp`        | 0.1.0   | `catalog` in `pnpm-workspace.yaml`    |
+| `mppx`                 | 0.6.31  | `catalog` in `pnpm-workspace.yaml`    |
+| viem                   | 2.57.15 | `catalog` and `overrides`, same file  |
+| pnpm                   | 12.18.0 | `packageManager` in `package.json`    |
+
+Per-call payments use the Machine Payments Protocol (MPP) through
+[`@arbitrum/mpp`](https://github.com/OffchainLabs/arbitrum-mpp), Offchain Labs' Arbitrum charge method for
+[`mppx`](https://github.com/wevm/mppx). `@arbitrum/mpp` 0.1.0 is an early release and requires `mppx` `^0.6.7`,
+so the demo merchant and the gateway's MPP client both use `mppx` 0.6.31, the newest release in that line.
+`mppx` 0.6 in turn sets the viem version. These pins move forward once `@arbitrum/mpp` supports a current
+`mppx`.
+
 ## License
 
 [MIT](LICENSE). Copyright (c) 2026 NexBridge Inc.
