@@ -46,7 +46,7 @@ verify() {
 
   echo "Verifying $address on Arbiscan..."
   forge verify-contract "$address" src/MandateVault.sol:MandateVault \
-    --chain "$CHAIN_ID" --constructor-args "$args" --watch
+    --chain "$CHAIN_ID" --constructor-args "$args" --license-type MIT --watch
 
   echo "Verifying $address on Sourcify (best effort)..."
   forge verify-contract "$address" src/MandateVault.sol:MandateVault \
