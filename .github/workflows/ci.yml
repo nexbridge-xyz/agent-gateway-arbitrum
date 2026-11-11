@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Contracts (Foundry)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: apps/contracts
+    env:
+      FOUNDRY_PROFILE: ci
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Show Forge version
+        run: forge --version
+
+      - name: Format
+        run: forge fmt --check
+
+      - name: Build and lint
+        run: forge build --sizes --deny warnings
+
+      - name: Test
+        run: forge test -vvv
+
+      - name: Coverage
+        run: forge coverage --no-match-coverage '(test|script)/'
+
+      - name: ABI is up to date
+        run: node scripts/export-abi.mjs --check
+
+      # Runs against a public RPC endpoint without an SLA, so a failure here does not fail the build.
+      - name: Fork tests (Arbitrum Sepolia)
+        continue-on-error: true
+        env:
+          ARBITRUM_SEPOLIA_RPC_URL: https://sepolia-rollup.arbitrum.io/rpc
+        run: forge test --match-path 'test/fork/*' -vv
