@@ -175,7 +175,7 @@ Settings come from the repository's `.env`:
 pnpm --filter @agent-gateway/gateway test
 ```
 
-142 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
+148 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
 tamper checks, every policy rule and its boundaries, the gateway and its HTTP API against an in-memory
 stand-in for the chain, and the verifier against files that were changed in a dozen ways.
 

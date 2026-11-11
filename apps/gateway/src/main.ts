@@ -5,23 +5,32 @@ import { configFromEnv, createRuntime, explorerTx, repositoryRoot } from './runt
 import { createApp } from './server';
 
 // Start the gateway: `pnpm gateway`. Settings come from the repository's .env.
-const envFile = join(repositoryRoot, '.env');
-if (existsSync(envFile)) process.loadEnvFile(envFile);
+async function main(): Promise<void> {
+  const envFile = join(repositoryRoot, '.env');
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
 
-const config = configFromEnv();
-const runtime = await createRuntime(config);
-const info = await runtime.chain.info();
-const app = createApp({
-  gateway: runtime.gateway,
-  chain: runtime.chain,
-  ledger: runtime.ledger,
-  explorerTx,
-});
+  const config = configFromEnv();
+  const runtime = await createRuntime(config);
+  const info = await runtime.chain.info();
+  const app = createApp({
+    gateway: runtime.gateway,
+    chain: runtime.chain,
+    ledger: runtime.ledger,
+    explorerTx,
+  });
 
-app.listen(config.port, '127.0.0.1', () => {
-  console.log(`Agent Gateway listening on http://127.0.0.1:${config.port}`);
-  console.log(`  chain     Arbitrum Sepolia (${info.chainId})`);
-  console.log(`  vault     ${info.vault}`);
-  console.log(`  executor  ${runtime.executor.address}`);
-  console.log(`  ledger    ${runtime.ledger.entries.length} entries`);
+  app.listen(config.port, '127.0.0.1', () => {
+    console.log(`Agent Gateway listening on http://127.0.0.1:${config.port}`);
+    console.log(`  chain     Arbitrum Sepolia (${info.chainId})`);
+    console.log(`  vault     ${info.vault}`);
+    console.log(`  executor  ${runtime.executor.address}`);
+    console.log(`  ledger    ${runtime.ledger.entries.length} entries`);
+  });
+}
+
+main().catch((error: unknown) => {
+  console.error(
+    `The gateway did not start: ${error instanceof Error ? error.message : String(error)}`,
+  );
+  process.exitCode = 1;
 });

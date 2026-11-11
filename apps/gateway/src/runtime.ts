@@ -55,6 +55,11 @@ export type GatewayConfig = {
 export const repositoryRoot = new URL('../../../', import.meta.url).pathname;
 
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env): GatewayConfig {
+  if (env.EXECUTOR_PRIVATE_KEY === undefined || env.EXECUTOR_PRIVATE_KEY === '') {
+    throw new Error(
+      'EXECUTOR_PRIVATE_KEY is not set. Run `pnpm keys:generate`, or see .env.example.',
+    );
+  }
   const parsed = envSchema.safeParse(env);
   if (!parsed.success) {
     const problems = parsed.error.issues
