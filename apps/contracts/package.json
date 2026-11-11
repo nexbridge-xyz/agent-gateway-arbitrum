@@ -7,7 +7,8 @@
   "type": "module",
   "exports": {
     "./abi": "./abi/MandateVault.ts",
-    "./abi/MandateVault.json": "./abi/MandateVault.json"
+    "./abi/MandateVault.json": "./abi/MandateVault.json",
+    "./deployments/arbitrum-sepolia.json": "./deployments/arbitrum-sepolia.json"
   },
   "scripts": {
     "build": "forge build && node scripts/export-abi.mjs",
