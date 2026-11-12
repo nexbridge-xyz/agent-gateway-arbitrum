@@ -39,6 +39,23 @@ stolen, the vault would still refuse anything outside those limits.
 | `GET /v1/ledger`                       | The ledger, with the result of checking its hash chain.                     |
 | `GET /healthz`                         | Chain, vault, executor and spend wallet address.                            |
 
+The [console](../console/README.md) also reads these:
+
+| Method and path                                  | What it does                                                                             |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `GET /v1/payment-intents?limit=`                 | The newest decisions first, one summary each. At most 500.                               |
+| `GET /v1/payment-intents/:intentId/verification` | The evidence file checked against the chain and the ledger, check by check.              |
+| `GET /v1/config`                                 | Chain, vault, principal, token, executor, spend wallet and the explorer's address.       |
+| `GET /v1/payees`                                 | The principal's vendor registry and denylist, for showing names next to addresses.       |
+| `GET /v1/mandate-terms/:termsHash`               | The plain text of a mandate, by the hash the vault stores for it.                        |
+| `PUT /v1/mandate-terms/:termsHash`               | Stores a mandate's text (`text/plain`, at most 16 KB). Accepted only under its own hash. |
+
+The types of all answers are exported from [`src/server.ts`](src/server.ts), and the console takes its
+types from there.
+
+The gateway answers requests addressed to this machine only (`127.0.0.1`, `localhost`, `[::1]`). A request
+that names another host gets `403`: it has been pointed here by a web page elsewhere.
+
 A request:
 
 ```json
@@ -102,9 +119,12 @@ The approver signs that message in a wallet and posts `{ "signature", "deadline"
 1. reads the chain again, because the world may have changed while the request waited. A mandate that was
    revoked, a payee that was put on the denylist or a day total at the hard ceiling stops the payment with
    `409` and the reasons;
-2. checks that the signature is the approver's, for this payee, amount, evidence hash and the mandate's
-   current approval number. Anyone else's signature gets `400`, and that includes the gateway's own
-   executor key.
+2. checks the signature the way the vault will: it must be the approver's, for this payee, amount,
+   evidence hash and the mandate's current approval number. Anyone else's signature gets `400`, and that
+   includes the gateway's own executor key. If the approver's address has contract code, which is the case
+   for a smart account and for a key with an EIP-7702 delegation, the vault does not check the key: it asks
+   that code through ERC-1271. The gateway then asks the same question, and answers `400` if the code does
+   not confirm the signature. In both cases nothing is sent and the request stays open.
 
 Then it calls `payWithApproval`. The vault checks the same signature onchain and counts the payment toward
 the day's hard ceiling. An approval covers one payment: its number is used up, and its evidence hash can be
@@ -253,6 +273,7 @@ rebuilt or cut short by whoever holds it. The vault's events onchain are the par
 pnpm keys:generate     # once: testnet-only keys into .env
 pnpm demo              # demo steps on Arbitrum Sepolia, with an Arbiscan link for every transaction
 pnpm gateway           # or: just the service, on http://127.0.0.1:8787
+pnpm demo --console    # or: the demo next to the console, with step 4 signed there
 ```
 
 Settings come from the repository's `.env`:
@@ -273,13 +294,14 @@ Settings come from the repository's `.env`:
 pnpm --filter @agent-gateway/gateway test
 ```
 
-232 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
+253 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
 tamper checks, every policy rule and its boundaries, the gateway and its HTTP API against an in-memory
 stand-in for the chain, approvals and declines (wrong signer, the executor's own signature, a changed
-amount, an expired deadline, a used approval number, a mandate revoked while the request waited),
-per-call purchases (a challenge for another price, recipient or token, a redirect, a resource on another
-address), the choice among an agent's mandates, and the verifier against files that were changed in two
-dozen ways.
+amount, an expired deadline, a used approval number, a mandate revoked while the request waited, an
+approver address with contract code), per-call purchases (a challenge for another price, recipient or
+token, a redirect, a resource on another address), the choice among an agent's mandates, the endpoints the
+console reads, the texts of mandates, requests addressed to another host, and the verifier against files
+that were changed in two dozen ways.
 
 Seven more tests make a real purchase from the demo merchant, with settlement, on a local fork of Arbitrum
 Sepolia. They run when a fork is given:

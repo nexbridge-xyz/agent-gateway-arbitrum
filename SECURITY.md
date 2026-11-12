@@ -92,6 +92,18 @@ amount, the registered merchant as the only recipient, and a plain one-payer aut
 must be on the API address the principal registered for that merchant, and redirects are not followed. The
 spend wallet is funded for one call at a time, so it holds no balance to lose between calls.
 
+### The console, or a web page elsewhere, is used against the gateway
+
+The console holds no key. A wallet signs, and shows the approver the typed message: the mandate, the payee,
+the amount, the evidence hash and the deadline. An approval moves nothing by itself: only the mandate's
+executor can submit it, for that one payee and amount, once, before the deadline. A new mandate is a
+transaction from the principal's wallet, which shows it before sending.
+
+The gateway listens on localhost and answers only requests addressed to this machine, so a web page
+elsewhere cannot have a browser read from it through a made-up host name. Everything that changes what the
+gateway does needs a signature: the agent's on a request, the approver's on an approval or a decline. The
+one write without a signature stores a mandate's text, and only under the text's own hash.
+
 ### A record is changed after the fact
 
 Every payment **out of the vault** carries the hash of its evidence record in the vault's event, onchain. A
@@ -110,8 +122,10 @@ but whoever holds it could rebuild it or cut it short. The vault's events are th
 - The gateway trusts its RPC endpoint for the state it decides on. The vault does not: it checks every
   payment itself.
 - Daily caps use UTC days. A mandate can pay its daily cap shortly before 00:00 UTC and again shortly after.
-- The gateway checks approvals as plain signatures. The vault also accepts a smart-account approver
-  (ERC-1271), which the gateway does not pass through yet.
+- An approval is a 65-byte signature. If the approver's address has contract code (a smart account, or a
+  key with an EIP-7702 delegation), the vault asks that code through ERC-1271 instead of checking the key,
+  and the gateway asks the same question before it sends anything. Smart accounts that need another
+  signature format are not supported yet.
 - If a per-call purchase fails after the vault funded the spend wallet, that amount stays in the spend
   wallet until the principal moves it.
 - USDC itself can be paused or an address blocked by its issuer. Nothing here changes that.
