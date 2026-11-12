@@ -67,6 +67,17 @@ export type EvidenceRecord = {
     /** The address recovered from the signature. */
     signer: Address | null;
   };
+  /**
+   * Set when the request is a per-call purchase: `what.payee` is then the merchant, and the vault pays
+   * the gateway's spend wallet, which pays the merchant. Null or absent for a direct payment.
+   */
+  purchase?: {
+    protocol: 'mpp';
+    /** The paid resource the agent asked for. */
+    resource: string;
+    /** Null when the gateway has no spend wallet; the request is then refused. */
+    spendWallet: Address | null;
+  } | null;
   why: {
     decision: Decision;
     reasons: string[];
@@ -83,9 +94,23 @@ export type EvidenceApproval = {
   receivedAt: string;
 };
 
+/** What happened at the merchant after the vault topped up the spend wallet for a purchase. */
+export type PurchaseOutcome =
+  | {
+      status: 'settled';
+      /** The merchant's settlement transaction: the spend wallet's transfer to the merchant. */
+      settlementTransactionHash: Hex;
+      settledAt: string;
+      /** keccak256 of the response body the merchant returned. */
+      responseHash: Hex;
+    }
+  | { status: 'failed'; error: string };
+
 export type EvidenceResult =
   | { status: 'refused' }
   | { status: 'pending_approval' }
+  /** The approver said no. The signature is over the intent id and the evidence hash. */
+  | { status: 'declined'; approver: Address; signature: Hex; declinedAt: string }
   /** Decided to pay; the transaction has not been confirmed yet. */
   | { status: 'executing' }
   | {
@@ -94,6 +119,8 @@ export type EvidenceResult =
       blockNumber: string;
       event: 'MandatePayment' | 'ApprovedPayment';
       executedAt: string;
+      /** Present for a per-call purchase. */
+      purchase?: PurchaseOutcome;
     }
   | { status: 'failed'; error: string; transactionHash: Hex | null; failedAt: string };
 

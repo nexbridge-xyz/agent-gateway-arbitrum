@@ -55,3 +55,49 @@ export async function recoverApprovalSigner(
     return null;
   }
 }
+
+/**
+ * A decline is the approver saying no. The vault never sees it, so it is signed for the gateway's
+ * domain, the same one agents sign their intents for, and names the intent and its evidence hash.
+ */
+export const APPROVAL_DECLINE_TYPES = {
+  ApprovalDecline: [
+    { name: 'intentId', type: 'bytes32' },
+    { name: 'evidenceHash', type: 'bytes32' },
+  ],
+} as const;
+
+export function declineTypedData(
+  vault: { chainId: number; address: Address },
+  intentId: Hex,
+  evidenceHash: Hex,
+) {
+  return {
+    domain: {
+      name: 'AgentGateway',
+      version: '1',
+      chainId: vault.chainId,
+      verifyingContract: vault.address,
+    },
+    types: APPROVAL_DECLINE_TYPES,
+    primaryType: 'ApprovalDecline',
+    message: { intentId, evidenceHash },
+  } as const;
+}
+
+/** The address that signed the decline, or null if the signature cannot be read. */
+export async function recoverDeclineSigner(
+  vault: { chainId: number; address: Address },
+  intentId: Hex,
+  evidenceHash: Hex,
+  signature: Hex,
+): Promise<Address | null> {
+  try {
+    return await recoverTypedDataAddress({
+      ...declineTypedData(vault, intentId, evidenceHash),
+      signature,
+    });
+  } catch {
+    return null;
+  }
+}

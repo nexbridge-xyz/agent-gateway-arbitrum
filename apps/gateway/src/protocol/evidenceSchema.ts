@@ -70,6 +70,14 @@ const recordSchema = z.strictObject({
     signature,
     signer: address.nullable(),
   }),
+  purchase: z
+    .strictObject({
+      protocol: z.literal('mpp'),
+      resource: z.string().max(2_000),
+      spendWallet: address.nullable(),
+    })
+    .nullable()
+    .optional(),
   why: z.strictObject({
     decision: z.enum(['auto', 'needs_approval', 'refused']),
     reasons: z.array(text).max(32),
@@ -77,9 +85,25 @@ const recordSchema = z.strictObject({
   }),
 });
 
+const purchaseOutcomeSchema = z.discriminatedUnion('status', [
+  z.strictObject({
+    status: z.literal('settled'),
+    settlementTransactionHash: hash,
+    settledAt: isoTime,
+    responseHash: hash,
+  }),
+  z.strictObject({ status: z.literal('failed'), error: text }),
+]);
+
 const resultSchema = z.discriminatedUnion('status', [
   z.strictObject({ status: z.literal('refused') }),
   z.strictObject({ status: z.literal('pending_approval') }),
+  z.strictObject({
+    status: z.literal('declined'),
+    approver: address,
+    signature,
+    declinedAt: isoTime,
+  }),
   z.strictObject({ status: z.literal('executing') }),
   z.strictObject({
     status: z.literal('paid'),
@@ -87,6 +111,7 @@ const resultSchema = z.discriminatedUnion('status', [
     blockNumber: uintString,
     event: z.enum(['MandatePayment', 'ApprovedPayment']),
     executedAt: isoTime,
+    purchase: purchaseOutcomeSchema.optional(),
   }),
   z.strictObject({
     status: z.literal('failed'),

@@ -13,7 +13,14 @@ import { type JsonObject, canonicalize } from '../protocol/json';
 export const GENESIS: Hex = `0x${'0'.repeat(64)}`;
 
 export type LedgerKind =
-  'INTENT_DECIDED' | 'PAYMENT_EXECUTED' | 'PAYMENT_FAILED' | 'APPROVAL_RECEIVED';
+  | 'INTENT_DECIDED'
+  | 'PAYMENT_EXECUTED'
+  | 'PAYMENT_FAILED'
+  | 'APPROVAL_RECEIVED'
+  | 'APPROVAL_DECLINED'
+  | 'APPROVAL_NOT_EXECUTED'
+  | 'PURCHASE_SETTLED'
+  | 'PURCHASE_FAILED';
 
 export type LedgerEntry = {
   seq: number;
