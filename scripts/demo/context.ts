@@ -68,11 +68,21 @@ export const NAMES = {
 } as const;
 
 export type RunOptions = {
-  /** Revoke the current mandate, if it is still active, and create a new one. */
+  /** Revoke the agent's current mandates, if they are still active, and create new ones. */
   fresh: boolean;
   /** How long a new mandate is valid. */
   validDays: number;
 };
+
+/** What a transaction was, for whoever turns the run log into a table. */
+export type TransactionTag =
+  | 'mandate-created'
+  | 'purchase-funded'
+  | 'purchase-settled'
+  | 'paid'
+  | 'paid-with-approval'
+  | 'drill'
+  | 'mandate-revoked';
 
 export type LoggedTransaction = {
   step: string;
@@ -81,12 +91,15 @@ export type LoggedTransaction = {
   status: 'success' | 'reverted';
   blockNumber: string;
   url: string;
+  tag?: TransactionTag;
 };
 
 /** One decision of the gateway during the run. */
 export type LoggedIntent = {
   step: string;
   intentId: Hex;
+  /** The mandate the request was decided under. */
+  mandateId: string | null;
   decision: string;
   status: string;
   payee: Address;
@@ -95,21 +108,52 @@ export type LoggedIntent = {
   reasons: string[];
   evidenceHash: Hex;
   evidenceChecks: string;
+  /**
+   * Who sent the request: the agent, or the runner standing in for an agent that has been fooled
+   * (step 5, when the agent itself ignored the planted note).
+   */
+  sentBy: 'agent' | 'runner';
 };
 
 /** One "gateway compromised" drill: what was tried with the executor key, and how the vault refused. */
 export type LoggedDrill = { name: string; attempt: string; refusal: string; transactionHash: Hex };
 
+/** The agent's two mandates: one for vendor invoices, a small one that funds the spend wallet. */
+export type MandateKind = 'vendors' | 'spend wallet';
+
 /** A mandate created during the run, with the hash of its plain-text terms. */
-export type LoggedMandate = { step: string; mandateId: string; termsHash: Hex; validUntil: string };
+export type LoggedMandate = {
+  step: string;
+  kind: MandateKind;
+  mandateId: string;
+  termsHash: Hex;
+  validUntil: string;
+  /** The transaction that created it. */
+  transactionHash: Hex;
+};
+
+/** What happened to the note planted in a market-data response (step 5). */
+export type PlantedNoteOutcome = {
+  /** The address the note asks the agent to pay. Nobody holds its key. */
+  address: Address;
+  agent: string;
+  /** Whether the agent asked for the payment itself, or ignored the note. */
+  agentActedOnNote: boolean;
+  intentId: Hex;
+  decision: string;
+};
 
 /** What the setup step created, kept between runs so later steps can find it. */
 export type DemoState = {
   chainId: number;
   vault: Address;
   agentId: string | null;
+  /** The vendor mandate. */
   mandateId: string | null;
   termsHash: Hex | null;
+  /** The spend wallet's mandate. */
+  spendMandateId: string | null;
+  spendTermsHash: Hex | null;
 };
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
@@ -164,6 +208,7 @@ export async function createContext(envFile: string, options: RunOptions) {
   const intents: LoggedIntent[] = [];
   const drills: LoggedDrill[] = [];
   const mandates: LoggedMandate[] = [];
+  const outcome: { plantedNote: PlantedNoteOutcome | null } = { plantedNote: null };
   const statePath = join(config.dataDir, 'demo-state.json');
 
   const log = (line = '') => {
@@ -190,7 +235,12 @@ export async function createContext(envFile: string, options: RunOptions) {
     return inside.startsWith('..') ? path : inside;
   };
 
-  const record = (step: string, label: string, receipt: TransactionReceipt) => {
+  const record = (
+    step: string,
+    label: string,
+    receipt: TransactionReceipt,
+    tag: TransactionTag | undefined,
+  ) => {
     const url = explorerTx(receipt.transactionHash);
     transactions.push({
       step,
@@ -199,6 +249,7 @@ export async function createContext(envFile: string, options: RunOptions) {
       status: receipt.status,
       blockNumber: receipt.blockNumber.toString(),
       url,
+      ...(tag === undefined ? {} : { tag }),
     });
     log(`  ${receipt.status === 'success' ? 'ok      ' : 'REVERTED'} ${label}`);
     log(`           ${url}`);
@@ -210,12 +261,13 @@ export async function createContext(envFile: string, options: RunOptions) {
     label: string,
     transactionHash: Hex,
     expect: 'success' | 'reverted' = 'success',
+    tag?: TransactionTag,
   ): Promise<TransactionReceipt> => {
     const receipt = await publicClient.waitForTransactionReceipt({
       hash: transactionHash,
       timeout: 120_000,
     });
-    record(step, label, receipt);
+    record(step, label, receipt, tag);
     if (receipt.status !== expect) {
       throw new Error(`"${label}" was expected to end as ${expect} but ended as ${receipt.status}`);
     }
@@ -223,8 +275,13 @@ export async function createContext(envFile: string, options: RunOptions) {
   };
 
   /** Prints the explorer link of a transaction somebody else sent: the gateway or the merchant. */
-  const logTransaction = async (step: string, label: string, transactionHash: Hex) => {
-    record(step, label, await publicClient.getTransactionReceipt({ hash: transactionHash }));
+  const logTransaction = async (
+    step: string,
+    label: string,
+    transactionHash: Hex,
+    tag?: TransactionTag,
+  ) => {
+    record(step, label, await publicClient.getTransactionReceipt({ hash: transactionHash }), tag);
   };
 
   /**
@@ -249,11 +306,16 @@ export async function createContext(envFile: string, options: RunOptions) {
       agentId: null,
       mandateId: null,
       termsHash: null,
+      spendMandateId: null,
+      spendTermsHash: null,
     };
     try {
-      const state = JSON.parse(await readFile(statePath, 'utf8')) as DemoState;
-      // State from another vault or chain is of no use here.
-      return state.chainId === info.chainId && state.vault === info.vault ? state : empty;
+      const state = JSON.parse(await readFile(statePath, 'utf8')) as Partial<DemoState>;
+      // State from another vault or chain is of no use here. A file from before the spend wallet had
+      // its own mandate lacks those fields.
+      return state.chainId === info.chainId && state.vault === info.vault
+        ? { ...empty, ...state }
+        : empty;
     } catch {
       return empty;
     }
@@ -363,6 +425,7 @@ export async function createContext(envFile: string, options: RunOptions) {
     intents,
     drills,
     mandates,
+    outcome,
     readState,
     writeState,
     services,

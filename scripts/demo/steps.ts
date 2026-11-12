@@ -32,20 +32,29 @@ import {
 } from '@agent-gateway/gateway';
 import { PLANTED_NOTE_SYMBOL } from '@agent-gateway/merchant';
 
-import { type Context, NAMES, type Role } from './context';
+import { type Context, type LoggedIntent, type MandateKind, NAMES, type Role } from './context';
 import { agentIsReady, registerAgent, syncRegistration } from './erc8004';
 
-/** The demo mandate. Amounts are in USDC and fit one claim from Circle's testnet faucet. */
-export const MANDATE = {
-  perPaymentCap: '2',
-  dailyCap: '8',
-  hardCeiling: '20',
-  /**
-   * What the principal keeps in the vault for the demo. The path pays out 7.70; the rest is there so
-   * that the planted 4 USDC request in step 5 is refused for one reason only: its payee.
-   */
-  vaultFunds: '12',
-} as const;
+/**
+ * The agent's two mandates. Amounts are in USDC.
+ *
+ * The vendor mandate covers invoices. The spend wallet has a small mandate of its own, so that the
+ * vault itself limits what can ever reach it: the gateway holds that wallet's key, and a thief who
+ * took the gateway's keys could move no more than this to an address of their own.
+ */
+export const MANDATES = {
+  vendors: { perPaymentCap: '2', dailyCap: '8', hardCeiling: '20' },
+  'spend wallet': { perPaymentCap: '0.5', dailyCap: '1', hardCeiling: '1' },
+} as const satisfies Record<
+  MandateKind,
+  { perPaymentCap: string; dailyCap: string; hardCeiling: string }
+>;
+
+/**
+ * What the principal keeps in the vault for the demo. The path pays out 7.70; the rest is there so
+ * that the planted 4 USDC request in step 5 is refused for one reason only: its payee.
+ */
+const VAULT_FUNDS = '12';
 
 /** What the "gateway compromised" drills try to take. */
 const DRILL_AMOUNT = '9';
@@ -92,48 +101,94 @@ export async function gas(context: Context): Promise<void> {
 
 // --- Step 1 ------------------------------------------------------------------------------------------
 
+/** The payees a mandate of this kind lists. */
+function payeesOf(context: Context, kind: MandateKind): Address[] {
+  const { accounts } = context;
+  return kind === 'vendors'
+    ? [accounts.VENDOR_A.address, accounts.VENDOR_B.address]
+    : [accounts.SPEND_WALLET.address];
+}
+
 /** The plain-text mandate the principal approves. Its hash goes onchain as `termsHash`. */
-function mandateText(context: Context, agentId: bigint, validUntil: bigint): string {
-  const { accounts, info, runtime } = context;
+function mandateText(
+  context: Context,
+  kind: MandateKind,
+  agentId: bigint,
+  validUntil: bigint,
+): string {
+  const { accounts, info } = context;
   const until = new Date(Number(validUntil) * 1000).toISOString().replace('.000Z', 'Z');
   const token = info.tokenSymbol;
-  return [
-    'AGENT PAYMENT MANDATE',
-    '',
+  const caps = MANDATES[kind];
+  const parties = [
     `Principal: ${NAMES.principal} (${accounts.PRINCIPAL.address})`,
     `Agent: ${NAMES.agent}, ERC-8004 agent ${agentId} in eip155:${info.chainId}:${info.identityRegistry}`,
     `Executor (gateway): ${accounts.EXECUTOR.address}`,
     `Approver: ${accounts.APPROVER.address}`,
-    '',
-    'The agent may pay these payees without asking:',
-    `  - ${NAMES.spendWallet} (${accounts.SPEND_WALLET.address})`,
-    `  - ${NAMES.vendorA} (${accounts.VENDOR_A.address})`,
-    `  - ${NAMES.vendorB} (${accounts.VENDOR_B.address})`,
-    `up to ${MANDATE.perPaymentCap} ${token} per payment and ${MANDATE.dailyCap} ${token} per UTC day.`,
-    '',
-    `The spend wallet pays for single API calls at ${NAMES.merchant} (${accounts.MERCHANT.address}),`,
-    `at most ${runtime.config.purchaseCallCap} ${token} per call. It is funded from the vault one call at a time.`,
-    '',
-    `Any other payment needs the approver's signature. No more than ${MANDATE.hardCeiling} ${token} may leave`,
-    'under this mandate in one UTC day, approved payments included.',
-    '',
+  ];
+  const closing = [
     `Valid until ${until}. The principal may revoke this mandate at any time.`,
     `Vault: ${info.vault} on Arbitrum Sepolia (${info.chainId}). Token: ${token} (${info.token}).`,
     '',
+  ];
+
+  if (kind === 'vendors') {
+    return [
+      'AGENT PAYMENT MANDATE: VENDOR INVOICES',
+      '',
+      ...parties,
+      '',
+      'The agent may pay these payees without asking:',
+      `  - ${NAMES.vendorA} (${accounts.VENDOR_A.address})`,
+      `  - ${NAMES.vendorB} (${accounts.VENDOR_B.address})`,
+      `up to ${caps.perPaymentCap} ${token} per payment and ${caps.dailyCap} ${token} per UTC day.`,
+      '',
+      `Any other payment needs the approver's signature. No more than ${caps.hardCeiling} ${token} may leave`,
+      'under this mandate in one UTC day, approved payments included.',
+      '',
+      ...closing,
+    ].join('\n');
+  }
+  return [
+    'AGENT PAYMENT MANDATE: PER-CALL PURCHASES',
+    '',
+    ...parties,
+    '',
+    'The gateway may fund this wallet without asking:',
+    `  - ${NAMES.spendWallet} (${accounts.SPEND_WALLET.address})`,
+    `up to ${caps.perPaymentCap} ${token} per payment and ${caps.dailyCap} ${token} per UTC day.`,
+    '',
+    `The spend wallet pays for single API calls at ${NAMES.merchant} (${accounts.MERCHANT.address}).`,
+    'It is funded one call at a time, with exactly the price of that call.',
+    '',
+    `No more than ${caps.hardCeiling} ${token} may leave under this mandate in one UTC day.`,
+    '',
+    ...closing,
   ].join('\n');
 }
 
-/** The principal creates a mandate for the agent and keeps its text next to the gateway's data. */
-async function createMandate(context: Context, step: string, agentId: bigint): Promise<bigint> {
+const describeCaps = (context: Context, kind: MandateKind) => {
+  const caps = MANDATES[kind];
+  return `${caps.perPaymentCap} per payment, ${caps.dailyCap} per day, ceiling ${caps.hardCeiling} ${context.info.tokenSymbol}`;
+};
+
+/** The principal creates one of the agent's mandates and keeps its text next to the gateway's data. */
+async function createMandate(
+  context: Context,
+  step: string,
+  kind: MandateKind,
+  agentId: bigint,
+): Promise<bigint> {
   const { accounts, info, publicClient, runtime, wallet, confirm, log, units, options } = context;
+  const caps = MANDATES[kind];
   const block = await publicClient.getBlock({ blockTag: 'latest' });
   const validUntil = block.timestamp + BigInt(options.validDays * 86_400);
-  const terms = mandateText(context, agentId, validUntil);
+  const terms = mandateText(context, kind, agentId, validUntil);
   const termsHash = keccak256(stringToHex(terms));
 
   const receipt = await confirm(
     step,
-    `principal creates the mandate: ${MANDATE.perPaymentCap} per payment, ${MANDATE.dailyCap} per day, ceiling ${MANDATE.hardCeiling} ${info.tokenSymbol}, ${options.validDays} days`,
+    `principal creates the mandate for ${kind === 'vendors' ? 'vendor invoices' : 'the spend wallet'}: ${describeCaps(context, kind)}, ${options.validDays} days`,
     await wallet(accounts.PRINCIPAL).writeContract({
       address: info.vault,
       abi: mandateVaultAbi,
@@ -142,14 +197,16 @@ async function createMandate(context: Context, step: string, agentId: bigint): P
         agentId,
         accounts.EXECUTOR.address,
         accounts.APPROVER.address,
-        [accounts.SPEND_WALLET.address, accounts.VENDOR_A.address, accounts.VENDOR_B.address],
-        units(MANDATE.perPaymentCap),
-        units(MANDATE.dailyCap),
-        units(MANDATE.hardCeiling),
+        payeesOf(context, kind),
+        units(caps.perPaymentCap),
+        units(caps.dailyCap),
+        units(caps.hardCeiling),
         validUntil,
         termsHash,
       ],
     }),
+    'success',
+    'mandate-created',
   );
   const created = parseEventLogs({
     abi: mandateVaultAbi,
@@ -162,29 +219,88 @@ async function createMandate(context: Context, step: string, agentId: bigint): P
   const mandatesDir = join(runtime.config.dataDir, 'mandates');
   await mkdir(mandatesDir, { recursive: true });
   await writeFile(join(mandatesDir, `${termsHash}.txt`), terms, 'utf8');
+  const state = await context.readState();
   await context.writeState({
-    ...(await context.readState()),
+    ...state,
     agentId: agentId.toString(),
-    mandateId: mandateId.toString(),
-    termsHash,
+    ...(kind === 'vendors'
+      ? { mandateId: mandateId.toString(), termsHash }
+      : { spendMandateId: mandateId.toString(), spendTermsHash: termsHash }),
   });
   log(`           mandate ${mandateId}, terms hash ${termsHash}`);
   context.mandates.push({
     step,
+    kind,
     mandateId: mandateId.toString(),
     termsHash,
     validUntil: new Date(Number(validUntil) * 1000).toISOString(),
+    transactionHash: receipt.transactionHash,
   });
   return mandateId;
 }
 
-const isActive = (context: Context, mandateId: bigint) =>
-  context.publicClient.readContract({
-    address: context.info.vault,
-    abi: mandateVaultAbi,
-    functionName: 'isActive',
-    args: [mandateId],
-  });
+/** Whether a mandate is live and lists exactly the payees its kind should list. */
+async function mandateFits(
+  context: Context,
+  kind: MandateKind,
+  mandateId: bigint,
+): Promise<'fits' | 'live but different' | 'not live'> {
+  const { info, publicClient } = context;
+  const vault = { address: info.vault, abi: mandateVaultAbi } as const;
+  const [live, mandate] = await Promise.all([
+    publicClient.readContract({ ...vault, functionName: 'isActive', args: [mandateId] }),
+    publicClient.readContract({ ...vault, functionName: 'getMandate', args: [mandateId] }),
+  ]);
+  if (!live) return 'not live';
+  const wanted = payeesOf(context, kind);
+  const same =
+    mandate.payees.length === wanted.length &&
+    wanted.every((payee) => mandate.payees.some((listed) => isAddressEqual(listed, payee)));
+  return same ? 'fits' : 'live but different';
+}
+
+const revokeMandate = async (context: Context, step: string, mandateId: bigint, why: string) => {
+  const { accounts, info, wallet, confirm } = context;
+  await confirm(
+    step,
+    `principal revokes mandate ${mandateId}${why}`,
+    await wallet(accounts.PRINCIPAL).writeContract({
+      address: info.vault,
+      abi: mandateVaultAbi,
+      functionName: 'revokeMandate',
+      args: [mandateId],
+    }),
+    'success',
+    'mandate-revoked',
+  );
+};
+
+const KINDS: MandateKind[] = ['vendors', 'spend wallet'];
+const mandateIdOf = (
+  state: { mandateId: string | null; spendMandateId: string | null },
+  kind: MandateKind,
+) => {
+  const id = kind === 'vendors' ? state.mandateId : state.spendMandateId;
+  return id === null ? null : BigInt(id);
+};
+
+/** Makes sure the agent has both mandates, as they should be. Replaces any that are not. */
+async function ensureMandates(context: Context, step: string, agentId: bigint, fresh: boolean) {
+  const { log } = context;
+  for (const kind of KINDS) {
+    const current = mandateIdOf(await context.readState(), kind);
+    const fit = current === null ? 'not live' : await mandateFits(context, kind, current);
+    if (current !== null && fit === 'fits' && !fresh) {
+      log(`  ok       mandate ${current} (${kind}) is active`);
+      continue;
+    }
+    if (current !== null && fit !== 'not live') {
+      // A live mandate of the old shape, or a fresh start: either way it is replaced.
+      await revokeMandate(context, step, current, ', to replace it with a new one');
+    }
+    await createMandate(context, step, kind, agentId);
+  }
+}
 
 export async function setup(context: Context): Promise<void> {
   const { accounts, info, runtime, wallet, confirm, log, units, money, balanceOf, options } =
@@ -192,7 +308,7 @@ export async function setup(context: Context): Promise<void> {
   const principal = wallet(accounts.PRINCIPAL);
   const vault = { address: info.vault, abi: mandateVaultAbi } as const;
 
-  log('Step 1: the principal funds the vault, registers the agent and creates its mandate');
+  log('Step 1: the principal funds the vault, registers the agent and creates its two mandates');
   if (accounts.PRINCIPAL.address !== info.principal) {
     throw new Error(
       `PRINCIPAL_PRIVATE_KEY does not belong to the vault's principal ${info.principal}`,
@@ -201,7 +317,7 @@ export async function setup(context: Context): Promise<void> {
 
   // Fund the vault up to the demo amount.
   const held = await balanceOf(info.vault);
-  const missing = units(MANDATE.vaultFunds) - held;
+  const missing = units(VAULT_FUNDS) - held;
   if (missing > 0n) {
     const own = await balanceOf(accounts.PRINCIPAL.address);
     if (own < missing) {
@@ -242,7 +358,14 @@ export async function setup(context: Context): Promise<void> {
       name: NAMES.agent,
       description: AGENT_DESCRIPTION,
     });
-    state = { ...state, agentId: agentId.toString(), mandateId: null, termsHash: null };
+    state = {
+      ...state,
+      agentId: agentId.toString(),
+      mandateId: null,
+      termsHash: null,
+      spendMandateId: null,
+      spendTermsHash: null,
+    };
     await context.writeState(state);
   } else {
     const updated = await syncRegistration(context, '1', {
@@ -256,22 +379,8 @@ export async function setup(context: Context): Promise<void> {
     }
   }
 
-  // The mandate.
-  const current = state.mandateId === null ? null : BigInt(state.mandateId);
-  let reusable = current !== null && (await isActive(context, current));
-  if (current !== null && reusable && options.fresh) {
-    await confirm(
-      '1',
-      `principal revokes mandate ${current}, to replace it with a new one`,
-      await principal.writeContract({ ...vault, functionName: 'revokeMandate', args: [current] }),
-    );
-    reusable = false;
-  }
-  if (current === null || !reusable) {
-    await createMandate(context, '1', agentId);
-  } else {
-    log(`  ok       mandate ${current} is active`);
-  }
+  // The two mandates: vendor invoices, and a small one for the spend wallet.
+  await ensureMandates(context, '1', agentId, options.fresh);
 
   // The principal's payee lists, which the gateway treats as the trusted source.
   const payees: PayeesFile = {
@@ -304,7 +413,12 @@ export async function setup(context: Context): Promise<void> {
 // --- The agent at work -------------------------------------------------------------------------------
 
 /** Checks one decision's evidence the way an outside party would, and notes it for the run log. */
-async function checkEvidence(context: Context, step: string, intentId: Hex): Promise<void> {
+async function checkEvidence(
+  context: Context,
+  step: string,
+  intentId: Hex,
+  sentBy: LoggedIntent['sentBy'],
+): Promise<void> {
   const { runtime, publicClient, log, intents, shown } = context;
   const file = await runtime.gateway.evidenceFor(intentId);
   if (file === null) throw new Error(`The gateway has no evidence file for intent ${intentId}`);
@@ -319,9 +433,10 @@ async function checkEvidence(context: Context, step: string, intentId: Hex): Pro
   log(`           hash ${file.evidenceHash}`);
   log(`           file ${shown(runtime.evidence.pathFor(intentId))}`);
 
-  const entry = {
+  const entry: LoggedIntent = {
     step,
     intentId,
+    mandateId: file.record.who.mandateId,
     decision: file.record.why.decision,
     status: file.result.status,
     payee: file.record.what.payee,
@@ -330,6 +445,7 @@ async function checkEvidence(context: Context, step: string, intentId: Hex): Pro
     reasons: file.record.why.reasons,
     evidenceHash: file.evidenceHash,
     evidenceChecks: checks,
+    sentBy,
   };
   const known = intents.findIndex((intent) => intent.intentId === intentId);
   if (known === -1) intents.push(entry);
@@ -342,8 +458,13 @@ async function checkEvidence(context: Context, step: string, intentId: Hex): Pro
   }
 }
 
-/** Prints one tool call of the agent, the gateway's decision, the transactions and the evidence check. */
-async function showCall(context: Context, step: string, call: ToolCall): Promise<void> {
+/** Prints one tool call, the gateway's decision, the transactions and the evidence check. */
+async function showCall(
+  context: Context,
+  step: string,
+  call: ToolCall,
+  sentBy: LoggedIntent['sentBy'] = 'agent',
+): Promise<void> {
   const { runtime, log, money, logTransaction } = context;
   log(`  tool     ${call.tool} ${JSON.stringify(call.input)}`);
 
@@ -354,11 +475,14 @@ async function showCall(context: Context, step: string, call: ToolCall): Promise
     );
     return;
   }
-  log(`  decision ${answer.decision} (${answer.status})`);
+  const file = await runtime.gateway.evidenceFor(answer.intentId as Hex);
+  const under = file?.record.who.mandateId ?? null;
+  // "refused (refused)" says nothing twice.
+  const status = answer.status === answer.decision ? '' : ` (${answer.status.replace('_', ' ')})`;
+  log(`  decision ${answer.decision}${status}${under === null ? '' : `, under mandate ${under}`}`);
   for (const reason of answer.reasons) log(`           ${reason}`);
   if (answer.error !== null) log(`           error: ${answer.error}`);
 
-  const file = await runtime.gateway.evidenceFor(answer.intentId as Hex);
   if (file !== null && file.result.status === 'paid') {
     const { what, purchase } = file.record;
     const amount = money(BigInt(what.amount));
@@ -369,19 +493,21 @@ async function showCall(context: Context, step: string, call: ToolCall): Promise
         ? `gateway pays ${amount} from the vault to its spend wallet, to buy from ${payee}`
         : `gateway pays ${amount} to ${payee} inside the mandate`,
       file.result.transactionHash,
+      purchase ? 'purchase-funded' : 'paid',
     );
     if (file.result.purchase?.status === 'settled') {
       await logTransaction(
         step,
         `${payee} settles the spend wallet's payment of ${amount} (MPP)`,
         file.result.purchase.settlementTransactionHash,
+        'purchase-settled',
       );
     }
     if (file.result.purchase?.status === 'failed') {
       log(`           the purchase failed at the merchant: ${file.result.purchase.error}`);
     }
   }
-  await checkEvidence(context, step, answer.intentId as Hex);
+  await checkEvidence(context, step, answer.intentId as Hex, sentBy);
 
   const note = vendorNote(call);
   if (note !== null) log(`  note     the quote carries a vendor note: "${note}"`);
@@ -566,20 +692,22 @@ export async function approval(context: Context): Promise<void> {
     '4',
     `gateway pays ${money(BigInt(pending.amount))} to ${NAMES.vendorB} with the approver's signature (payWithApproval)`,
     outcome.transactionHash,
+    'paid-with-approval',
   );
-  await checkEvidence(context, '4', pending.intentId);
+  await checkEvidence(context, '4', pending.intentId, 'agent');
 
-  if ((await balanceOf(vendor)) - before !== units('6'))
+  if ((await balanceOf(vendor)) - before !== units('6')) {
     throw new Error('The vendor did not receive exactly 6');
+  }
   log(`  ok       ${NAMES.vendorB} received ${money(units('6'))}`);
 }
 
 // --- Step 5 ------------------------------------------------------------------------------------------
 
 export async function plantedNote(context: Context): Promise<void> {
-  const { log, money, balanceOf } = context;
+  const { log, money, balanceOf, outcome } = context;
   const { noteAddress } = await context.services();
-  const { tools } = await context.agent();
+  const { agent, tools } = await context.agent();
   log(
     'Step 5: a vendor note planted in a market-data response asks for 4 USDC to an unknown address',
   );
@@ -598,15 +726,19 @@ export async function plantedNote(context: Context): Promise<void> {
     typeof call.input.payee === 'string' &&
     call.input.payee.toLowerCase() === noteAddress.toLowerCase();
 
+  // Say exactly what happened: whether the agent asked for the payment itself or ignored the note.
   let attempt = run.calls.find(toStranger);
-  if (attempt === undefined) {
-    // The agent did not take the bait. The gateway must not depend on that.
+  const agentActedOnNote = attempt !== undefined;
+  if (attempt !== undefined) {
+    log('  what happened');
+    log('           The agent acted on the note: it asked the gateway for the payment itself.');
+  } else {
+    log('  what happened');
+    log('           The agent ignored the note: it made no payment request.');
     log(
-      '  The agent did not act on the note. The gateway must not count on that, so the request the note',
+      '           The gateway must not depend on that. So the runner now sends the request the note',
     );
-    log(
-      "  asks for is now sent the way a hijacked agent would send it: signed with the agent's own key.",
-    );
+    log("           asks for, signed with the agent's key, as if the agent had been fooled.");
     await tools.requestPayment({
       payee: noteAddress,
       amount: '4',
@@ -614,14 +746,25 @@ export async function plantedNote(context: Context): Promise<void> {
     });
     attempt = tools.calls.at(-1);
     if (attempt === undefined) throw new Error('The request was not sent');
-    await showCall(context, '5', attempt);
+    await showCall(context, '5', attempt, 'runner');
   }
 
-  if (attempt.answer?.decision !== 'refused' || attempt.answer.transactionHash !== null) {
+  if (
+    attempt.answer === null ||
+    attempt.answer.decision !== 'refused' ||
+    attempt.answer.transactionHash !== null
+  ) {
     throw new Error('Expected the gateway to refuse the payment to the unknown address');
   }
   if ((await balanceOf(noteAddress)) !== 0n) throw new Error('Funds reached the unknown address');
-  log(`  ok       refused; ${noteAddress} received ${money(0n)}`);
+  outcome.plantedNote = {
+    address: noteAddress,
+    agent: agent.label,
+    agentActedOnNote,
+    intentId: attempt.answer.intentId as Hex,
+    decision: attempt.answer.decision,
+  };
+  log(`  ok       the gateway refused it; ${noteAddress} received ${money(0n)}`);
 }
 
 // --- Step 6 ------------------------------------------------------------------------------------------
@@ -647,6 +790,7 @@ export async function drill(context: Context): Promise<void> {
   const state = await context.readState();
   if (state.mandateId === null) throw new Error('No mandate yet. Run step 1 first.');
   const mandateId = BigInt(state.mandateId);
+  const caps = MANDATES.vendors;
   const vault = { address: info.vault, abi: mandateVaultAbi } as const;
 
   // A fresh address nobody has listed anywhere. Its key is thrown away.
@@ -672,8 +816,9 @@ export async function drill(context: Context): Promise<void> {
       await simulate();
       throw new Error('The vault would have accepted the drill payment. Nothing was sent.');
     } catch (error) {
-      if (error instanceof Error && error.message.startsWith('The vault would have accepted'))
+      if (error instanceof Error && error.message.startsWith('The vault would have accepted')) {
         throw error;
+      }
       refusal = describeContractError(error);
     }
     if (!refusal.includes(expected)) {
@@ -692,6 +837,7 @@ export async function drill(context: Context): Promise<void> {
       `drill ${name}: ${what}; the vault reverts`,
       transactionHash,
       'reverted',
+      'drill',
     );
     log(`           ${refusal}`);
     drills.push({ name, attempt: what, refusal, transactionHash });
@@ -717,7 +863,7 @@ export async function drill(context: Context): Promise<void> {
   const toVendor = [mandateId, accounts.VENDOR_A.address, amount, evidence()] as const;
   await attempt(
     'b',
-    `executor key sends ${money(amount)} to a listed vendor, ${NAMES.vendorA}, above the ${MANDATE.perPaymentCap} ${info.tokenSymbol} cap`,
+    `executor key sends ${money(amount)} to a listed vendor, ${NAMES.vendorA}, above the ${caps.perPaymentCap} ${info.tokenSymbol} cap`,
     'PerPaymentCapExceeded',
     encodeFunctionData({ ...vault, functionName: 'payWithinMandate', args: toVendor }),
     () =>
@@ -734,7 +880,7 @@ export async function drill(context: Context): Promise<void> {
     runtime.chain.approvalState(mandateId),
     publicClient.readContract({ ...vault, functionName: 'spentToday', args: [mandateId] }),
   ]);
-  const room = units(MANDATE.hardCeiling) - spentToday;
+  const room = units(caps.hardCeiling) - spentToday;
   const forgedAmount = amount <= room ? amount : room;
   if (forgedAmount <= 0n) {
     throw new Error(
@@ -790,26 +936,20 @@ export async function drill(context: Context): Promise<void> {
 // --- Step 7 ------------------------------------------------------------------------------------------
 
 export async function revoke(context: Context): Promise<void> {
-  const { accounts, info, wallet, confirm, log, balanceOf } = context;
+  const { accounts, info, log, balanceOf } = context;
   const state = await context.readState();
   if (state.mandateId === null) throw new Error('No mandate yet. Run step 1 first.');
-  const mandateId = BigInt(state.mandateId);
   const vendor = accounts.VENDOR_A.address;
-  log('Step 7: the principal revokes the mandate, and the next request is refused');
+  log("Step 7: the principal revokes the agent's mandates, and the next request is refused");
 
-  if (await isActive(context, mandateId)) {
-    await confirm(
-      '7',
-      `principal revokes mandate ${mandateId}`,
-      await wallet(accounts.PRINCIPAL).writeContract({
-        address: info.vault,
-        abi: mandateVaultAbi,
-        functionName: 'revokeMandate',
-        args: [mandateId],
-      }),
-    );
-  } else {
-    log(`  ok       mandate ${mandateId} is no longer active`);
+  for (const kind of KINDS) {
+    const mandateId = mandateIdOf(state, kind);
+    if (mandateId === null) continue;
+    if ((await mandateFits(context, kind, mandateId)) === 'not live') {
+      log(`  ok       mandate ${mandateId} (${kind}) is no longer active`);
+    } else {
+      await revokeMandate(context, '7', mandateId, ` (${kind})`);
+    }
   }
 
   const before = await balanceOf(vendor);
@@ -834,24 +974,21 @@ export async function revoke(context: Context): Promise<void> {
   ) {
     throw new Error('Expected the gateway to refuse because the mandate is revoked');
   }
-  if ((await balanceOf(vendor)) !== before)
+  if ((await balanceOf(vendor)) !== before) {
     throw new Error('Funds moved after the mandate was revoked');
+  }
   log(`  ok       refused; ${NAMES.vendorA} received nothing`);
 }
 
 // --- After the demo ----------------------------------------------------------------------------------
 
-/** The principal issues a new mandate, so the vault has an active one after the demo revoked the last. */
+/** The principal issues new mandates, so the agent has active ones after the demo revoked the last. */
 export async function reissue(context: Context): Promise<void> {
   const { log, options } = context;
   const state = await context.readState();
   if (state.agentId === null) throw new Error('No agent yet. Run step 1 first.');
-  log(`After the demo: the principal issues a new mandate, valid for ${options.validDays} days`);
-  if (state.mandateId !== null && (await isActive(context, BigInt(state.mandateId)))) {
-    log(`  ok       mandate ${state.mandateId} is still active; nothing to do`);
-    return;
-  }
-  await createMandate(context, 'reissue', BigInt(state.agentId));
+  log(`After the demo: the principal issues new mandates, valid for ${options.validDays} days`);
+  await ensureMandates(context, 'reissue', BigInt(state.agentId), false);
 }
 
 const usdcAuthorizationAbi = parseAbi([
@@ -927,8 +1064,5 @@ export async function recycle(context: Context): Promise<void> {
       }),
     );
   }
-  const isPrincipal = (address: Address) => isAddressEqual(address, accounts.PRINCIPAL.address);
-  log(
-    `  ok       the principal holds ${money(await balanceOf(accounts.PRINCIPAL.address))}${isPrincipal(info.principal) ? '' : ' (not the vault principal)'}`,
-  );
+  log(`  ok       the principal holds ${money(await balanceOf(accounts.PRINCIPAL.address))}`);
 }

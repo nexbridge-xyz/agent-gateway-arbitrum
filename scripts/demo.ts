@@ -8,6 +8,7 @@ import { repositoryRoot } from '@agent-gateway/gateway';
 
 import { type Context, createContext } from './demo/context';
 import {
+  MANDATES,
   approval,
   buyData,
   drill,
@@ -24,20 +25,21 @@ const USAGE = `Runs the Agent Gateway demo on Arbitrum Sepolia and prints an Arb
 
   pnpm demo                       the whole path: gas, then steps 1 to 7
   pnpm demo --steps 1,3           chosen steps
-  pnpm demo --fresh               revoke the current mandate first and create a new one
-  pnpm demo --valid-days 90       how long a new mandate is valid (default 30)
-  pnpm demo --reissue             after step 7, issue a new mandate, so one stays active
+  pnpm demo --fresh               revoke the agent's current mandates first and create new ones
+  pnpm demo --valid-days 90       how long new mandates are valid (default 30)
+  pnpm demo --reissue             after step 7, issue new mandates, so the agent has active ones
   pnpm demo --steps recycle       send the payees' test USDC back to the principal
 
 Steps:
   gas      share testnet ETH from the deployer with the roles that send transactions
-  1        fund the vault, register the agent (ERC-8004), create the mandate
-  2        the agent buys market data over MPP                    -> paid inside the mandate
-  3        the agent pays a known vendor                          -> paid inside the mandate
+  1        fund the vault, register the agent (ERC-8004), create its two mandates:
+           one for vendor invoices, a small one that only funds the gateway's spend wallet
+  2        the agent buys market data over MPP                    -> paid inside the spend wallet mandate
+  3        the agent pays a known vendor                          -> paid inside the vendor mandate
   4        an invoice above the cap                               -> approver signs -> paid
   5        a planted vendor note asks for money                   -> refused
   6        "gateway compromised" drills with the executor key     -> the vault reverts, three times
-  7        the principal revokes the mandate                      -> the next request is refused
+  7        the principal revokes the mandates                     -> the next request is refused
 
 With ANTHROPIC_API_KEY in .env the agent is Claude. Without it, the scripted agent runs.`;
 
@@ -83,11 +85,19 @@ if (!Number.isInteger(validDays) || validDays < 1 || validDays > 365) {
   process.exit(2);
 }
 
+/** What stopped the run, in one line. A chain error from viem comes with pages of detail. */
+const reasonOf = (error: unknown) =>
+  error instanceof BaseError
+    ? error.shortMessage
+    : error instanceof Error
+      ? error.message
+      : String(error);
+
 let context: Context | null = null;
 let failed = false;
 try {
   context = await createContext(values['env-file'], { fresh: values.fresh, validDays });
-  const { accounts, info, log, transactions, intents, drills, runtime } = context;
+  const { accounts, info, log, transactions, intents, drills, runtime, readState } = context;
   const startedAt = new Date().toISOString();
 
   log(`Agent Gateway demo on Arbitrum Sepolia (${info.chainId})`);
@@ -101,23 +111,37 @@ try {
   log(`  merchant   ${accounts.MERCHANT.address}  (${context.merchantUrl})`);
   log('  All company and vendor names are fictional. Testnet only.');
 
-  // The mandate the demo runs under: the one step 1 leaves behind.
-  let mandateId = (await context.readState()).mandateId;
-  for (const name of names) {
-    log();
-    await (STEPS[name] as (typeof STEPS)[string])(context);
-    if (name === '1') mandateId = (await context.readState()).mandateId;
+  // The mandates the demo runs under: the ones step 1 leaves behind.
+  const mandatesOf = async () => {
+    const { mandateId, spendMandateId } = await readState();
+    return { vendors: mandateId, 'spend wallet': spendMandateId };
+  };
+  let demoMandates = await mandatesOf();
+  const done: string[] = [];
+  let stoppedBecause: string | null = null;
+  try {
+    for (const name of names) {
+      log();
+      await (STEPS[name] as (typeof STEPS)[string])(context);
+      if (name === '1') demoMandates = await mandatesOf();
+      done.push(name);
+    }
+  } catch (error) {
+    stoppedBecause = reasonOf(error);
+    failed = true;
   }
 
   log();
-  log(`Done. ${transactions.length} transactions:`);
+  log(
+    `${stoppedBecause === null ? 'Done.' : 'Stopped early.'} ${transactions.length} transactions:`,
+  );
   for (const transaction of transactions) {
     log(
       `  ${transaction.step.padEnd(4)} ${transaction.status === 'success' ? 'ok      ' : 'reverted'} ${transaction.url}`,
     );
   }
 
-  const state = await context.readState();
+  // The run log is written even when a step failed, so that no transaction goes unrecorded.
   await mkdir(runtime.config.dataDir, { recursive: true });
   const runFile = join(runtime.config.dataDir, 'demo-run.json');
   await writeFile(
@@ -128,13 +152,18 @@ try {
         vault: info.vault,
         startedAt,
         finishedAt: new Date().toISOString(),
-        steps: names,
+        /** The steps that ran to their end. */
+        steps: done,
+        completed: stoppedBecause === null,
+        ...(stoppedBecause === null ? {} : { stoppedBecause }),
         agent: await context.agentLabel(),
-        agentId: state.agentId,
-        mandateId,
-        /** Differs from mandateId when a new mandate was issued after the demo revoked its own. */
-        activeMandateId: state.mandateId,
+        agentId: (await readState()).agentId,
+        /** The mandates the demo ran under: one for vendor invoices, a small one for the spend wallet. */
+        demoMandates,
+        /** They differ from the above when new mandates were issued after the demo revoked its own. */
+        mandatesAtEnd: await mandatesOf(),
         mandateValidDays: validDays,
+        mandateCaps: MANDATES,
         names: context.names,
         addresses: Object.fromEntries(
           Object.entries(accounts).map(([role, account]) => [role, account.address]),
@@ -143,6 +172,7 @@ try {
         transactions,
         intents,
         drills,
+        plantedNote: context.outcome.plantedNote,
       },
       null,
       2,
@@ -150,17 +180,14 @@ try {
     'utf8',
   );
   log(`Run log: ${context.shown(runFile)}`);
+  if (stoppedBecause !== null) {
+    console.error('');
+    console.error(`Demo stopped: ${stoppedBecause}`);
+  }
 } catch (error) {
   failed = true;
   console.error('');
-  // A chain error from viem comes with pages of detail; its first line says what happened.
-  const reason =
-    error instanceof BaseError
-      ? error.shortMessage
-      : error instanceof Error
-        ? error.message
-        : String(error);
-  console.error(`Demo stopped: ${reason}`);
+  console.error(`Demo stopped: ${reasonOf(error)}`);
 } finally {
   await context?.stop();
 }
