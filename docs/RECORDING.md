@@ -35,20 +35,28 @@ The approver needs no ETH. Signing costs no gas: the gateway sends the payment.
 
 ## 2. One live pass of step 4
 
-No real browser wallet has signed in the console yet. The tests use a stand-in for the wallet, and the
-rehearsals on a local fork used a test wallet. So try the one step that needs the wallet before the day of
-recording.
+No real browser wallet has signed in the console yet. The tests use a stand-in for the wallet, and so did
+the rehearsals on a local fork. The last rehearsal followed this guide from this section to the end, with
+Claude as the agent, the built console and a stand-in for a browser wallet that takes the same path through
+the console as a real one. What no rehearsal can show is the wallet's own windows. So try the one step
+that needs the wallet before the day of recording.
 
 ```bash
-pnpm console                              # terminal 1: the console, on http://127.0.0.1:5173
+pnpm console:built                        # terminal 1: builds the console, serves it on http://127.0.0.1:5173
 pnpm demo --console --steps gas,1,4       # terminal 2
 ```
+
+`pnpm console:built` is the console for this pass and for the recording. It is a production build: it shows
+the gateway and the chain and nothing else. `pnpm console` is the development build, with a "Data shown"
+switch for made-up data at the bottom left. Do not record that one.
 
 Step 1 creates fresh mandates and fills the vault. At step 4 the terminal prints
 `waiting  for the approver in the console` and waits, for up to 30 minutes. Then, in the browser:
 
 1. Open <http://127.0.0.1:5173/#/approvals>. A 6.00 USDC payment to Nagikumo Research is waiting.
-2. Open the wallet menu at the top right and connect the wallet. The strip must then say **Approver**.
+2. Open the wallet menu at the top right and choose your wallet by its name. (A wallet that does not
+   announce its name is listed as "Browser wallet".) Confirm the connection in the wallet. The strip must
+   then say **Approver**.
 3. Choose **Sign approval**. The wallet shows a typed message named `PaymentApproval` for `MandateVault`,
    with the mandate, the payee, the amount `6000000`, the evidence hash, a nonce and a deadline. These are
    the values the console lists under "What your wallet will ask you to sign". Sign it.
@@ -74,16 +82,16 @@ Stop the demo with Ctrl+C when it has finished. The 6 USDC come back with `recyc
 
 ## 3. Check before recording
 
-| Check                                | How                                                                                                             | Good when                                                     |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| The code is the released state       | `git status` and `git log -1`                                                                                   | Clean, on `main`, up to date                                  |
-| Tests pass                           | `pnpm test`                                                                                                     | No failure                                                    |
-| The approver is a plain key          | `cast code "$(grep '^APPROVER_ADDRESS=' .env \| cut -d= -f2)" --rpc-url https://sepolia-rollup.arbitrum.io/rpc` | Prints `0x`                                                   |
-| The agent will be Claude             | `grep -c '^ANTHROPIC_API_KEY=.' .env`                                                                           | Prints `1`                                                    |
-| Nothing holds the ports              | `lsof -nP -iTCP:8787 -iTCP:8788 -iTCP:5173 -sTCP:LISTEN`                                                        | Prints nothing before `pnpm console`                          |
-| The wallet is ready                  | Open the wallet                                                                                                 | Arbitrum Sepolia, approver account selected                   |
-| The console shows the run            | Look at the bottom left of the console                                                                          | No banner about made-up data, and "Data shown" is on **Live** |
-| The day will not turn during the run | Look at the clock                                                                                               | Not close to 00:00 UTC (09:00 in Tokyo)                       |
+| Check                                | How                                                                                                             | Good when                                   |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| The code is the released state       | `git status` and `git log -1`                                                                                   | Clean, on `main`, up to date                |
+| Tests pass                           | `pnpm test`                                                                                                     | No failure                                  |
+| The approver is a plain key          | `cast code "$(grep '^APPROVER_ADDRESS=' .env \| cut -d= -f2)" --rpc-url https://sepolia-rollup.arbitrum.io/rpc` | Prints `0x`                                 |
+| The agent will be Claude             | `grep -c '^ANTHROPIC_API_KEY=.' .env`                                                                           | Prints `1`                                  |
+| Nothing holds the ports              | `lsof -nP -iTCP:8787 -iTCP:8788 -iTCP:5173 -sTCP:LISTEN`                                                        | Prints nothing before `pnpm console:built`  |
+| The wallet is ready                  | Open the wallet                                                                                                 | Arbitrum Sepolia, approver account selected |
+| The console is the built one         | Look at the bottom left of the console                                                                          | No "Data shown" switch                      |
+| The day will not turn during the run | Look at the clock                                                                                               | Not close to 00:00 UTC (09:00 in Tokyo)     |
 
 The last one matters because the vault counts spending per UTC day. A run that crosses midnight UTC still
 passes, but "paid today" on the screen starts again from zero in the middle of it.
@@ -94,7 +102,8 @@ script has a line for either agent in step 5.
 
 ## 4. The recorded run
 
-Three commands, in this order.
+Three commands make the run: `recycle`, the demo, and `demo:record`. Between the first two come a clean
+data folder and the built console. Do everything in this order.
 
 ```bash
 pnpm demo --steps recycle
@@ -114,18 +123,24 @@ mv evidence mandates ledger.jsonl payees.json demo-run.json archive-before-final
 cd ../../..
 ```
 
-Start the console in one terminal and the run in another:
+Start the built console in one terminal and the run in another:
 
 ```bash
-pnpm console
+pnpm console:built
 ```
 
 ```bash
-pnpm demo --fresh --valid-days 90 --reissue --console
+pnpm demo --fresh --valid-days 90 --reissue --console --pause
 ```
 
-Add `--pause` to the second command to have it wait for Enter before each step. That is the easy way to
-switch screens, take the pictures below and record at your own pace. Nothing times out while it waits.
+With `--pause` the run waits for Enter before each step. That is the easy way to switch screens, take the
+pictures below and record at your own pace. Nothing times out while it waits. Without `--pause` it runs
+straight through and only stops at step 4, for the approver.
+
+After one live pass of step 4, a good run ends with `Done. 19 transactions:`. Sixteen of them succeed, and
+three are the reverts of step 6. (It revokes the two mandates of the live pass first. Without them it is
+17.) The purposes in the feed are the agent's own words when the agent is Claude, so they differ a little
+from run to run and from the pictures taken with the scripted agent.
 
 | Step    | What the terminal does                                                      | What the console shows                                                      |
 | ------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
@@ -209,17 +224,7 @@ The console is laid out for a page area of 1440 by 900. For the video:
 - A 14-inch MacBook display at its default scaling (1512 × 982) is not tall enough for it. Choose "More
   Space" in the display settings for the take.
 - Keep the wallet's window in the picture when you sign in step 4: the signature is the point of that shot.
-- The "Data shown" switch at the bottom left (Live, Worst, One, Empty) will be in the picture. It is a tool
-  for building the console and exists because `pnpm console` runs the development build. To record without
-  it, serve a built console in place of `pnpm console`:
-
-  ```bash
-  pnpm --filter @agent-gateway/console run build
-  pnpm --filter @agent-gateway/console run preview
-  ```
-
-  A built console has no switch and no made-up data, and it listens on the same address. Its screens were
-  checked against a local fork, but nothing has been signed in it yet. If you choose it, use it in the
-  live pass of step 4 as well, so that the take is not its first signature.
+- Record the built console, `pnpm console:built`, as in the commands above. If a "Data shown" switch is
+  at the bottom left, the development build is running: stop it and start the built one.
 
 - Keep the terminal out of the picture while `.env` is open anywhere, and never show `.env`.

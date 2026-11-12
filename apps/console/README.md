@@ -59,6 +59,9 @@ The console never holds a key. It asks a browser wallet:
 The top strip says what the connected wallet is in this vault: principal, approver, or neither. The buttons
 that need a role stay ruled out until the right wallet is connected, and say which wallet they need.
 
+The wallet menu lists a browser wallet by its own name if the wallet announces itself (EIP-6963), as
+current wallets do. "Browser wallet" is the entry for one that does not.
+
 An approval alone moves nothing. Only the mandate's executor can submit it, it covers one payee, one amount
 and one evidence record, and it stops working at its deadline.
 
@@ -95,12 +98,14 @@ exists in the development build only, and a production build always shows the ga
 A banner says when the data is made up, and signing is switched off. `?data=worst`, `?data=one` and
 `?data=empty` in the address do the same as the switch.
 
-To use the console without the switch, build it and serve the build. It listens on the same address:
+To use the console without the switch, build it and serve the build. One command from the repository's
+root does both, and the built console listens on the same address:
 
 ```bash
-pnpm --filter @agent-gateway/console run build
-pnpm --filter @agent-gateway/console run preview
+pnpm console:built
 ```
+
+[`docs/RECORDING.md`](../../docs/RECORDING.md) uses the built console for the recorded run.
 
 ## Rehearse on a local fork
 
@@ -154,7 +159,7 @@ treats them as smart accounts (see "Wallets" above). Clear the code on the fork 
 pnpm --filter @agent-gateway/console test
 ```
 
-59 tests, without a network and without a browser:
+61 tests, without a network and without a browser:
 
 - **Against the gateway's real code.** The gateway runs in the test process on its in-memory stand-in for
   the chain, the console talks to it over HTTP, and a stand-in node plays the wallet. This pins down that
@@ -169,7 +174,7 @@ pnpm --filter @agent-gateway/console test
 - **The parts.** Amounts and yen figures in whole-number arithmetic, times in UTC, the limit rail, the
   wallet menu, the address-bar routes, and that made-up data cannot be chosen in a production build.
 
-Four things were checked in a real browser on a local fork, as described above:
+Five things were checked in a real browser on a local fork, as described above:
 
 - the whole path: steps 1 to 7 of the demo with the approval signed in the console, and a mandate created
   and revoked from the console;
@@ -177,8 +182,12 @@ Four things were checked in a real browser on a local fork, as described above:
 - every screen on the worst-case data at 1440 px, at 200% zoom, at 320 px and at 2560 px, without a sideways
   scroll, and what moves with and without "reduce motion";
 - a production build served by `vite preview`: the feed, an evidence check, the mandates and the ledger,
-  with no switch, no test wallet in the menu, and `?data=worst` changing nothing. Nothing was signed in a
-  production build, because the test wallets exist in the development build only.
+  with no switch, no test wallet in the menu, and `?data=worst` changing nothing;
+- the built console through the whole demo, with Claude as the agent and a pause before each step. A
+  production build has no test wallets, so a stand-in for a browser wallet was put into the page: it
+  announces itself as current wallets do and passes signing on to the fork's node. The approval was signed
+  through it, and the wallet was asked for one typed message and no transaction. No real wallet extension
+  has been used with the console yet.
 
 ## Limits
 
