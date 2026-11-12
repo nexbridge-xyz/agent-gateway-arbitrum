@@ -181,16 +181,28 @@ signatures, and compares it with the vault's events on Arbitrum Sepolia.
 To run the demo yourself you need your own vault, because a vault's principal is fixed when it is
 deployed. Three more commands:
 
-```bash
-pnpm keys:generate               # testnet-only keys for every role, written to .env; prints the addresses
-pnpm contracts:deploy:sepolia    # after funding: see below
-pnpm demo
-```
+1. Make testnet-only keys for every role. They are written to `.env`, and their addresses are printed.
 
-Between the first and the second, send Arbitrum Sepolia ETH to `DEPLOYER` and at least 12 test USDC to
-`PRINCIPAL` ([faucet.circle.com](https://faucet.circle.com)). After the second, put the printed address
-into `.env` as `MANDATE_VAULT_ADDRESS`. To watch the run and sign step 4 yourself, start `pnpm console` and
-run `pnpm demo --console`.
+   ```bash
+   pnpm keys:generate
+   ```
+
+2. Send Arbitrum Sepolia ETH to `DEPLOYER` and at least 12 test USDC to `PRINCIPAL`
+   ([faucet.circle.com](https://faucet.circle.com)). Then deploy your vault, and put the printed address
+   into `.env` as `MANDATE_VAULT_ADDRESS`.
+
+   ```bash
+   pnpm contracts:deploy:sepolia
+   ```
+
+3. Run the demo.
+
+   ```bash
+   pnpm demo
+   ```
+
+To watch the run and sign step 4 yourself, start `pnpm console` in one terminal and run
+`pnpm demo --console` in another.
 
 ## Security model
 

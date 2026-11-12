@@ -25,16 +25,23 @@ strip says so.
 
 ## Run it
 
+In one terminal, the gateway, on <http://127.0.0.1:8787>:
+
 ```bash
-pnpm gateway           # the gateway, on http://127.0.0.1:8787
-pnpm console           # the console, on http://127.0.0.1:5173
+pnpm gateway
 ```
 
-With the demo, so that you can watch it and sign the approval of step 4 yourself:
+In a second terminal, the console, on <http://127.0.0.1:5173>:
 
 ```bash
 pnpm console
-pnpm demo --console    # in a second terminal
+```
+
+With the demo, so that you can watch it and sign the approval of step 4 yourself, start the console in one
+terminal as above and the demo in another:
+
+```bash
+pnpm demo --console
 ```
 
 `pnpm demo --console` serves the demo's own gateway where the console expects it, so stop `pnpm gateway`
@@ -110,13 +117,22 @@ pnpm console:built
 ## Rehearse on a local fork
 
 To try the whole path without a browser wallet and without spending anything, run the demo against a local
-fork of Arbitrum Sepolia and let the node sign:
+fork of Arbitrum Sepolia and let the node sign.
+
+In one terminal, the fork:
 
 ```bash
 anvil --fork-url https://sepolia-rollup.arbitrum.io/rpc --port 8546 --auto-impersonate
-VITE_RPC_URL=http://127.0.0.1:8546 \
-VITE_TEST_WALLETS=principal:<the vault's principal>,approver:<an account the node holds the key of> \
-pnpm console
+```
+
+In a second terminal, name the two wallets and start the console. `PRINCIPAL` is your vault's principal;
+the one below belongs to the vault deployed for this demo. `APPROVER` is an account the node holds the key
+of; the one below is Anvil's second test account.
+
+```bash
+export PRINCIPAL=0xd42f974802a327789F217Db9f61DeA26EA5418A5
+export APPROVER=0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+VITE_RPC_URL=http://127.0.0.1:8546 VITE_TEST_WALLETS="principal:$PRINCIPAL,approver:$APPROVER" pnpm console
 ```
 
 Each entry of `VITE_TEST_WALLETS` appears in the wallet menu as "Test wallet: principal" and so on. A test
@@ -126,7 +142,10 @@ named here, so run the demo on the fork with that account's key as `APPROVER_PRI
 
 One thing to know: on public testnets the well-known Anvil accounts carry EIP-7702 delegations, so the vault
 treats them as smart accounts (see "Wallets" above). Clear the code on the fork first:
-`cast rpc anvil_setCode <account> 0x --rpc-url http://127.0.0.1:8546`.
+
+```bash
+cast rpc anvil_setCode "$APPROVER" 0x --rpc-url http://127.0.0.1:8546
+```
 
 ## Look
 
@@ -186,8 +205,11 @@ Five things were checked in a real browser on a local fork, as described above:
 - the built console through the whole demo, with Claude as the agent and a pause before each step. A
   production build has no test wallets, so a stand-in for a browser wallet was put into the page: it
   announces itself as current wallets do and passes signing on to the fork's node. The approval was signed
-  through it, and the wallet was asked for one typed message and no transaction. No real wallet extension
-  has been used with the console yet.
+  through it, and the wallet was asked for one typed message and no transaction.
+
+On Arbitrum Sepolia itself, a real browser wallet has signed in the built console once: on 12 November 2026
+the approval of the demo's step 4 was signed in MetaMask with the approver's key and
+[paid by the vault](https://sepolia.arbiscan.io/tx/0x6f9d1361603ec1e4d6694ac3e285a7b774321dceb91ed6a67262d7cb8a9964e5).
 
 ## Limits
 

@@ -238,11 +238,12 @@ hash, so an approval is tied to one record.
 
 ## Check an evidence file
 
-```bash
+```text
 pnpm verify-evidence <file>... [--offline] [--rpc <url>] [--ledger <file>]
 ```
 
-It takes one file or several, prints PASS or FAIL for each check, and exits with 0 only if all pass:
+That is the shape of the command, not a line to paste; there is one to paste further down. It takes one
+file or several, prints PASS or FAIL for each check, and exits with 0 only if all pass:
 
 - the evidence hash is the hash of the record, and the intent id is the hash of the signed request;
 - the request signature recovers the recorded signer, and the record says what the agent signed;
@@ -269,12 +270,12 @@ rebuilt or cut short by whoever holds it. The vault's events onchain are the par
 
 ## Run
 
-```bash
-pnpm keys:generate     # once: testnet-only keys into .env
-pnpm demo              # demo steps on Arbitrum Sepolia, with an Arbiscan link for every transaction
-pnpm gateway           # or: just the service, on http://127.0.0.1:8787
-pnpm demo --console    # or: the demo next to the console, with step 4 signed there
-```
+| Command               | What it does                                                                       |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| `pnpm keys:generate`  | Once: writes testnet-only keys into `.env`.                                        |
+| `pnpm demo`           | The demo's steps on Arbitrum Sepolia, with an Arbiscan link for every transaction. |
+| `pnpm gateway`        | Only the service, on <http://127.0.0.1:8787>.                                      |
+| `pnpm demo --console` | The demo next to the console, with step 4 signed there.                            |
 
 Settings come from the repository's `.env`:
 

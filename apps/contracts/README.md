@@ -83,10 +83,13 @@ Needs [Foundry](https://getfoundry.sh) 1.0 or later.
 ```bash
 git submodule update --init --recursive
 cd apps/contracts
-forge test                 # unit, fuzz and invariant tests
-pnpm test:fork             # the demo's onchain steps and the live deployment, on a fork of Arbitrum Sepolia
+forge test
+pnpm test:fork
 pnpm coverage
 ```
+
+`forge test` runs the unit, fuzz and invariant tests. `pnpm test:fork` runs the demo's onchain steps and
+the check of the live deployment on a fork of Arbitrum Sepolia.
 
 | Suite                               | What it checks                                                                                                                                                                                   |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -104,12 +107,25 @@ Coverage of `src/MandateVault.sol` (`pnpm coverage`):
 
 ## Deploy to Arbitrum Sepolia
 
-```bash
-pnpm keys:generate                                         # fresh testnet-only keys into .env
-# fund DEPLOYER_ADDRESS with a little Sepolia ETH, set ETHERSCAN_API_KEY in .env
-pnpm --filter @agent-gateway/contracts deploy:sepolia:dry-run   # simulate, send nothing
-pnpm --filter @agent-gateway/contracts deploy:sepolia           # deploy, record, verify
-```
+1. Make fresh testnet-only keys. They are written to `.env`.
+
+   ```bash
+   pnpm keys:generate
+   ```
+
+2. Fund `DEPLOYER_ADDRESS` with a little Sepolia ETH, and set `ETHERSCAN_API_KEY` in `.env`.
+
+3. Simulate the deployment. Nothing is sent.
+
+   ```bash
+   pnpm --filter @agent-gateway/contracts deploy:sepolia:dry-run
+   ```
+
+4. Deploy, record the address and verify the source.
+
+   ```bash
+   pnpm --filter @agent-gateway/contracts deploy:sepolia
+   ```
 
 The script refuses any chain other than Arbitrum Sepolia (421614). It writes the address to
 `deployments/arbitrum-sepolia.json` and verifies the source on Arbiscan.

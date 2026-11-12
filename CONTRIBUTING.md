@@ -10,10 +10,13 @@ You need Node 22 or later, [Foundry](https://getfoundry.sh) 1.0 or later, and gi
 ```bash
 git clone --recurse-submodules https://github.com/nexbridge-xyz/agent-gateway-arbitrum.git
 cd agent-gateway-arbitrum
-nvm use                # Node 22, from .nvmrc
-corepack enable        # pnpm, at the version pinned in package.json
+nvm use
+corepack enable
 pnpm install
 ```
+
+`nvm use` selects Node 22 from `.nvmrc`, and `corepack enable` provides pnpm at the version pinned in
+`package.json`.
 
 Nothing above needs a key. Tests run without keys and without a network. To run the demo on Arbitrum
 Sepolia you need testnet keys and your own vault: see the quickstart in the [README](README.md).
@@ -23,10 +26,14 @@ Sepolia you need testnet keys and your own vault: see the quickstart in the [REA
 ## Before you open a pull request
 
 ```bash
-pnpm format            # Prettier for TypeScript and Markdown, forge fmt for Solidity
-pnpm lint              # format check, ESLint, typecheck, and a contract build that fails on warnings
-pnpm test              # contract tests (Foundry) and every TypeScript package (vitest)
+pnpm format
+pnpm lint
+pnpm test
 ```
+
+- `pnpm format` runs Prettier for TypeScript and Markdown, and `forge fmt` for Solidity.
+- `pnpm lint` is the format check, ESLint, the typecheck, and a contract build that fails on warnings.
+- `pnpm test` runs the contract tests (Foundry) and the tests of every TypeScript package (vitest).
 
 CI runs the same checks on every push, and also:
 
@@ -63,6 +70,9 @@ MPP_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway test
 - **Fictional names only** in demo data, screenshots and examples. No real companies, no third-party logos.
 - **English** for code, comments, the console and the docs.
 - **Pinned dependencies.** Exact versions. Shared ones are in the catalog in `pnpm-workspace.yaml`.
+- **Commands that can be pasted.** A command in the docs has no comment after it, and its block holds
+  nothing but commands. An interactive zsh has no comments: it passes one on to the command as arguments.
+  Put notes in the text around the block, and commands for two terminals in two blocks.
 
 ## Things that are generated
 
