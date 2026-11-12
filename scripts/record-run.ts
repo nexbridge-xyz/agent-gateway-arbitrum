@@ -297,8 +297,8 @@ ${mandateRows.join('\n')}${reissuedSentence}
 Every request, and what became of it. Each has an evidence file. When the vault paid, the vault's event
 carries the hash of that file's record.
 
-| Step | Request | Sent by | Mandate | Decision | Result | Evidence | Checks passed |
-| ---- | ------- | ------- | ------- | -------- | ------ | -------- | ------------- |
+| Step | Request | Sent by | Mandate | Decision | Result | Evidence | Evidence checks passed |
+| ---- | ------- | ------- | ------- | -------- | ------ | -------- | ---------------------- |
 ${decisionRows.join('\n')}
 
 A market-data purchase is two transactions. First the vault pays the gateway's spend wallet exactly the
@@ -506,7 +506,8 @@ function gasParagraph(): string | null {
   const eth = Number(formatUnits(fees, 18)).toFixed(6);
   return `In the recorded run a payment through the vault used about ${thousands(payment.gasUsed)} gas, and the merchant's
 settlement of a per-call purchase about ${thousands(settlement.gasUsed)}. All ${run.transactions.length} transactions together paid ${eth} ETH in
-fees on Arbitrum Sepolia. Testnet fees are not mainnet fees, but the gas is the same.`;
+fees on Arbitrum Sepolia. Testnet fees are not mainnet fees. The execution gas is the same; on Arbitrum
+One a transaction's gas also includes a share for posting its data to Ethereum, which was zero in this run.`;
 }
 
 /** Replaces what stands between two markers. Returns null if the markers are not there. */

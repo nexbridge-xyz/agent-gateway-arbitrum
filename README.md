@@ -156,7 +156,8 @@ more screenshots with a note on where each one comes from.
 
 In the recorded run a payment through the vault used about 127,000 gas, and the merchant's
 settlement of a per-call purchase about 98,000. All 15 transactions together paid 0.000031 ETH in
-fees on Arbitrum Sepolia. Testnet fees are not mainnet fees, but the gas is the same.
+fees on Arbitrum Sepolia. Testnet fees are not mainnet fees. The execution gas is the same; on Arbitrum
+One a transaction's gas also includes a share for posting its data to Ethereum, which was zero in this run.
 
 <!-- demo-gas:end -->
 
