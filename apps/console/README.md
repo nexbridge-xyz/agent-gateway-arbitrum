@@ -95,6 +95,13 @@ exists in the development build only, and a production build always shows the ga
 A banner says when the data is made up, and signing is switched off. `?data=worst`, `?data=one` and
 `?data=empty` in the address do the same as the switch.
 
+To use the console without the switch, build it and serve the build. It listens on the same address:
+
+```bash
+pnpm --filter @agent-gateway/console run build
+pnpm --filter @agent-gateway/console run preview
+```
+
 ## Rehearse on a local fork
 
 To try the whole path without a browser wallet and without spending anything, run the demo against a local
@@ -162,18 +169,21 @@ pnpm --filter @agent-gateway/console test
 - **The parts.** Amounts and yen figures in whole-number arithmetic, times in UTC, the limit rail, the
   wallet menu, the address-bar routes, and that made-up data cannot be chosen in a production build.
 
-Three things were checked in a real browser on a local fork, as described above:
+Four things were checked in a real browser on a local fork, as described above:
 
 - the whole path: steps 1 to 7 of the demo with the approval signed in the console, and a mandate created
   and revoked from the console;
 - the same with the keyboard only: connecting a wallet, signing, the dialog and the two steps of revoking;
 - every screen on the worst-case data at 1440 px, at 200% zoom, at 320 px and at 2560 px, without a sideways
-  scroll, and what moves with and without "reduce motion".
+  scroll, and what moves with and without "reduce motion";
+- a production build served by `vite preview`: the feed, an evidence check, the mandates and the ledger,
+  with no switch, no test wallet in the menu, and `?data=worst` changing nothing. Nothing was signed in a
+  production build, because the test wallets exist in the development build only.
 
 ## Limits
 
-- It is a development build served by Vite on localhost. There is no hosted version and no sign-in: whoever
-  can open the page can read what the gateway serves.
+- It is served by Vite on localhost, as a development build or as a built one. There is no hosted version
+  and no sign-in: whoever can open the page can read what the gateway serves.
 - It shows the newest 200 requests and the newest 300 ledger entries, and reads the newest 12 mandates.
 - It refreshes by asking again every few seconds. There is no push from the gateway.
 - Names in a new mandate's text are the demo's fictional company and agent.

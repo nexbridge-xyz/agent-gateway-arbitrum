@@ -74,15 +74,16 @@ Stop the demo with Ctrl+C when it has finished. The 6 USDC come back with `recyc
 
 ## 3. Check before recording
 
-| Check                                | How                                                                                                             | Good when                                   |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| The code is the released state       | `git status` and `git log -1`                                                                                   | Clean, on `main`, up to date                |
-| Tests pass                           | `pnpm test`                                                                                                     | No failure                                  |
-| The approver is a plain key          | `cast code "$(grep '^APPROVER_ADDRESS=' .env \| cut -d= -f2)" --rpc-url https://sepolia-rollup.arbitrum.io/rpc` | Prints `0x`                                 |
-| The agent will be Claude             | `grep -c '^ANTHROPIC_API_KEY=.' .env`                                                                           | Prints `1`                                  |
-| Nothing holds the ports              | `lsof -nP -iTCP:8787 -iTCP:8788 -iTCP:5173 -sTCP:LISTEN`                                                        | Prints nothing before `pnpm console`        |
-| The wallet is ready                  | Open the wallet                                                                                                 | Arbitrum Sepolia, approver account selected |
-| The day will not turn during the run | Look at the clock                                                                                               | Not close to 00:00 UTC (09:00 in Tokyo)     |
+| Check                                | How                                                                                                             | Good when                                                     |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| The code is the released state       | `git status` and `git log -1`                                                                                   | Clean, on `main`, up to date                                  |
+| Tests pass                           | `pnpm test`                                                                                                     | No failure                                                    |
+| The approver is a plain key          | `cast code "$(grep '^APPROVER_ADDRESS=' .env \| cut -d= -f2)" --rpc-url https://sepolia-rollup.arbitrum.io/rpc` | Prints `0x`                                                   |
+| The agent will be Claude             | `grep -c '^ANTHROPIC_API_KEY=.' .env`                                                                           | Prints `1`                                                    |
+| Nothing holds the ports              | `lsof -nP -iTCP:8787 -iTCP:8788 -iTCP:5173 -sTCP:LISTEN`                                                        | Prints nothing before `pnpm console`                          |
+| The wallet is ready                  | Open the wallet                                                                                                 | Arbitrum Sepolia, approver account selected                   |
+| The console shows the run            | Look at the bottom left of the console                                                                          | No banner about made-up data, and "Data shown" is on **Live** |
+| The day will not turn during the run | Look at the clock                                                                                               | Not close to 00:00 UTC (09:00 in Tokyo)                       |
 
 The last one matters because the vault counts spending per UTC day. A run that crosses midnight UTC still
 passes, but "paid today" on the screen starts again from zero in the middle of it.
@@ -204,4 +205,17 @@ The console is laid out for a page area of 1440 by 900. For the video:
 - A 14-inch MacBook display at its default scaling (1512 × 982) is not tall enough for it. Choose "More
   Space" in the display settings for the take.
 - Keep the wallet's window in the picture when you sign in step 4: the signature is the point of that shot.
+- The "Data shown" switch at the bottom left (Live, Worst, One, Empty) will be in the picture. It is a tool
+  for building the console and exists because `pnpm console` runs the development build. To record without
+  it, serve a built console in place of `pnpm console`:
+
+  ```bash
+  pnpm --filter @agent-gateway/console run build
+  pnpm --filter @agent-gateway/console run preview
+  ```
+
+  A built console has no switch and no made-up data, and it listens on the same address. Its screens were
+  checked against a local fork, but nothing has been signed in it yet. If you choose it, use it in the
+  live pass of step 4 as well, so that the take is not its first signature.
+
 - Keep the terminal out of the picture while `.env` is open anywhere, and never show `.env`.
