@@ -1,0 +1,164 @@
+{
+  "format": "agent-gateway-arbitrum/evidence/v1",
+  "evidenceHash": "0x60dd891077fac4899f5d69f8497e4f547e82a1b81ef319d15471b0dc42c49124",
+  "record": {
+    "format": "agent-gateway-arbitrum/evidence-record/v1",
+    "intentId": "0x15d6bca217c4cd07c4e985f7bbc78b95d8fadd58ed192660e3f86233e7cf32ce",
+    "decidedAt": "2026-11-12T02:38:58.494Z",
+    "chain": {
+      "chainId": 421614,
+      "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
+      "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+      "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      "blockNumber": "328373771",
+      "blockTimestamp": 1794451137
+    },
+    "who": {
+      "agentId": "354",
+      "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
+      "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
+      "mandateId": "2",
+      "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
+      "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
+    },
+    "what": {
+      "payee": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
+      "payeeName": "Koishi Supply",
+      "amount": "1500000",
+      "tokenSymbol": "USDC",
+      "tokenDecimals": 6,
+      "purpose": "Invoice KS-2026-1107: packing materials, November",
+      "invoiceId": "KS-2026-1107"
+    },
+    "request": {
+      "intent": {
+        "agentId": "354",
+        "payee": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
+        "amount": "1500000",
+        "purpose": "Invoice KS-2026-1107: packing materials, November",
+        "invoiceId": "KS-2026-1107",
+        "context": {},
+        "nonce": "0xa4aafed4c6458d499bf538af18056defb30cba544957bc0ea356ba690cd2e267",
+        "expiresAt": 1794451437
+      },
+      "signature": "0x87ae03c8cc48284b7c16f11de281ce47dcc86433ef248c036d326a4f4aac3a4b6953764f9e288bd3053d53b61495f0b224758f3b15e0ca0148c663e358820e971c",
+      "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
+    },
+    "purchase": null,
+    "why": {
+      "decision": "auto",
+      "reasons": [
+        "All 14 checks passed"
+      ],
+      "checks": [
+        {
+          "key": "request_current",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Request is current",
+          "detail": "expires in 300 seconds; at most 900 are accepted"
+        },
+        {
+          "key": "agent_registered",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent is registered in the ERC-8004 Identity Registry",
+          "detail": "agent id found"
+        },
+        {
+          "key": "agent_active",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent is not marked inactive",
+          "detail": "registration file says active: true"
+        },
+        {
+          "key": "agent_signature",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Request is signed by the agent's registered wallet",
+          "detail": "signed by 0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a; registered wallet is 0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
+        },
+        {
+          "key": "mandate_active",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent has an active mandate with this gateway as executor",
+          "detail": "mandate 2, valid until 2026-12-12T02:38:45Z"
+        },
+        {
+          "key": "vault_open",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Vault is not paused",
+          "detail": "not paused"
+        },
+        {
+          "key": "payee_not_denied",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Payee is not on the denylist",
+          "detail": "not listed"
+        },
+        {
+          "key": "payee_in_vendor_registry",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Payee is in the principal's vendor registry",
+          "detail": "registered as Koishi Supply"
+        },
+        {
+          "key": "amount_positive",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Amount is more than zero",
+          "detail": "1.5 USDC"
+        },
+        {
+          "key": "within_hard_ceiling",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Day total stays within the mandate's hard ceiling",
+          "detail": "0.1 USDC paid today + 1.5 USDC vs ceiling 20 USDC"
+        },
+        {
+          "key": "vault_funded",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Vault holds enough funds",
+          "detail": "vault holds 11.9 USDC"
+        },
+        {
+          "key": "payee_on_allowlist",
+          "kind": "soft",
+          "result": "pass",
+          "label": "Payee is on the mandate's allowlist",
+          "detail": "on the allowlist"
+        },
+        {
+          "key": "within_per_payment_cap",
+          "kind": "soft",
+          "result": "pass",
+          "label": "Amount is within the per-payment cap",
+          "detail": "1.5 USDC vs cap 2 USDC"
+        },
+        {
+          "key": "within_daily_cap",
+          "kind": "soft",
+          "result": "pass",
+          "label": "Day total stays within the daily cap",
+          "detail": "0.1 USDC paid today + 1.5 USDC vs cap 8 USDC"
+        }
+      ]
+    }
+  },
+  "approval": null,
+  "result": {
+    "status": "paid",
+    "transactionHash": "0xf065b734f752ed964f3d032cdd4a6ef31bf56dbb76e19a9bf3d828cf62c69af1",
+    "blockNumber": "328373781",
+    "event": "MandatePayment",
+    "executedAt": "2026-11-12T02:39:00.866Z"
+  },
+  "updatedAt": "2026-11-12T02:39:00.866Z"
+}

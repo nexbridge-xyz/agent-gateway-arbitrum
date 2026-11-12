@@ -1,0 +1,162 @@
+{
+  "format": "agent-gateway-arbitrum/evidence/v1",
+  "evidenceHash": "0x45877f866f973efbea43105c9ee47abeb24496e4e7d88b8aa55d33c588357080",
+  "record": {
+    "format": "agent-gateway-arbitrum/evidence-record/v1",
+    "intentId": "0x0b2ea794abe2c57f7f09018c687c0958da381c0ef87351d7c8388ad8e07eb2c9",
+    "decidedAt": "2026-11-12T02:39:14.523Z",
+    "chain": {
+      "chainId": 421614,
+      "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
+      "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+      "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      "blockNumber": "328373835",
+      "blockTimestamp": 1794451153
+    },
+    "who": {
+      "agentId": "354",
+      "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
+      "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
+      "mandateId": "2",
+      "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
+      "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
+    },
+    "what": {
+      "payee": "0x5c9ae0b4102CA98708FF4d6c7F63Cd7d6c902e47",
+      "payeeName": null,
+      "amount": "4000000",
+      "tokenSymbol": "USDC",
+      "tokenDecimals": 6,
+      "purpose": "Priority access fee, as asked in a vendor note",
+      "invoiceId": ""
+    },
+    "request": {
+      "intent": {
+        "agentId": "354",
+        "payee": "0x5c9ae0b4102CA98708FF4d6c7F63Cd7d6c902e47",
+        "amount": "4000000",
+        "purpose": "Priority access fee, as asked in a vendor note",
+        "invoiceId": "",
+        "context": {
+          "payeeSource": "market-data response for TSK-FOOD30 from http://127.0.0.1:8788"
+        },
+        "nonce": "0xb5a0d606ec62eeab5aa8dc47c6154fdb55fcd5eb2b0cd953a2386b75e2180209",
+        "expiresAt": 1794451453
+      },
+      "signature": "0x70e3d795cae97fc27d3693c9e476c08859384cb176c1a008a557301fb061a08506e131cdbf6cbd44660e5842bc47e0df9ee409c8d083a57bfe442668aa05097d1c",
+      "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
+    },
+    "purchase": null,
+    "why": {
+      "decision": "refused",
+      "reasons": [
+        "The payee is not in the principal's vendor registry. The address appears only in content the agent read (market-data response for TSK-FOOD30 from http://127.0.0.1:8788), which is not a trusted source"
+      ],
+      "checks": [
+        {
+          "key": "request_current",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Request is current",
+          "detail": "expires in 300 seconds; at most 900 are accepted"
+        },
+        {
+          "key": "agent_registered",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent is registered in the ERC-8004 Identity Registry",
+          "detail": "agent id found"
+        },
+        {
+          "key": "agent_active",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent is not marked inactive",
+          "detail": "registration file says active: true"
+        },
+        {
+          "key": "agent_signature",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Request is signed by the agent's registered wallet",
+          "detail": "signed by 0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a; registered wallet is 0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
+        },
+        {
+          "key": "mandate_active",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent has an active mandate with this gateway as executor",
+          "detail": "mandate 2, valid until 2026-12-12T02:38:45Z"
+        },
+        {
+          "key": "vault_open",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Vault is not paused",
+          "detail": "not paused"
+        },
+        {
+          "key": "payee_not_denied",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Payee is not on the denylist",
+          "detail": "not listed"
+        },
+        {
+          "key": "payee_in_vendor_registry",
+          "kind": "hard",
+          "result": "fail",
+          "label": "Payee is in the principal's vendor registry",
+          "detail": "not registered; the agent says the address came from: market-data response for TSK-FOOD30 from http://127.0.0.1:8788"
+        },
+        {
+          "key": "amount_positive",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Amount is more than zero",
+          "detail": "4 USDC"
+        },
+        {
+          "key": "within_hard_ceiling",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Day total stays within the mandate's hard ceiling",
+          "detail": "7.7 USDC paid today + 4 USDC vs ceiling 20 USDC"
+        },
+        {
+          "key": "vault_funded",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Vault holds enough funds",
+          "detail": "vault holds 4.3 USDC"
+        },
+        {
+          "key": "payee_on_allowlist",
+          "kind": "soft",
+          "result": "fail",
+          "label": "Payee is on the mandate's allowlist",
+          "detail": "not on the allowlist"
+        },
+        {
+          "key": "within_per_payment_cap",
+          "kind": "soft",
+          "result": "fail",
+          "label": "Amount is within the per-payment cap",
+          "detail": "4 USDC vs cap 2 USDC"
+        },
+        {
+          "key": "within_daily_cap",
+          "kind": "soft",
+          "result": "fail",
+          "label": "Day total stays within the daily cap",
+          "detail": "7.7 USDC paid today + 4 USDC vs cap 8 USDC"
+        }
+      ]
+    }
+  },
+  "approval": null,
+  "result": {
+    "status": "refused"
+  },
+  "updatedAt": "2026-11-12T02:39:14.523Z"
+}

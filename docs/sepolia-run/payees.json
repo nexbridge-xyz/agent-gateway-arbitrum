@@ -1,14 +1,20 @@
 {
   "vendors": [
     {
-      "name": "Tsukimi Data",
+      "name": "Koishi Supply",
       "address": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
-      "note": "market data"
+      "note": "office and packing supplies"
     },
     {
-      "name": "Koishi Supply",
+      "name": "Nagikumo Research",
       "address": "0xDd76243f8563ea5D6E6186C0e26804F761A18792",
-      "note": "office supplies"
+      "note": "research reports"
+    },
+    {
+      "name": "Tsukimi Data",
+      "address": "0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD",
+      "note": "market data, paid per call",
+      "origin": "http://127.0.0.1:8788"
     },
     {
       "name": "Agent Gateway spend wallet",

@@ -1,55 +1,54 @@
 {
   "format": "agent-gateway-arbitrum/evidence/v1",
-  "evidenceHash": "0x82583c559df60953633e35c76c321d0138c2059097f7a2aef60a760307e3ad59",
+  "evidenceHash": "0x00c4d041dd54503868a245db3bb35b51a9a9b8bbdf036e3864dea00eec441783",
   "record": {
     "format": "agent-gateway-arbitrum/evidence-record/v1",
-    "intentId": "0x93d05350a8fbc1178eb1c66a907470018207dcc7a69d84c40aeb41689704b997",
-    "decidedAt": "2026-11-11T18:03:55.963Z",
+    "intentId": "0x64b65bcc89e6e77be788ceb99b8fd36ebbefb75c32a7083f08f664d5a7253f0e",
+    "decidedAt": "2026-11-12T02:39:03.116Z",
     "chain": {
       "chainId": 421614,
       "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
       "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
       "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-      "blockNumber": "328260922",
-      "blockTimestamp": 1794420234
+      "blockNumber": "328373789",
+      "blockTimestamp": 1794451141
     },
     "who": {
       "agentId": "354",
       "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
       "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
-      "mandateId": "1",
+      "mandateId": "2",
       "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
       "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
     },
     "what": {
-      "payee": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
-      "payeeName": "Tsukimi Data",
-      "amount": "1500000",
+      "payee": "0xDd76243f8563ea5D6E6186C0e26804F761A18792",
+      "payeeName": "Nagikumo Research",
+      "amount": "6000000",
       "tokenSymbol": "USDC",
       "tokenDecimals": 6,
-      "purpose": "Invoice INV-2026-1107: market data feed, November",
-      "invoiceId": "INV-2026-1107"
+      "purpose": "Invoice NR-2026-0042: quarterly sector report",
+      "invoiceId": "NR-2026-0042"
     },
     "request": {
       "intent": {
         "agentId": "354",
-        "payee": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
-        "amount": "1500000",
-        "purpose": "Invoice INV-2026-1107: market data feed, November",
-        "invoiceId": "INV-2026-1107",
-        "context": {
-          "source": "vendor invoice"
-        },
-        "nonce": "0x7a0b185c4eca6d6372ba1b462f3e2a0684bc91da04a972f49b04ea33f33e71df",
-        "expiresAt": 1794420534
+        "payee": "0xDd76243f8563ea5D6E6186C0e26804F761A18792",
+        "amount": "6000000",
+        "purpose": "Invoice NR-2026-0042: quarterly sector report",
+        "invoiceId": "NR-2026-0042",
+        "context": {},
+        "nonce": "0x079cf15ed2f8da8ad76358962143b573680e0d04ade7a68e3863e198c3ba43dd",
+        "expiresAt": 1794451442
       },
-      "signature": "0xaee6ff55e347e6580fec81b78baa307785eb86e95b9e0660a112e5966ea67fae16fa779923eeaa1877c442db124f9881aa56e59ae9feb928d9b06da6fc2676411c",
+      "signature": "0x4e7b7c15d2cc6ce09300dfdca3ceb9bf49e06777b5d1830c8deae9a93614230d3cae650903563a545dc72694f710c766505895f3c15cabf9cc6bf0b80d53cd881c",
       "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
     },
+    "purchase": null,
     "why": {
-      "decision": "auto",
+      "decision": "needs_approval",
       "reasons": [
-        "All 14 checks passed"
+        "The amount is above the per-payment cap of 2 USDC"
       ],
       "checks": [
         {
@@ -57,7 +56,7 @@
           "kind": "hard",
           "result": "pass",
           "label": "Request is current",
-          "detail": "expires in 300 seconds; at most 900 are accepted"
+          "detail": "expires in 301 seconds; at most 900 are accepted"
         },
         {
           "key": "agent_registered",
@@ -85,7 +84,7 @@
           "kind": "hard",
           "result": "pass",
           "label": "Agent has an active mandate with this gateway as executor",
-          "detail": "mandate 1, valid until 2026-12-11T18:03:51Z"
+          "detail": "mandate 2, valid until 2026-12-12T02:38:45Z"
         },
         {
           "key": "vault_open",
@@ -106,28 +105,28 @@
           "kind": "hard",
           "result": "pass",
           "label": "Payee is in the principal's vendor registry",
-          "detail": "registered as Tsukimi Data"
+          "detail": "registered as Nagikumo Research"
         },
         {
           "key": "amount_positive",
           "kind": "hard",
           "result": "pass",
           "label": "Amount is more than zero",
-          "detail": "1.5 USDC"
+          "detail": "6 USDC"
         },
         {
           "key": "within_hard_ceiling",
           "kind": "hard",
           "result": "pass",
           "label": "Day total stays within the mandate's hard ceiling",
-          "detail": "0 USDC paid today + 1.5 USDC vs ceiling 20 USDC"
+          "detail": "1.6 USDC paid today + 6 USDC vs ceiling 20 USDC"
         },
         {
           "key": "vault_funded",
           "kind": "hard",
           "result": "pass",
           "label": "Vault holds enough funds",
-          "detail": "vault holds 10 USDC"
+          "detail": "vault holds 10.4 USDC"
         },
         {
           "key": "payee_on_allowlist",
@@ -139,27 +138,33 @@
         {
           "key": "within_per_payment_cap",
           "kind": "soft",
-          "result": "pass",
+          "result": "fail",
           "label": "Amount is within the per-payment cap",
-          "detail": "1.5 USDC vs cap 2 USDC"
+          "detail": "6 USDC vs cap 2 USDC"
         },
         {
           "key": "within_daily_cap",
           "kind": "soft",
           "result": "pass",
           "label": "Day total stays within the daily cap",
-          "detail": "0 USDC paid today + 1.5 USDC vs cap 8 USDC"
+          "detail": "1.6 USDC paid today + 6 USDC vs cap 8 USDC"
         }
       ]
     }
   },
-  "approval": null,
+  "approval": {
+    "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69",
+    "nonce": "0",
+    "deadline": "1794451743",
+    "signature": "0x529c3493a6af6466189ee4d8171fa31b48911320678321626227647d1a5f20cd0b4a2705395545383de362a90bebaa79d7650cf4c6f4a076848401cb63e8c4191b",
+    "receivedAt": "2026-11-12T02:39:05.060Z"
+  },
   "result": {
     "status": "paid",
-    "transactionHash": "0xac89ad80d6bc378e845057ea61eaae0dee32d9da32564e9f80c1dae5301079bf",
-    "blockNumber": "328260933",
-    "event": "MandatePayment",
-    "executedAt": "2026-11-11T18:03:58.307Z"
+    "transactionHash": "0x4d857a039c04f18f450ed00bf2936c1110401f4786ff6b8bb912b3b5f95d1ad2",
+    "blockNumber": "328373806",
+    "event": "ApprovedPayment",
+    "executedAt": "2026-11-12T02:39:07.196Z"
   },
-  "updatedAt": "2026-11-11T18:03:58.308Z"
+  "updatedAt": "2026-11-12T02:39:07.196Z"
 }

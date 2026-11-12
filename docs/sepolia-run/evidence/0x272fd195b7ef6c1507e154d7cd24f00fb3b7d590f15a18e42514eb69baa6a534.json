@@ -1,0 +1,200 @@
+{
+  "format": "agent-gateway-arbitrum/evidence/v1",
+  "evidenceHash": "0x2c8c85a2b80649629e5db2187aba651f1bd5806f8b83c7ab3112fa984845d597",
+  "record": {
+    "format": "agent-gateway-arbitrum/evidence-record/v1",
+    "intentId": "0x272fd195b7ef6c1507e154d7cd24f00fb3b7d590f15a18e42514eb69baa6a534",
+    "decidedAt": "2026-11-12T02:39:09.240Z",
+    "chain": {
+      "chainId": 421614,
+      "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
+      "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
+      "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+      "blockNumber": "328373813",
+      "blockTimestamp": 1794451147
+    },
+    "who": {
+      "agentId": "354",
+      "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
+      "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
+      "mandateId": "2",
+      "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
+      "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
+    },
+    "what": {
+      "payee": "0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD",
+      "payeeName": "Tsukimi Data",
+      "amount": "100000",
+      "tokenSymbol": "USDC",
+      "tokenDecimals": 6,
+      "purpose": "Market data: one TSK-FOOD30 quote",
+      "invoiceId": ""
+    },
+    "request": {
+      "intent": {
+        "agentId": "354",
+        "payee": "0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD",
+        "amount": "100000",
+        "purpose": "Market data: one TSK-FOOD30 quote",
+        "invoiceId": "",
+        "context": {
+          "mpp": {
+            "resource": "http://127.0.0.1:8788/v1/quotes/TSK-FOOD30"
+          },
+          "payeeSource": "payment request from http://127.0.0.1:8788"
+        },
+        "nonce": "0x48d1338624738fda3c11e9ecf8a3e7374ec976dfdb1746e3923a19f35906aa2d",
+        "expiresAt": 1794451448
+      },
+      "signature": "0x38106222260763e4650813956c4d4a25364795b78d02c135f61cab440c16e65e07c9fd548c5a4546ad2a9704a748f13f6cfaac97b2a6ff4b56d627293ec3e2621c",
+      "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
+    },
+    "purchase": {
+      "protocol": "mpp",
+      "resource": "http://127.0.0.1:8788/v1/quotes/TSK-FOOD30",
+      "spendWallet": "0xcd08ecaA7FF642ffEdc77514C1442E59ddbb4CF9"
+    },
+    "why": {
+      "decision": "auto",
+      "reasons": [
+        "All 17 checks passed"
+      ],
+      "checks": [
+        {
+          "key": "request_current",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Request is current",
+          "detail": "expires in 301 seconds; at most 900 are accepted"
+        },
+        {
+          "key": "agent_registered",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent is registered in the ERC-8004 Identity Registry",
+          "detail": "agent id found"
+        },
+        {
+          "key": "agent_active",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent is not marked inactive",
+          "detail": "registration file says active: true"
+        },
+        {
+          "key": "agent_signature",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Request is signed by the agent's registered wallet",
+          "detail": "signed by 0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a; registered wallet is 0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
+        },
+        {
+          "key": "mandate_active",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Agent has an active mandate with this gateway as executor",
+          "detail": "mandate 2, valid until 2026-12-12T02:38:45Z"
+        },
+        {
+          "key": "vault_open",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Vault is not paused",
+          "detail": "not paused"
+        },
+        {
+          "key": "payee_not_denied",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Payee is not on the denylist",
+          "detail": "not listed"
+        },
+        {
+          "key": "payee_in_vendor_registry",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Payee is in the principal's vendor registry",
+          "detail": "registered as Tsukimi Data"
+        },
+        {
+          "key": "amount_positive",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Amount is more than zero",
+          "detail": "0.1 USDC"
+        },
+        {
+          "key": "within_hard_ceiling",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Day total stays within the mandate's hard ceiling",
+          "detail": "7.6 USDC paid today + 0.1 USDC vs ceiling 20 USDC"
+        },
+        {
+          "key": "vault_funded",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Vault holds enough funds",
+          "detail": "vault holds 4.4 USDC"
+        },
+        {
+          "key": "purchase_spend_wallet",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Gateway has a spend wallet for per-call purchases",
+          "detail": "configured"
+        },
+        {
+          "key": "purchase_origin_registered",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Resource is on the merchant's registered API",
+          "detail": "asked for http://127.0.0.1:8788; registered: http://127.0.0.1:8788"
+        },
+        {
+          "key": "purchase_within_call_cap",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Price is within the gateway's per-call cap",
+          "detail": "0.1 USDC vs cap 0.5 USDC"
+        },
+        {
+          "key": "payee_on_allowlist",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Gateway's spend wallet is on the mandate's allowlist",
+          "detail": "on the allowlist"
+        },
+        {
+          "key": "within_per_payment_cap",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Amount is within the per-payment cap",
+          "detail": "0.1 USDC vs cap 2 USDC"
+        },
+        {
+          "key": "within_daily_cap",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Day total stays within the daily cap",
+          "detail": "7.6 USDC paid today + 0.1 USDC vs cap 8 USDC"
+        }
+      ]
+    }
+  },
+  "approval": null,
+  "result": {
+    "status": "paid",
+    "transactionHash": "0x70201ac5f420e8a8b5bcc20de8fa8b43f768baf479e96ad611f3a7504221c705",
+    "blockNumber": "328373822",
+    "event": "MandatePayment",
+    "executedAt": "2026-11-12T02:39:11.331Z",
+    "purchase": {
+      "status": "settled",
+      "settlementTransactionHash": "0x7a12b9b5dcd5fdd9fdafb18c922c6df5a12a76add5a1e0a10f46573efd6bde8e",
+      "settledAt": "2026-11-12T02:39:13.878Z",
+      "responseHash": "0x9538a16f1a9182441d280c841b463ce764b7af9cfc89bfb72ae316c4e62d3875"
+    }
+  },
+  "updatedAt": "2026-11-12T02:39:13.881Z"
+}
