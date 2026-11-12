@@ -15,6 +15,9 @@ catalog:
   express: 5.3.0
   zod: 4.6.7
 
+  # The demo agent's model access (Claude API).
+  '@anthropic-ai/sdk': 1.8.0
+
   # Tooling. TypeScript 6 is the version @arbitrum/mpp and typescript-eslint are built against.
   typescript: 6.0.3
   tsx: 4.23.15
