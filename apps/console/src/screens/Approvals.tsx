@@ -20,6 +20,8 @@ import {
 import { clock, money, short, until } from '@/lib/format';
 import { href } from '@/lib/route';
 import { cn } from '@/lib/utils';
+import { VAULT } from '@/lib/vault';
+import { chain } from '@/lib/wallet';
 
 type Decided = { pending: PendingApproval; outcome: Outcome; said: 'approved' | 'declined' };
 type Busy = 'sign' | 'pay' | 'sign-decline' | 'record' | null;
@@ -33,6 +35,52 @@ function explain(error: unknown): string {
     return error.message.split('\n')[0] ?? 'Something went wrong';
   }
   return 'Something went wrong';
+}
+
+const sameText = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+/**
+ * Why the console will not hand this request to a wallet, or null if what the gateway wants signed is
+ * the payment the page describes, for this console's vault.
+ *
+ * The description on the screen (payee, amount, record) and the typed message for the wallet are
+ * separate parts of the gateway's answer. A gateway that somebody else controls could describe a
+ * vendor's invoice and ask for a signature over a payment to itself. The page can at least make sure
+ * that the two are the same payment, and that the message is for its own vault and network.
+ */
+export function signingRefusal(
+  pending: PendingApproval,
+  token: { symbol: string; decimals: number } | undefined,
+): string | null {
+  const { domain, message } = pending.approval;
+  const decline = pending.decline;
+  const forThisVault = (d: { verifyingContract: string; chainId: number }) =>
+    sameText(d.verifyingContract, VAULT) && Number(d.chainId) === chain.id;
+  if (
+    !forThisVault(domain) ||
+    !forThisVault(decline.domain) ||
+    domain.name !== 'MandateVault' ||
+    domain.version !== '1'
+  ) {
+    return "The gateway asks your wallet to sign for another vault or network than this console's. Signing is switched off.";
+  }
+  if (
+    !sameText(message.payee, pending.payee) ||
+    message.amount !== pending.amount ||
+    message.mandateId !== pending.mandateId ||
+    !sameText(message.evidenceHash, pending.evidenceHash) ||
+    !sameText(decline.message.intentId, pending.intentId) ||
+    !sameText(decline.message.evidenceHash, pending.evidenceHash)
+  ) {
+    return 'The gateway asks your wallet to sign another payment than the one shown here. Signing is switched off.';
+  }
+  if (
+    token !== undefined &&
+    (pending.tokenDecimals !== token.decimals || pending.tokenSymbol !== token.symbol)
+  ) {
+    return 'The gateway shows this amount in other units than the token has, so the figure on the left is not the amount your wallet would sign. Signing is switched off.';
+  }
+  return null;
 }
 
 /** Payments that wait for a person. The approver signs one exact payment; the vault checks that signature. */
@@ -215,6 +263,12 @@ function Waiting({
   const expired = deadline <= now;
   const isApprover = address?.toLowerCase() === pending.approver.toLowerCase();
   const gatewayProblem = useGatewayProblem();
+  // The token as the chain describes it: the console has compared the gateway's description with it.
+  // Made-up data is never signed, so there is nothing to compare it with.
+  const refusal =
+    mode === 'live'
+      ? signingRefusal(pending, gatewayProblem === null ? config.data?.token : undefined)
+      : null;
   const blocked =
     mode !== 'live'
       ? 'This is made-up data. Signing is switched off.'
@@ -239,6 +293,7 @@ function Waiting({
   };
 
   const approve = async () => {
+    if (refusal !== null) return;
     setProblem(null);
     try {
       setBusy('sign');
@@ -266,6 +321,7 @@ function Waiting({
   };
 
   const decline = async () => {
+    if (refusal !== null) return;
     setProblem(null);
     try {
       setBusy('sign-decline');
@@ -389,7 +445,7 @@ function Waiting({
         <button
           type="button"
           className="action-cell h-24 w-full"
-          disabled={blocked !== null || busy !== null}
+          disabled={blocked !== null || refusal !== null || busy !== null}
           onClick={() => {
             void approve();
           }}
@@ -407,7 +463,7 @@ function Waiting({
           type="button"
           data-tone="stop"
           className="quiet-action w-full border-t"
-          disabled={blocked !== null || busy !== null}
+          disabled={blocked !== null || refusal !== null || busy !== null}
           onClick={() => {
             void decline();
           }}
@@ -418,15 +474,15 @@ function Waiting({
               ? 'Recording…'
               : 'Decline'}
         </button>
-        {blocked !== null || problem !== null ? (
+        {blocked !== null || problem !== null || refusal !== null ? (
           <p
             className={cn(
               'border-t px-5 py-3 text-xs',
-              problem !== null ? 'text-stop' : 'text-text-2',
+              problem !== null || refusal !== null ? 'text-stop' : 'text-text-2',
             )}
-            role={problem !== null ? 'alert' : 'status'}
+            role={problem !== null || refusal !== null ? 'alert' : 'status'}
           >
-            {problem ?? blocked}
+            {refusal ?? problem ?? blocked}
           </p>
         ) : null}
         <p className="text-text-3 border-t px-5 py-3 text-xs">
