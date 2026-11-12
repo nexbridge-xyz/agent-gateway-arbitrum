@@ -73,13 +73,13 @@ flowchart TB
 
 ## Who can do what
 
-| Role         | Held by                 | Can                                                                | Cannot                                                  |
-| ------------ | ----------------------- | ------------------------------------------------------------------ | ------------------------------------------------------- |
-| Principal    | The company             | Deposit, withdraw to itself, create and revoke mandates, pause     | Be changed: it is fixed when the vault is deployed      |
-| Approver     | A person at the company | Sign an approval for one payment outside a mandate                 | Submit that payment, or pay anything                    |
-| Executor     | The gateway             | Pay inside a mandate, and submit a payment the approver has signed | Pay an unlisted payee, exceed a cap, approve for itself |
-| Spend wallet | The gateway             | Pay per-call charges from what the vault sent it                   | Receive more than its mandate allows                    |
-| Agent        | The AI agent            | Sign payment requests                                              | Move any funds                                          |
+| Role         | Held by                 | Can                                                                | Cannot                                                   |
+| ------------ | ----------------------- | ------------------------------------------------------------------ | -------------------------------------------------------- |
+| Principal    | The company             | Deposit, withdraw to itself, create and revoke mandates, pause     | Be changed: it is fixed when the vault is deployed       |
+| Approver     | A person at the company | Sign an approval for one payment outside a mandate                 | Submit that payment, or pay anything                     |
+| Executor     | The gateway             | Pay inside a mandate, and submit a payment the approver has signed | Pay an unlisted payee, exceed a cap, approve for itself  |
+| Spend wallet | The gateway             | Pay per-call charges from what the vault sent it                   | Receive more than its mandate allows without an approval |
+| Agent        | The AI agent            | Sign payment requests                                              | Move any funds                                           |
 
 It always takes two keys to pay outside a mandate: the approver's to sign and the executor's to submit.
 
@@ -177,8 +177,9 @@ does not. The evidence file names the settlement, and `pnpm verify-evidence` che
 amount from the spend wallet to the merchant.
 
 The spend wallet is funded for one call at a time, with exactly the price of that call. In the demo it has
-a mandate of its own (0.50 USDC per payment, 1 USDC per day), so the most its key can ever receive in a day
-is 1 USDC.
+a mandate of its own (0.50 USDC per payment, 1 USDC per day), so without the approver's signature the most
+its key can receive from that mandate in a day is 1 USDC. With an approval the vault pays any address, the
+spend wallet included, up to the approving mandate's hard ceiling.
 
 ## What is onchain, and what is not
 

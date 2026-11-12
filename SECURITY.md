@@ -151,7 +151,8 @@ but whoever holds it could rebuild it or cut it short. The vault's events are th
   and the gateway asks the same question before it sends anything. Smart accounts that need another
   signature format are not supported yet.
 - If a per-call purchase fails after the vault funded the spend wallet, that amount stays in the spend
-  wallet until the principal moves it.
+  wallet until whoever holds that wallet's key sends it back. The gateway holds it, not the principal. In
+  the demo `pnpm demo --steps recycle` returns it.
 - USDC itself can be paused or an address blocked by its issuer. Nothing here changes that.
 
 ## Reporting a problem

@@ -336,7 +336,8 @@ REVIEW_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway t
   endpoints are open. It listens on localhost only.
 - A payment interrupted between decision and confirmation is not resumed.
 - If a purchase fails after the vault has funded the spend wallet, the amount stays in the spend wallet. It
-  has counted toward the day's caps, and the principal, who holds that key, can move it back.
+  has counted toward the day's caps. The gateway holds that wallet's key, so whoever runs the gateway sends
+  it back (in the demo: `pnpm demo --steps recycle`).
 - The per-call cap (`GATEWAY_PURCHASE_CALL_CAP`) is the gateway's own check. The onchain bound on the spend
   wallet is the mandate that lists it. A principal who lists the spend wallet on a wide mandate gives it
   that mandate's caps.
