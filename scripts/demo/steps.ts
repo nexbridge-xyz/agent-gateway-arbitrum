@@ -20,6 +20,7 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 
 import type { AgentRun, AgentTask, ToolCall } from '@agent-gateway/agent';
 import {
+  type EvidenceFile,
   type IntentOutcome,
   PAYMENT_APPROVAL_TYPES,
   type PayeesFile,
@@ -649,7 +650,7 @@ export async function approval(context: Context): Promise<void> {
   }
   if ((await balanceOf(vendor)) !== before) throw new Error('Funds moved before the approval');
 
-  // The approver's side. In the console the approver signs with a wallet; here the approver key signs.
+  // The approver's side.
   const { gatewayUrl } = await context.services();
   await context.tick();
   const list = (await (await fetch(`${gatewayUrl}/v1/approvals`)).json()) as {
@@ -663,35 +664,69 @@ export async function approval(context: Context): Promise<void> {
     `           ${money(BigInt(pending.amount))} to ${pending.payeeName ?? pending.payee} (${pending.payee})`,
   );
   log(`           ${pending.purpose}`);
-  const { message } = pending.approval;
-  const signature = await accounts.APPROVER.signTypedData({
-    domain: pending.approval.domain,
-    types: PAYMENT_APPROVAL_TYPES,
-    primaryType: 'PaymentApproval',
-    message: {
-      mandateId: BigInt(message.mandateId),
-      payee: message.payee,
-      amount: BigInt(message.amount),
-      evidenceHash: message.evidenceHash,
-      nonce: BigInt(message.nonce),
-      deadline: BigInt(message.deadline),
-    },
-  });
-  log(`  ok       approver signs the approval (EIP-712, approval number ${message.nonce})`);
 
-  const response = await fetch(`${gatewayUrl}/v1/approvals/${pending.intentId}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ signature, deadline: message.deadline }),
-  });
-  const outcome = (await response.json()) as IntentOutcome & { reasons?: string[] };
-  if (!response.ok || outcome.status !== 'paid' || outcome.transactionHash === null) {
-    throw new Error(`The approved payment was not made: ${JSON.stringify(outcome)}`);
+  let transactionHash: Hex;
+  if (context.options.console) {
+    // In the console the approver signs with a wallet. The runner only waits.
+    const file = await waitForApprover(context, pending.intentId);
+    if (file.result.status === 'declined') {
+      log(`  ok       approver ${file.result.approver} declined in the console (signed, EIP-712)`);
+      await checkEvidence(context, '4', pending.intentId, 'agent');
+      if ((await balanceOf(vendor)) !== before) {
+        throw new Error('Funds moved although the approver declined');
+      }
+      log('  ok       nothing was paid');
+      context.outcome.approval = { intentId: pending.intentId, by: 'console', result: 'declined' };
+      return;
+    }
+    if (file.result.status !== 'paid') {
+      throw new Error(
+        `The approved payment was not made: ${file.result.status === 'failed' ? file.result.error : file.result.status}`,
+      );
+    }
+    log(
+      `  ok       approver signs the approval in the console (EIP-712, approval number ${file.approval?.nonce ?? '?'})`,
+    );
+    transactionHash = file.result.transactionHash;
+  } else {
+    // Without the console the approver's key signs here, in the terminal.
+    const { message } = pending.approval;
+    const signature = await accounts.APPROVER.signTypedData({
+      domain: pending.approval.domain,
+      types: PAYMENT_APPROVAL_TYPES,
+      primaryType: 'PaymentApproval',
+      message: {
+        mandateId: BigInt(message.mandateId),
+        payee: message.payee,
+        amount: BigInt(message.amount),
+        evidenceHash: message.evidenceHash,
+        nonce: BigInt(message.nonce),
+        deadline: BigInt(message.deadline),
+      },
+    });
+    log(`  ok       approver signs the approval (EIP-712, approval number ${message.nonce})`);
+
+    const response = await fetch(`${gatewayUrl}/v1/approvals/${pending.intentId}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ signature, deadline: message.deadline }),
+    });
+    const answer = (await response.json()) as IntentOutcome & { reasons?: string[] };
+    if (!response.ok || answer.status !== 'paid' || answer.transactionHash === null) {
+      throw new Error(`The approved payment was not made: ${JSON.stringify(answer)}`);
+    }
+    transactionHash = answer.transactionHash;
   }
+  context.outcome.approval = {
+    intentId: pending.intentId,
+    by: context.options.console ? 'console' : 'terminal',
+    result: 'paid',
+  };
+
   await logTransaction(
     '4',
     `gateway pays ${money(BigInt(pending.amount))} to ${NAMES.vendorB} with the approver's signature (payWithApproval)`,
-    outcome.transactionHash,
+    transactionHash,
     'paid-with-approval',
   );
   await checkEvidence(context, '4', pending.intentId, 'agent');
@@ -700,6 +735,31 @@ export async function approval(context: Context): Promise<void> {
     throw new Error('The vendor did not receive exactly 6');
   }
   log(`  ok       ${NAMES.vendorB} received ${money(units('6'))}`);
+}
+
+/** How long the runner waits for a person at the console. */
+const APPROVER_WAIT_MINUTES = 30;
+
+/** Waits until the approver has signed or declined in the console, and the payment has settled. */
+async function waitForApprover(context: Context, intentId: Hex): Promise<EvidenceFile> {
+  const { runtime, log, consoleUrl } = context;
+  log(`  waiting  for the approver in the console: ${consoleUrl}/#/approvals`);
+  log('           connect the approver\'s wallet there, then choose "Sign approval" or "Decline"');
+  const giveUpAt = Date.now() + APPROVER_WAIT_MINUTES * 60_000;
+  for (;;) {
+    const file = await runtime.gateway.evidenceFor(intentId);
+    if (file === null) throw new Error(`The gateway has no evidence file for intent ${intentId}`);
+    const { status } = file.result;
+    if (status === 'paid' || status === 'declined' || status === 'failed') return file;
+    if (Date.now() > giveUpAt) {
+      throw new Error(
+        `Nobody signed or declined in the console within ${APPROVER_WAIT_MINUTES} minutes`,
+      );
+    }
+    // Keeps a local fork's clock moving, so the signing window the console shows stays open.
+    await context.tick();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
 }
 
 // --- Step 5 ------------------------------------------------------------------------------------------

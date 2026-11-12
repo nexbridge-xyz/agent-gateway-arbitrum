@@ -28,6 +28,9 @@ const USAGE = `Runs the Agent Gateway demo on Arbitrum Sepolia and prints an Arb
   pnpm demo --fresh               revoke the agent's current mandates first and create new ones
   pnpm demo --valid-days 90       how long new mandates are valid (default 30)
   pnpm demo --reissue             after step 7, issue new mandates, so the agent has active ones
+  pnpm demo --console             run next to the console (pnpm console): the gateway listens where the
+                                  console expects it, step 4 waits for the approver to sign there, and
+                                  the gateway keeps serving until Ctrl+C
   pnpm demo --steps recycle       send the payees' test USDC back to the principal
 
 Steps:
@@ -63,6 +66,7 @@ const { values } = parseArgs({
     fresh: { type: 'boolean', default: false },
     'valid-days': { type: 'string', default: '30' },
     reissue: { type: 'boolean', default: false },
+    console: { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
 });
@@ -96,7 +100,11 @@ const reasonOf = (error: unknown) =>
 let context: Context | null = null;
 let failed = false;
 try {
-  context = await createContext(values['env-file'], { fresh: values.fresh, validDays });
+  context = await createContext(values['env-file'], {
+    fresh: values.fresh,
+    validDays,
+    console: values.console,
+  });
   const { accounts, info, log, transactions, intents, drills, runtime, readState } = context;
   const startedAt = new Date().toISOString();
 
@@ -110,6 +118,11 @@ try {
   log(`  spend      ${accounts.SPEND_WALLET.address}  (pays per-call API charges)`);
   log(`  merchant   ${accounts.MERCHANT.address}  (${context.merchantUrl})`);
   log('  All company and vendor names are fictional. Testnet only.');
+  if (values.console) {
+    const { gatewayUrl } = await context.services();
+    log(`  gateway    ${gatewayUrl}  (for the console)`);
+    log(`  console    ${context.consoleUrl}  (start it with: pnpm console)`);
+  }
 
   // The mandates the demo runs under: the ones step 1 leaves behind.
   const mandatesOf = async () => {
@@ -173,6 +186,8 @@ try {
         intents,
         drills,
         plantedNote: context.outcome.plantedNote,
+        /** How step 4 was approved: in the terminal with the approver's key, or in the console. */
+        approval: context.outcome.approval,
       },
       null,
       2,
@@ -183,6 +198,14 @@ try {
   if (stoppedBecause !== null) {
     console.error('');
     console.error(`Demo stopped: ${stoppedBecause}`);
+  }
+  if (values.console) {
+    log();
+    log(`The gateway keeps serving the console at ${context.consoleUrl}. Press Ctrl+C to stop.`);
+    await new Promise<void>((resolve) => {
+      process.once('SIGINT', resolve);
+      process.once('SIGTERM', resolve);
+    });
   }
 } catch (error) {
   failed = true;

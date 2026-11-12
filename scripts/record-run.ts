@@ -9,6 +9,7 @@ import { formatUnits } from 'viem';
 import { repositoryRoot } from '@agent-gateway/gateway';
 
 import type {
+  ApprovalOutcome,
   LoggedDrill,
   LoggedIntent,
   LoggedMandate,
@@ -49,6 +50,8 @@ type RunLog = {
   intents: LoggedIntent[];
   drills: LoggedDrill[];
   plantedNote: PlantedNoteOutcome | null;
+  /** Absent in run logs written before the console existed: the approver's key signed in the terminal. */
+  approval?: ApprovalOutcome | null;
 };
 
 const { values } = parseArgs({
@@ -89,6 +92,11 @@ if (run.chainId !== 421_614) {
 if (!run.completed) {
   throw new Error(
     `The run in ${from} stopped early (${run.stoppedBecause ?? 'no reason recorded'}). Only a complete run is recorded.`,
+  );
+}
+if (run.approval?.result === 'declined') {
+  throw new Error(
+    `In the run in ${from} the approver declined the payment of step 4. Record a run in which the approval was signed.`,
   );
 }
 for (const intent of run.intents) {
@@ -381,7 +389,11 @@ function demoTable(): string | null {
     ],
     [
       '4',
-      'The agent asks to pay a 6 USDC invoice, above the per-payment cap. The gateway decides `needs_approval`. The approver signs (EIP-712), and the vault checks that signature before paying.',
+      `The agent asks to pay a 6 USDC invoice, above the per-payment cap. The gateway decides \`needs_approval\`. ${
+        run.approval?.by === 'console'
+          ? 'The approver signs in the console with a wallet (EIP-712)'
+          : "The approver's key signs in the terminal (EIP-712)"
+      }, and the vault checks that signature before paying.`,
       links([link('paid with approval', tagged('4', 'paid-with-approval')[0])]),
     ],
     [

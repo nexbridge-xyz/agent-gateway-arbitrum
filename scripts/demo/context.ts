@@ -22,6 +22,7 @@ import { arbitrumSepolia } from 'viem/chains';
 import { type Agent, type AgentTools, createAgent, createAgentTools } from '@agent-gateway/agent';
 import {
   type Runtime,
+  appOptions,
   configFromEnv,
   createApp,
   createRuntime,
@@ -72,6 +73,11 @@ export type RunOptions = {
   fresh: boolean;
   /** How long a new mandate is valid. */
   validDays: number;
+  /**
+   * Run next to the console: the gateway listens where the console expects it (GATEWAY_PORT), step 4
+   * waits for the approver to sign there, and the gateway keeps serving after the last step.
+   */
+  console: boolean;
 };
 
 /** What a transaction was, for whoever turns the run log into a table. */
@@ -143,6 +149,13 @@ export type PlantedNoteOutcome = {
   decision: string;
 };
 
+/** How the payment of step 4 was approved: by the approver's key in the terminal, or in the console. */
+export type ApprovalOutcome = {
+  intentId: Hex;
+  by: 'terminal' | 'console';
+  result: 'paid' | 'declined';
+};
+
 /** What the setup step created, kept between runs so later steps can find it. */
 export type DemoState = {
   chainId: number;
@@ -158,20 +171,23 @@ export type DemoState = {
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
 
-function listen(server: Server, what: string, port: number): Promise<void> {
+function listen(server: Server, what: string, port: number, otherwise: string): Promise<void> {
   return new Promise((resolve, reject) => {
     server.once('listening', resolve);
     server.once('error', (error: NodeJS.ErrnoException) => {
       reject(
         error.code === 'EADDRINUSE'
           ? new Error(
-              `Port ${port} is in use, so ${what} cannot start. Stop what is using it, or set MERCHANT_PORT and run step 1 again.`,
+              `Port ${port} is in use, so ${what} cannot start. Stop what is using it, or ${otherwise}.`,
             )
           : error,
       );
     });
   });
 }
+
+/** Where the console's development server listens (apps/console/vite.config.ts). */
+const CONSOLE_URL = 'http://127.0.0.1:5173';
 
 export async function createContext(envFile: string, options: RunOptions) {
   if (!existsSync(envFile)) {
@@ -208,7 +224,10 @@ export async function createContext(envFile: string, options: RunOptions) {
   const intents: LoggedIntent[] = [];
   const drills: LoggedDrill[] = [];
   const mandates: LoggedMandate[] = [];
-  const outcome: { plantedNote: PlantedNoteOutcome | null } = { plantedNote: null };
+  const outcome: { plantedNote: PlantedNoteOutcome | null; approval: ApprovalOutcome | null } = {
+    plantedNote: null,
+    approval: null,
+  };
   const statePath = join(config.dataDir, 'demo-state.json');
 
   const log = (line = '') => {
@@ -334,14 +353,17 @@ export async function createContext(envFile: string, options: RunOptions) {
   /** Starts the gateway and the demo merchant on localhost, once. */
   const services = () => {
     running ??= (async () => {
-      const gatewayServer = createApp({
-        gateway: runtime.gateway,
-        chain: runtime.chain,
-        ledger: runtime.ledger,
-        explorerTx,
-      }).listen(0, '127.0.0.1');
+      // Next to the console the gateway listens where the console looks for it. Otherwise any free
+      // port will do: only the agent talks to it.
+      const gatewayPort = options.console ? config.port : 0;
+      const gatewayServer = createApp(appOptions(runtime)).listen(gatewayPort, '127.0.0.1');
       servers.push(gatewayServer);
-      await listen(gatewayServer, 'the gateway', 0);
+      await listen(
+        gatewayServer,
+        'the gateway',
+        gatewayPort,
+        'set GATEWAY_PORT for this run and for the console',
+      );
 
       // The address in the planted note belongs to nobody: its key is thrown away here.
       const noteAddress = privateKeyToAccount(generatePrivateKey()).address;
@@ -352,7 +374,12 @@ export async function createContext(envFile: string, options: RunOptions) {
         plantedNote: { symbol: PLANTED_NOTE_SYMBOL, text: plantedNoteText(noteAddress) },
       }).listen(merchantPort, '127.0.0.1');
       servers.push(merchantServer);
-      await listen(merchantServer, 'the demo merchant', merchantPort);
+      await listen(
+        merchantServer,
+        'the demo merchant',
+        merchantPort,
+        'set MERCHANT_PORT and run step 1 again',
+      );
 
       return {
         gatewayUrl: `http://127.0.0.1:${(gatewayServer.address() as AddressInfo).port}`,
@@ -413,6 +440,7 @@ export async function createContext(envFile: string, options: RunOptions) {
     info,
     wallet,
     merchantUrl,
+    consoleUrl: CONSOLE_URL,
     confirm,
     logTransaction,
     log,
