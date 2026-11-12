@@ -1,0 +1,119 @@
+1
+00:00:00,200 --> 00:00:02,559
+AI agents are starting to pay.
+
+2
+00:00:02,609 --> 00:00:08,742
+Today you either give an agent a card with
+no limits, or approve every click.
+
+3
+00:00:08,792 --> 00:00:10,750
+Neither works for a bank.
+
+4
+00:00:11,200 --> 00:00:18,463
+Agent Gateway gives each agent a mandate:
+who it can pay, how much, and until when.
+
+5
+00:00:18,513 --> 00:00:19,785
+Never the keys.
+
+6
+00:00:19,835 --> 00:00:21,547
+It runs on Arbitrum.
+
+7
+00:00:21,597 --> 00:00:23,750
+This is the testnet demo.
+
+8
+00:00:24,200 --> 00:00:27,488
+A company sets the mandate.
+
+9
+00:00:27,538 --> 00:00:33,423
+The limits live in a vault contract on
+Arbitrum.
+
+10
+00:00:33,473 --> 00:00:37,750
+The agent gets an onchain identity.
+
+11
+00:00:38,200 --> 00:00:41,738
+Inside the mandate, payments just run:
+
+12
+00:00:41,788 --> 00:00:47,214
+ten cents for market data, an invoice from
+a known vendor.
+
+13
+00:00:47,264 --> 00:00:51,085
+Every decision leaves an evidence record,
+
+14
+00:00:51,135 --> 00:00:56,750
+and every payment out of the vault carries
+its hash onchain.
+
+15
+00:00:57,200 --> 00:01:01,504
+A bigger invoice goes to a person.
+
+16
+00:01:01,554 --> 00:01:06,755
+One signature in a wallet, and it's paid.
+
+17
+00:01:06,805 --> 00:01:11,750
+The vault checks that signature itself.
+
+18
+00:01:12,200 --> 00:01:18,282
+A note planted in the data asks for four
+USDC to an unknown address.
+
+19
+00:01:18,332 --> 00:01:20,175
+The agent ignored it.
+
+20
+00:01:20,225 --> 00:01:25,676
+We sent that request anyway, as if the
+agent had been fooled.
+
+21
+00:01:25,726 --> 00:01:27,750
+The gateway refused it.
+
+22
+00:01:28,200 --> 00:01:32,035
+And if someone hacks our gateway?
+
+23
+00:01:32,085 --> 00:01:37,687
+We tried three times with the gateway's
+own key.
+
+24
+00:01:37,737 --> 00:01:42,750
+The vault on Arbitrum said no, three
+times.
+
+25
+00:01:43,200 --> 00:01:46,110
+Agents get a mandate, never the keys.
+
+26
+00:01:46,160 --> 00:01:50,590
+Built in Tokyo for banks, securities firms
+and fintechs.
+
+27
+00:01:50,640 --> 00:01:54,750
+A mainnet pilot comes next, after a
+security review.
+

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Agent Gateway: title card</title>
+    <link rel="stylesheet" href="cards.css" />
+    <style>
+      .card {
+        grid-template-rows: 96px 1fr 132px 96px;
+      }
+      .top,
+      .bottom {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+      .top > *,
+      .bottom > * {
+        display: flex;
+        align-items: center;
+      }
+      .middle {
+        display: flex;
+        align-items: center;
+        padding: 0 40px;
+      }
+      .rail-row {
+        padding: 26px 40px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card sheet">
+      <div class="sheet top">
+        <div class="cell wordmark">Agent Gateway</div>
+        <div class="cell label">NexBridge</div>
+        <div class="cell label">Testnet demo on Arbitrum Sepolia</div>
+      </div>
+
+      <div class="middle">
+        <h1 class="line">Agents get a mandate,<br /><em>never the keys.</em></h1>
+      </div>
+
+      <!-- A mandate drawn to scale: what was paid today, the daily cap, the hard ceiling. -->
+      <div class="rail-row">
+        <div class="rail" id="rail">
+          <div class="track"></div>
+          <div class="hatch" style="left: 40%"></div>
+          <div class="fill" style="width: 14%"></div>
+          <div class="post" style="left: 0"></div>
+          <div class="post signal" style="left: 40%"></div>
+          <div class="post" style="right: 0"></div>
+          <span class="mark" style="left: 0">0</span>
+          <span class="mark" style="left: 40%; transform: translateX(-50%)">per day</span>
+          <span class="mark" style="right: 0">hard ceiling</span>
+        </div>
+      </div>
+
+      <div class="sheet bottom">
+        <div class="cell label">Whom it may pay</div>
+        <div class="cell label">How much, per payment and day</div>
+        <div class="cell label">Until when</div>
+      </div>
+    </main>
+    <script>
+      // Nineteen ticks between the posts, every fifth one longer, as on the console's rail.
+      const rail = document.getElementById('rail');
+      for (let tick = 1; tick < 20; tick += 1) {
+        const mark = document.createElement('div');
+        mark.className = tick % 5 === 0 ? 'tick long' : 'tick';
+        mark.style.left = `${tick * 5}%`;
+        rail.prepend(mark);
+      }
+    </script>
+  </body>
+</html>

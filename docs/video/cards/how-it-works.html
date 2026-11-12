@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Agent Gateway: how it works</title>
+    <link rel="stylesheet" href="cards.css" />
+    <style>
+      .card {
+        grid-template-rows: 96px 1fr 148px;
+      }
+      .top {
+        grid-template-columns: 1fr 2fr;
+      }
+      .top > * {
+        display: flex;
+        align-items: center;
+      }
+      .flow {
+        grid-template-columns: 300px 150px 1fr 150px 372px;
+      }
+      .verb {
+        margin: 10px 0 0;
+        font-size: 64px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+      .who {
+        display: flex;
+        flex-direction: column;
+        padding: 36px 40px;
+      }
+      .who p {
+        margin: 22px 0 0;
+        font-size: 24px;
+        line-height: 1.35;
+        color: var(--text-2);
+      }
+      .arrow {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 14px;
+        padding: 0 18px;
+      }
+      .arrow span {
+        font-family: var(--mono);
+        font-size: 15px;
+        line-height: 1.3;
+        color: var(--text-3);
+      }
+      /* An arrow drawn with two boxes: a hairline, and a corner turned 45 degrees for its head. */
+      .arrow .shaft {
+        position: relative;
+        height: 2px;
+        background: var(--ice);
+      }
+      .arrow .shaft::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: -5px;
+        width: 10px;
+        height: 10px;
+        border-top: 2px solid var(--ice);
+        border-right: 2px solid var(--ice);
+        transform: rotate(45deg);
+      }
+      .gateway {
+        grid-template-rows: auto repeat(4, 1fr);
+      }
+      .gateway .head {
+        padding: 36px 40px 30px;
+      }
+      .part {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        align-items: center;
+        padding: 0 40px;
+      }
+      .part .n {
+        font-family: var(--mono);
+        font-size: 18px;
+        color: var(--ice);
+      }
+      .part b {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .part i {
+        display: block;
+        margin-top: 4px;
+        font-style: normal;
+        font-size: 20px;
+        color: var(--text-2);
+      }
+      .chain {
+        grid-template-rows: 1fr 168px;
+      }
+      .vault .rail {
+        margin-top: 30px;
+        height: 60px;
+      }
+      .registry b {
+        display: block;
+        margin-top: 10px;
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .registry i {
+        display: block;
+        margin-top: 4px;
+        font-style: normal;
+        font-size: 19px;
+        color: var(--text-2);
+      }
+      .bottom {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      .bottom b {
+        display: block;
+        margin-top: 10px;
+        font-size: 23px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        line-height: 1.25;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card sheet">
+      <div class="sheet top">
+        <div class="cell wordmark">Agent Gateway</div>
+        <div class="cell label">The agent asks. The gateway decides. The vault enforces.</div>
+      </div>
+
+      <div class="sheet flow">
+        <section class="who">
+          <span class="label">AI agent</span>
+          <h2 class="verb">Asks.</h2>
+          <p>Signs payment requests. Holds no funds, and no key that can pay.</p>
+        </section>
+
+        <div class="arrow">
+          <span>signed request</span>
+          <div class="shaft"></div>
+        </div>
+
+        <section class="sheet gateway">
+          <div class="head">
+            <span class="label">Agent Gateway · offchain</span>
+            <h2 class="verb">Decides.</h2>
+          </div>
+          <div class="part">
+            <span class="n">01</span>
+            <div><b>Identity</b><i>Is this the agent's registered wallet?</i></div>
+          </div>
+          <div class="part">
+            <span class="n">02</span>
+            <div><b>Policy</b><i>Fixed rules in plain code. No model.</i></div>
+          </div>
+          <div class="part">
+            <span class="n">03</span>
+            <div><b>Approvals</b><i>Outside the mandate, a person signs.</i></div>
+          </div>
+          <div class="part">
+            <span class="n">04</span>
+            <div><b>Evidence</b><i>A record of every decision.</i></div>
+          </div>
+        </section>
+
+        <div class="arrow">
+          <span>pays, with the evidence hash</span>
+          <div class="shaft"></div>
+        </div>
+
+        <section class="sheet chain">
+          <div class="who vault">
+            <span class="label">Vault on Arbitrum</span>
+            <h2 class="verb">Enforces.</h2>
+            <p>MandateVault holds the USDC and checks every payment against the mandate.</p>
+            <div class="rail" id="rail">
+              <div class="track"></div>
+              <div class="hatch" style="left: 40%"></div>
+              <div class="fill" style="width: 22%"></div>
+              <div class="post" style="left: 0"></div>
+              <div class="post signal" style="left: 40%"></div>
+              <div class="post" style="right: 0"></div>
+            </div>
+          </div>
+          <div class="cell registry">
+            <span class="label">ERC-8004 · on Arbitrum</span>
+            <b>Identity Registry</b>
+            <i>Which wallet belongs to which agent.</i>
+          </div>
+        </section>
+      </div>
+
+      <div class="sheet bottom">
+        <div class="cell">
+          <span class="label">The company</span>
+          <b>Funds the vault, sets and revokes mandates</b>
+        </div>
+        <div class="cell">
+          <span class="label">The approver</span>
+          <b>Signs one exact payment with a wallet</b>
+        </div>
+        <div class="cell">
+          <span class="label">Vendors</span>
+          <b>Paid from the vault, inside the mandate</b>
+        </div>
+        <div class="cell">
+          <span class="label">APIs</span>
+          <b>Paid per call over MPP</b>
+        </div>
+      </div>
+    </main>
+    <script>
+      const rail = document.getElementById('rail');
+      for (let tick = 1; tick < 20; tick += 1) {
+        const mark = document.createElement('div');
+        mark.className = tick % 5 === 0 ? 'tick long' : 'tick';
+        mark.style.left = `${tick * 5}%`;
+        rail.prepend(mark);
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,157 @@
+/*
+ * The three cards of the video: title, how it works, end. Each is one page of 1440 by 900 pixels in the
+ * console's look: the NexBridge brand tokens ("Ink & Signal"), a ruled sheet, and the limit rail.
+ * The fonts are the ones the console bundles, so run `pnpm install` before rendering a card.
+ */
+@font-face {
+  font-family: 'Geist Variable';
+  font-weight: 100 900;
+  src: url('../../../apps/console/node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+@font-face {
+  font-family: 'Geist Mono Variable';
+  font-weight: 100 900;
+  src: url('../../../apps/console/node_modules/@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+
+:root {
+  --bg: #05070b;
+  --bg-2: #080b12;
+  --surface: #0c1019;
+  --text: #eef2f8;
+  --text-2: rgba(226, 232, 244, 0.72);
+  --text-3: rgba(226, 232, 244, 0.56);
+  --rule: #22262f;
+  --line-3: rgba(196, 212, 255, 0.3);
+  --ice: #c9dbff;
+  --signal: #ff5a2c;
+  --ok: #43e2a4;
+  --wait: #f5b544;
+  --sans: 'Geist Variable', system-ui, sans-serif;
+  --mono: 'Geist Mono Variable', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  width: 1440px;
+  height: 900px;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* A sheet is a grid whose gaps show the rule colour: hairlines from edge to edge, no cards. */
+.sheet {
+  display: grid;
+  gap: 1px;
+  background: var(--rule);
+}
+.sheet > * {
+  background: var(--bg);
+}
+.sheet > .sheet {
+  background: var(--rule);
+}
+.card {
+  width: 1440px;
+  height: 900px;
+}
+
+.label {
+  font-family: var(--mono);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.cell {
+  padding: 28px 40px;
+  min-width: 0;
+}
+.wordmark {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.line {
+  margin: 0;
+  font-size: 104px;
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+.line em {
+  font-style: normal;
+  color: var(--text-2);
+}
+
+/* The limit rail, as on the console's Mandates screen. */
+.rail {
+  position: relative;
+  height: 78px;
+}
+.rail .tick {
+  position: absolute;
+  top: 12px;
+  width: 1px;
+  height: 12px;
+  background: var(--line-3);
+}
+.rail .tick.long {
+  top: 0;
+  height: 24px;
+}
+.rail .track {
+  position: absolute;
+  inset: 32px 0 auto 0;
+  height: 1px;
+  background: var(--line-3);
+}
+.rail .hatch {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  height: 9px;
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--wait) 60%, transparent) 0 1.5px,
+    transparent 1.5px 8px
+  );
+}
+.rail .fill {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  height: 9px;
+  background: var(--ok);
+}
+.rail .post {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 50px;
+  background: var(--text);
+}
+.rail .post.signal {
+  background: var(--signal);
+}
+.rail .mark {
+  position: absolute;
+  top: 58px;
+  font-family: var(--mono);
+  font-size: 17px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
