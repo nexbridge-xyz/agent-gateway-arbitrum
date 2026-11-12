@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline/promises';
 import { parseArgs } from 'node:util';
 
 import { BaseError } from 'viem';
@@ -31,6 +32,7 @@ const USAGE = `Runs the Agent Gateway demo on Arbitrum Sepolia and prints an Arb
   pnpm demo --console             run next to the console (pnpm console): the gateway listens where the
                                   console expects it, step 4 waits for the approver to sign there, and
                                   the gateway keeps serving until Ctrl+C
+  pnpm demo --pause               wait for Enter before each step, to record or to look around
   pnpm demo --steps recycle       send the payees' test USDC back to the principal
 
 Steps:
@@ -67,6 +69,7 @@ const { values } = parseArgs({
     'valid-days': { type: 'string', default: '30' },
     reissue: { type: 'boolean', default: false },
     console: { type: 'boolean', default: false },
+    pause: { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
 });
@@ -87,6 +90,24 @@ const validDays = Number(values['valid-days']);
 if (!Number.isInteger(validDays) || validDays < 1 || validDays > 365) {
   console.error('--valid-days must be a whole number of days from 1 to 365');
   process.exit(2);
+}
+
+/**
+ * Waits for Enter. Without a terminal to press it in, such as in a pipe, it does not wait. Ctrl+C at
+ * the prompt stops the run as it does anywhere else.
+ */
+async function enter(what: string): Promise<void> {
+  if (!process.stdin.isTTY) return;
+  const prompt = createInterface({ input: process.stdin, output: process.stdout });
+  prompt.on('SIGINT', () => {
+    prompt.close();
+    process.kill(process.pid, 'SIGINT');
+  });
+  try {
+    await prompt.question(`\nPress Enter for ${what} `);
+  } finally {
+    prompt.close();
+  }
 }
 
 /** What stopped the run, in one line. A chain error from viem comes with pages of detail. */
@@ -134,6 +155,7 @@ try {
   let stoppedBecause: string | null = null;
   try {
     for (const name of names) {
+      if (values.pause) await enter(/^[0-9]/.test(name) ? `step ${name}` : `"${name}"`);
       log();
       await (STEPS[name] as (typeof STEPS)[string])(context);
       if (name === '1') demoMandates = await mandatesOf();
