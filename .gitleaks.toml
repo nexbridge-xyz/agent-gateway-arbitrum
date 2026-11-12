@@ -5,6 +5,6 @@ title = "agent-gateway-arbitrum"
 useDefault = true
 
 [[allowlists]]
-description = "Circle's public test USDC contract on Arbitrum Sepolia, stored under a field named `token`"
+description = "A `token` field that holds a 20-byte address is a token contract, such as USDC. Keys are 32 bytes."
 regexTarget = "match"
-regexes = ['''(?i)token['"]?\s*[:=]\s*['"]0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d['"]''']
+regexes = ['''(?i)token['"]?\s*[:=]\s*['"]0x[0-9a-f]{40}['"]''']

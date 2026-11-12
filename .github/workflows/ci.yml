@@ -58,7 +58,7 @@ jobs:
         run: forge test --match-path 'test/fork/*' -vv
 
   typescript:
-    name: Gateway and scripts (TypeScript)
+    name: Gateway, merchant, agent and scripts (TypeScript)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -85,11 +85,58 @@ jobs:
       - name: Typecheck
         run: |
           pnpm exec tsc --noEmit
-          pnpm --filter @agent-gateway/gateway run lint
+          pnpm --filter @agent-gateway/gateway --filter @agent-gateway/merchant --filter @agent-gateway/agent run lint
 
+      # No keys and no network. The Claude agent is tested against a stand-in for the API.
       - name: Test
-        run: pnpm --filter @agent-gateway/gateway run test
+        run: pnpm --filter @agent-gateway/gateway --filter @agent-gateway/merchant --filter @agent-gateway/agent run test
 
-      # No keys and no network: the recorded evidence must still agree with itself.
+      # No keys and no network: every recorded evidence file must still agree with itself.
       - name: Recorded evidence verifies
-        run: pnpm verify-evidence docs/sepolia-run/evidence/0x93d05350a8fbc1178eb1c66a907470018207dcc7a69d84c40aeb41689704b997.json --offline
+        run: |
+          for file in docs/sepolia-run/evidence/*.json; do
+            pnpm verify-evidence "$file" --offline
+          done
+
+      - name: Install Foundry (for the fork below)
+        uses: foundry-rs/foundry-toolchain@v1
+
+      # A real purchase over MPP between the gateway's spend wallet and the demo merchant, on a local
+      # fork. It needs a public RPC endpoint without an SLA, so a failure here does not fail the build.
+      - name: MPP purchase on an Arbitrum Sepolia fork
+        continue-on-error: true
+        run: |
+          anvil --fork-url https://sepolia-rollup.arbitrum.io/rpc --port 8546 --silent &
+          for attempt in $(seq 1 30); do
+            cast chain-id --rpc-url http://127.0.0.1:8546 >/dev/null 2>&1 && break
+            sleep 1
+          done
+          MPP_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway exec vitest run test/purchase.fork.test.ts
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      # From gitleaks_8.30.1_checksums.txt in the release.
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/gitleaks"
+          tar -xzf gitleaks.tar.gz -C "$RUNNER_TEMP/gitleaks" gitleaks
+          rm gitleaks.tar.gz
+
+      # Every commit on every branch that was fetched, with the rules in .gitleaks.toml.
+      - name: Scan the full history
+        run: '"$RUNNER_TEMP/gitleaks/gitleaks" git --config .gitleaks.toml --redact --no-banner .'
