@@ -154,6 +154,12 @@ but whoever holds it could rebuild it or cut it short. The vault's events are th
   wallet until whoever holds that wallet's key sends it back. The gateway holds it, not the principal. In
   the demo `pnpm demo --steps recycle` returns it.
 - USDC itself can be paused or an address blocked by its issuer. Nothing here changes that.
+- Evidence hashes are one namespace for the whole vault, not one per mandate. In the demo every mandate has
+  the same executor. In a vault with a second executor, that executor could use up the evidence hash of a
+  payment that is waiting for its approver (the hash is public), and the approval would have to be asked
+  for again.
+- The payment library `mppx` is pinned to a line with two open advisories. They concern a method this
+  project does not use; the README says which.
 
 ## Reporting a problem
 

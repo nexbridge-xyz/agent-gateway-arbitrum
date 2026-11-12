@@ -300,6 +300,13 @@ says how to run the same checks locally, and [`CHANGELOG.md`](CHANGELOG.md) list
 `mppx` 0.6.31, the newest release in that line, and `mppx` 0.6 in turn sets the viem version. These pins
 move forward once `@arbitrum/mpp` supports a current `mppx`.
 
+`pnpm audit --prod` reports two advisories for `mppx` below 0.8.2, both of moderate severity:
+[GHSA-vc9j-9wph-qghj](https://github.com/advisories/GHSA-vc9j-9wph-qghj) and
+[GHSA-727h-3vm5-qwq6](https://github.com/advisories/GHSA-727h-3vm5-qwq6). Both are about a server that
+co-signs transactions as a fee payer in `mppx`'s Tempo method. Nothing here registers that method: the
+merchant and the gateway use only the `charge` method of `@arbitrum/mpp`, where the merchant builds the
+settlement transaction itself. The advisories stay open until the pin can move.
+
 ## Team
 
 NexBridge Inc., a Tokyo startup building payment infrastructure for licensed financial institutions.
