@@ -10,6 +10,7 @@ export * from './runtime';
 export * from './server';
 export * from './store/evidenceStore';
 export * from './store/ledger';
+export * from './store/mandateTerms';
 export * from './store/payees';
 export * from './verify';
 export * from './chain/purchases';

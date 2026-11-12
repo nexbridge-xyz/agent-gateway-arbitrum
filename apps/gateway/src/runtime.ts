@@ -20,9 +20,12 @@ import { createPaymentExecutor } from './chain/executor';
 import { createPurchaseClient } from './chain/purchases';
 import { createChainReader } from './chain/reader';
 import { Gateway } from './gateway';
+import type { AppOptions } from './server';
 import { EvidenceStore } from './store/evidenceStore';
 import { Ledger } from './store/ledger';
+import { MandateTermsStore } from './store/mandateTerms';
 import { PayeeDirectory } from './store/payees';
+import { createVerifierChain, verifyEvidence } from './verify';
 
 /** Settings come from the environment. Secrets are read here and nowhere else, and are never logged. */
 
@@ -90,7 +93,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): GatewayConf
   };
 }
 
-export const explorerTx = (hash: Hex) => `https://sepolia.arbiscan.io/tx/${hash}`;
+export const EXPLORER_URL = 'https://sepolia.arbiscan.io';
+export const explorerTx = (hash: Hex) => `${EXPLORER_URL}/tx/${hash}`;
 
 export type Runtime = Awaited<ReturnType<typeof createRuntime>>;
 
@@ -116,6 +120,7 @@ export async function createRuntime(config: GatewayConfig) {
   const ledger = await Ledger.open(join(config.dataDir, 'ledger.jsonl'));
   const evidence = new EvidenceStore(join(config.dataDir, 'evidence'));
   const payeesPath = join(config.dataDir, 'payees.json');
+  const mandateTerms = new MandateTermsStore(join(config.dataDir, 'mandates'));
 
   const info = await chain.info();
   const purchases =
@@ -143,5 +148,21 @@ export async function createRuntime(config: GatewayConfig) {
     evidence,
     gateway,
     payeesPath,
+    mandateTerms,
+  };
+}
+
+/** Everything the HTTP API needs from a runtime. */
+export function appOptions(runtime: Runtime): AppOptions {
+  const { gateway, chain, ledger, publicClient, mandateTerms } = runtime;
+  return {
+    gateway,
+    chain,
+    ledger,
+    explorerTx,
+    explorerUrl: EXPLORER_URL,
+    mandateTerms,
+    verify: (file) =>
+      verifyEvidence(file, { chain: createVerifierChain(publicClient), ledger: ledger.entries }),
   };
 }

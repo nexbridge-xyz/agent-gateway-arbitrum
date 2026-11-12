@@ -5,3 +5,4 @@ export * from './evidence';
 export * from './evidenceSchema';
 export * from './intent';
 export * from './json';
+export * from './mandateTerms';

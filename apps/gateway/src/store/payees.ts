@@ -42,15 +42,30 @@ export class PayeeDirectory {
   private readonly vendors = new Map<Address, { name: string; origin: string | null }>();
   private readonly denied = new Map<Address, { reason: string }>();
 
+  /** The lists as the principal wrote them. */
+  readonly file: PayeesFile;
+
   constructor(file: PayeesFile) {
+    this.file = file;
     for (const vendor of file.vendors) {
       this.vendors.set(vendor.address, { name: vendor.name, origin: vendor.origin ?? null });
     }
     for (const entry of file.denylist) this.denied.set(entry.address, { reason: entry.reason });
   }
 
+  /**
+   * Reads the lists from a file. A missing file is an empty registry: then no payee is known, and
+   * every request is refused.
+   */
   static async load(path: string): Promise<PayeeDirectory> {
-    return new PayeeDirectory(payeesSchema.parse(JSON.parse(await readFile(path, 'utf8'))));
+    let text: string;
+    try {
+      text = await readFile(path, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      return new PayeeDirectory({ vendors: [], denylist: [] });
+    }
+    return new PayeeDirectory(payeesSchema.parse(JSON.parse(text)));
   }
 
   vendor(payee: Address): { name: string; origin: string | null } | null {

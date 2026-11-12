@@ -31,7 +31,7 @@ import {
 import type { Json } from './protocol/json';
 import type { EvidenceStore } from './store/evidenceStore';
 import type { Ledger } from './store/ledger';
-import type { PayeeDirectory } from './store/payees';
+import type { PayeeDirectory, PayeesFile } from './store/payees';
 
 /** What the gateway tells the caller about one intent. */
 export type IntentOutcome = {
@@ -168,6 +168,24 @@ export class Gateway {
 
   async evidenceFor(id: Hex): Promise<EvidenceFile | null> {
     return this.options.evidence.get(id);
+  }
+
+  /** The newest decisions first, each with its whole evidence file. */
+  async recent(limit: number): Promise<EvidenceFile[]> {
+    const { evidence } = this.options;
+    const files: EvidenceFile[] = [];
+    for (const id of await evidence.list()) {
+      const file = await evidence.get(id);
+      if (file !== null) files.push(file);
+    }
+    return files
+      .sort((a, b) => b.record.decidedAt.localeCompare(a.record.decidedAt))
+      .slice(0, limit);
+  }
+
+  /** The principal's vendor registry and denylist, as written. */
+  async payees(): Promise<PayeesFile> {
+    return (await this.options.loadPayees()).file;
   }
 
   /** Payments waiting for an approver, oldest first, each with the message to sign. */
