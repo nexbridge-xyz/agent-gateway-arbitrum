@@ -150,6 +150,13 @@ function MandateBlock({
   const [problem, setProblem] = useState<string | null>(null);
   const [showTerms, setShowTerms] = useState(false);
   const terms = useTerms(showTerms ? mandate.termsHash : null);
+  // The vault holds the hash so that the text can be checked. A text that does not hash to it is not
+  // this mandate's text, whoever served it, and is not shown as if it were. (The made-up sets have
+  // made-up hashes; there is nothing to check them against.)
+  const mode = useDataMode();
+  const termsAreGenuine =
+    mode !== 'live' ||
+    (typeof terms.data === 'string' && mandateTermsHash(terms.data) === mandate.termsHash);
 
   // Revoking takes two presses, and the buttons change in between. The focus goes with them: to "Keep
   // it", the safe answer, when the question appears; back to "Revoke" when it is kept; and to the
@@ -289,6 +296,11 @@ function MandateBlock({
               ) : terms.data === null || terms.data === undefined ? (
                 <p className="text-text-2 text-sm">
                   The gateway holds no text that hashes to this value.
+                </p>
+              ) : !termsAreGenuine ? (
+                <p className="text-stop text-sm" role="alert">
+                  The gateway returned a text that does not hash to this value. It is not the text
+                  the principal approved, and it is not shown.
                 </p>
               ) : (
                 <pre className="num text-text-2 m-0 max-h-80 overflow-auto text-xs leading-relaxed break-words whitespace-pre-wrap">

@@ -94,7 +94,9 @@ confirm the signature; nothing is sent in that case.
   limits and today's spending on the Mandates screen come from the vault, not from the gateway.
 
 A new mandate's text is built in the browser, stored at the gateway under its own hash, and that hash goes
-into the vault with the limits. Anyone holding the text can check it against the chain.
+into the vault with the limits. Anyone holding the text can check it against the chain. The console does:
+before it shows a mandate's text it hashes what the gateway returned, and a text that does not hash to the
+value in the vault is not shown.
 
 ## Data shown
 
