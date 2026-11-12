@@ -2,12 +2,30 @@
   "name": "@agent-gateway/merchant",
   "version": "0.0.0",
   "private": true,
-  "description": "Demo market-data API that charges per call in USDC on Arbitrum Sepolia.",
+  "description": "Demo market-data API that charges per call in USDC on Arbitrum Sepolia, over the Machine Payments Protocol.",
   "license": "MIT",
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
+  },
   "dependencies": {
     "@arbitrum/mpp": "catalog:",
+    "express": "catalog:",
     "mppx": "catalog:",
-    "viem": "catalog:"
+    "viem": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/express": "catalog:",
+    "@types/node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

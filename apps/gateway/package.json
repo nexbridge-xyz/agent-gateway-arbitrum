@@ -25,6 +25,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@agent-gateway/merchant": "workspace:*",
     "@types/express": "catalog:",
     "@types/node": "catalog:",
     "tsx": "catalog:",
