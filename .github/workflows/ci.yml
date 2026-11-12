@@ -58,7 +58,7 @@ jobs:
         run: forge test --match-path 'test/fork/*' -vv
 
   typescript:
-    name: Gateway, merchant, agent and scripts (TypeScript)
+    name: Gateway, merchant, agent, console and scripts (TypeScript)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -85,11 +85,15 @@ jobs:
       - name: Typecheck
         run: |
           pnpm exec tsc --noEmit
-          pnpm --filter @agent-gateway/gateway --filter @agent-gateway/merchant --filter @agent-gateway/agent run lint
+          pnpm --filter @agent-gateway/gateway --filter @agent-gateway/merchant --filter @agent-gateway/agent --filter @agent-gateway/console run lint
 
-      # No keys and no network. The Claude agent is tested against a stand-in for the API.
+      # No keys and no network. The Claude agent is tested against a stand-in for the API, and the
+      # console against the gateway's own code with a stand-in for the wallet.
       - name: Test
-        run: pnpm --filter @agent-gateway/gateway --filter @agent-gateway/merchant --filter @agent-gateway/agent run test
+        run: pnpm --filter @agent-gateway/gateway --filter @agent-gateway/merchant --filter @agent-gateway/agent --filter @agent-gateway/console run test
+
+      - name: Build the console
+        run: pnpm --filter @agent-gateway/console run build
 
       # No keys and no network: every recorded evidence file must still agree with itself.
       - name: Recorded evidence verifies
