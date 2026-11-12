@@ -29,9 +29,10 @@ const USAGE = `Runs the Agent Gateway demo on Arbitrum Sepolia and prints an Arb
   pnpm demo --fresh               revoke the agent's current mandates first and create new ones
   pnpm demo --valid-days 90       how long new mandates are valid (default 30)
   pnpm demo --reissue             after step 7, issue new mandates, so the agent has active ones
-  pnpm demo --console             run next to the console (pnpm console): the gateway listens where the
-                                  console expects it, step 4 waits for the approver to sign there, and
-                                  the gateway keeps serving until Ctrl+C
+  pnpm demo --console             run next to the console (pnpm console, or pnpm console:built for the
+                                  built one): the gateway listens where the console expects it, step 4
+                                  waits for the approver to sign there, and the gateway keeps serving
+                                  until Ctrl+C
   pnpm demo --pause               wait for Enter before each step, to record or to look around
   pnpm demo --steps recycle       send the payees' test USDC back to the principal
 
@@ -142,7 +143,7 @@ try {
   if (values.console) {
     const { gatewayUrl } = await context.services();
     log(`  gateway    ${gatewayUrl}  (for the console)`);
-    log(`  console    ${context.consoleUrl}  (start it with: pnpm console)`);
+    log(`  console    ${context.consoleUrl}  (start it with: pnpm console, or pnpm console:built)`);
   }
 
   // The mandates the demo runs under: the ones step 1 leaves behind.

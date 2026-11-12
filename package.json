@@ -28,6 +28,7 @@
     "demo:record": "tsx scripts/record-run.ts",
     "gateway": "pnpm --filter @agent-gateway/gateway run start",
     "console": "pnpm --filter @agent-gateway/console run dev",
+    "console:built": "pnpm --filter @agent-gateway/console run build && pnpm --filter @agent-gateway/console run preview",
     "merchant": "pnpm --filter @agent-gateway/merchant run start",
     "verify-evidence": "tsx apps/gateway/src/cli/verify-evidence.ts",
     "contracts:test": "pnpm --filter @agent-gateway/contracts run test",
