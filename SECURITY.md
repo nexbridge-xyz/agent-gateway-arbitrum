@@ -14,9 +14,10 @@ This page says what Agent Gateway is built to withstand, how, and what it does n
 | Spend wallet | The gateway             | Pay per-call API charges from what the vault sends it.                              |
 | Agent        | The AI agent            | Sign payment requests. It holds no funds and cannot move any.                       |
 
-The vault has no owner besides the principal, no upgrade path and no admin function. The principal and the
-executor of a mandate cannot be the approver's address: the vault refuses a mandate where executor and
-approver are the same.
+The vault has no owner besides the principal, no upgrade path and no admin function. The executor of a
+mandate cannot also be its approver: the vault refuses a mandate where the two are the same address. That is
+the only pair it refuses. It does not stop a principal from naming its own address as approver or as
+executor; a principal who does so holds two roles with one key.
 
 ## The demo's two mandates
 
