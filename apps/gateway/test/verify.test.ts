@@ -38,6 +38,8 @@ function chainOf(file: EvidenceFile, changes: Partial<VerifierChain> = {}): Veri
   const info = h.world.info();
   return {
     chainId: () => Promise.resolve(421_614),
+    // The fake chain does not keep its blocks. Each is taken to have the time its record names.
+    blockTimestamp: () => Promise.resolve(file.record.chain.blockTimestamp),
     vaultSettings: async () => {
       const { principal, token, identityRegistry } = await info;
       return { principal, token, identityRegistry };

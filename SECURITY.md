@@ -50,8 +50,15 @@ withdraw. Each of these is a revert in the vault:
 
 What the thief can still do: make the vault pay a listed vendor up to that mandate's caps without a real
 invoice (the money reaches the vendor, not the thief), stop the service, and write false evidence files.
-False evidence does not survive a check: the thief cannot forge the agent's or the approver's signature, and
-`pnpm verify-evidence` compares every file with the chain.
+A false file does not survive a check where a signature or the chain contradicts it: the thief cannot forge
+the agent's or the approver's signature, and `pnpm verify-evidence` compares every file with the chain.
+
+One thing a check cannot rule out. The thief holds every request the agent ever signed, and the vault takes
+each evidence hash once, not each request once. So a genuine request can be put behind a second payment
+that the agent did not ask for. The verifier accepts a record only if the request was still current at the
+block the record names, and if a payment inside the mandate was mined within ten minutes of that block. An
+old request cannot be used again; one that is minutes old can. The money still reaches only a listed vendor,
+within the caps.
 
 The numbers above are the demo's. A principal who sets wider caps accepts a wider loss.
 

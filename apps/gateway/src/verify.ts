@@ -8,6 +8,7 @@ import {
 } from 'viem';
 
 import { identityRegistryAbi, mandateVaultAbi } from './chain/abis';
+import { MAX_REQUEST_LIFETIME_SECONDS } from './policy/evaluate';
 import { recoverApprovalSigner, recoverDeclineSigner } from './protocol/approval';
 import {
   type EvidenceFile,
@@ -30,6 +31,8 @@ export type VerifyCheck = { verdict: Verdict; label: string; detail: string };
 /** What the verifier needs from the chain. */
 export type VerifierChain = {
   chainId(): Promise<number>;
+  /** The time of a block, Unix seconds, or null if the endpoint does not have that block. */
+  blockTimestamp(blockNumber: bigint): Promise<number | null>;
   vaultSettings(
     vault: Address,
   ): Promise<{ principal: Address; token: Address; identityRegistry: Address }>;
@@ -87,6 +90,13 @@ export type VerifyReport = {
 
 const same = (a: Address | null, b: Address | null) =>
   a !== null && b !== null && isAddressEqual(a, b);
+
+/**
+ * The longest a payment inside the mandate may be mined after the block its decision was based on.
+ * The gateway sends such a payment at once and waits two minutes for it; this leaves room for a slow
+ * endpoint and no room for a record written days later.
+ */
+export const MAX_PAYMENT_DELAY_SECONDS = 10 * 60;
 
 export async function verifyEvidence(
   input: unknown,
@@ -180,6 +190,21 @@ export async function verifyEvidence(
       expected.includes(result.status),
       'Result fits the decision',
       `${record.why.decision} then ${result.status}`,
+    );
+  }
+
+  // A signed request is good for a short time, and the record says at which block it was decided. A
+  // record that puts an old request behind a new decision was not decided by this gateway's rules,
+  // whoever signed the request. Every request the agent ever signed is in the evidence store, so
+  // without this check each of them could be shown again as the reason for another payment.
+  if (record.why.decision !== 'refused') {
+    const left = record.request.intent.expiresAt - record.chain.blockTimestamp;
+    add(
+      left >= 0 && left <= MAX_REQUEST_LIFETIME_SECONDS,
+      'Request was current at the block the decision was based on',
+      left < 0
+        ? `it had expired ${-left} seconds before that block`
+        : `it ran for ${left} more seconds; at most ${MAX_REQUEST_LIFETIME_SECONDS} are accepted`,
     );
   }
 
@@ -314,6 +339,37 @@ export async function verifyEvidence(
           'Vault event names the approver and the approval nonce',
         );
       }
+
+      // The block the record names must be a real one with that time: otherwise the check above that
+      // the request was current rests on a number the record made up.
+      const decisionBlock = BigInt(record.chain.blockNumber);
+      const decisionTime = await chain.blockTimestamp(decisionBlock);
+      add(
+        decisionTime === record.chain.blockTimestamp,
+        'Decision block is on the chain with the recorded time',
+        decisionTime === null
+          ? `the endpoint does not have block ${decisionBlock}`
+          : `block ${decisionBlock} at ${decisionTime}`,
+      );
+      // A payment inside the mandate is sent the moment it is decided. One that was mined long after
+      // its decision block was written around an old request. (A payment with an approval waits for a
+      // person; there the approver's signature covers this very record, and the vault checks it.)
+      if (result.event === 'MandatePayment') {
+        const paidTime =
+          payment.blockNumber === null ? null : await chain.blockTimestamp(payment.blockNumber);
+        const delay = paidTime === null ? null : paidTime - record.chain.blockTimestamp;
+        add(
+          payment.blockNumber !== null &&
+            payment.blockNumber >= decisionBlock &&
+            delay !== null &&
+            delay >= 0 &&
+            delay <= MAX_PAYMENT_DELAY_SECONDS,
+          'Payment inside the mandate was mined right after the decision',
+          delay === null
+            ? 'the time of the payment could not be read'
+            : `${delay} seconds after the decision block; at most ${MAX_PAYMENT_DELAY_SECONDS} are accepted`,
+        );
+      }
       add(used, 'Vault marks this evidence hash as used');
 
       if (purchase !== null && result.purchase?.status === 'settled') {
@@ -386,6 +442,14 @@ export async function verifyEvidence(
 export function createVerifierChain(client: PublicClient): VerifierChain {
   return {
     chainId: () => client.getChainId(),
+
+    async blockTimestamp(blockNumber) {
+      try {
+        return Number((await client.getBlock({ blockNumber })).timestamp);
+      } catch {
+        return null;
+      }
+    },
 
     async vaultSettings(vault) {
       const contract = { address: vault, abi: mandateVaultAbi } as const;

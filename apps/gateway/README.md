@@ -251,6 +251,9 @@ file or several, prints PASS or FAIL for each check, and exits with 0 only if al
 - the evidence hash is the hash of the record, and the intent id is the hash of the signed request;
 - the request signature recovers the recorded signer, and the record says what the agent signed;
 - the decision follows from the recorded checks, and the result fits the decision;
+- the request was current at the block the record names, that block exists with that time, and a
+  payment inside the mandate was mined within ten minutes of it: an old request of the agent cannot be
+  put behind a new payment;
 - an approval, if there is one, is signed by the mandate's approver for this payee, amount and evidence
   hash; a decline is signed by the approver for this request;
 - onchain: the vault's settings, the agent wallet in the ERC-8004 registry, the transaction, and a vault
