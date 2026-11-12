@@ -26,20 +26,30 @@ export type MandateTermsInput = {
   token: { symbol: string; address: Address };
 };
 
+/** A name on one line: a line break inside a name must not start a new line of the terms. */
+const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
+
 export function mandateTerms(input: MandateTermsInput): string {
   const { caps, token } = input;
   const until = new Date(Number(input.validUntil) * 1000).toISOString().replace('.000Z', 'Z');
+  // With nobody listed, the caps for payments that run on their own have nothing to apply to.
+  const mayPay =
+    input.payees.length === 0
+      ? ["No payee may be paid without asking: every payment needs the approver's signature."]
+      : [
+          input.payeesIntro,
+          ...input.payees.map((payee) => `  - ${oneLine(payee.name)} (${payee.address})`),
+          `up to ${caps.perPayment} ${token.symbol} per payment and ${caps.daily} ${token.symbol} per UTC day.`,
+        ];
   return [
-    `AGENT PAYMENT MANDATE: ${input.title}`,
+    `AGENT PAYMENT MANDATE: ${oneLine(input.title)}`,
     '',
-    `Principal: ${input.principal.name} (${input.principal.address})`,
-    `Agent: ${input.agent.name}, ERC-8004 agent ${input.agent.id} in eip155:${input.chainId}:${input.agent.identityRegistry}`,
+    `Principal: ${oneLine(input.principal.name)} (${input.principal.address})`,
+    `Agent: ${oneLine(input.agent.name)}, ERC-8004 agent ${input.agent.id} in eip155:${input.chainId}:${input.agent.identityRegistry}`,
     `Executor (gateway): ${input.executor}`,
     `Approver: ${input.approver}`,
     '',
-    input.payeesIntro,
-    ...input.payees.map((payee) => `  - ${payee.name} (${payee.address})`),
-    `up to ${caps.perPayment} ${token.symbol} per payment and ${caps.daily} ${token.symbol} per UTC day.`,
+    ...mayPay,
     '',
     ...(input.notes.length === 0 ? [] : [...input.notes, '']),
     `No more than ${caps.hardCeiling} ${token.symbol} may leave under this mandate in one UTC day, payments with the`,

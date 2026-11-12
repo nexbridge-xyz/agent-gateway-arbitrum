@@ -1,14 +1,15 @@
 import express, { type ErrorRequestHandler, type Express } from 'express';
-import type { Hex } from 'viem';
+import type { Address, Hex } from 'viem';
 import { ZodError } from 'zod';
 
 import type { ChainReader } from './chain/reader';
 import { RequestError } from './errors';
 import type { Gateway, IntentOutcome } from './gateway';
 import type { EvidenceFile } from './protocol/evidence';
-import type { Ledger } from './store/ledger';
+import type { Ledger, LedgerCheck, LedgerEntry } from './store/ledger';
 import { MAX_TERMS_BYTES, type MandateTermsStore } from './store/mandateTerms';
-import type { VerifyReport } from './verify';
+import type { PayeesFile } from './store/payees';
+import type { VerifyCheck, VerifyReport } from './verify';
 
 export type AppOptions = {
   gateway: Gateway;
@@ -24,6 +25,39 @@ export type AppOptions = {
   mandateTerms?: MandateTermsStore;
 };
 
+/*
+ * The JSON this API answers with. The console takes its types from here, so the two cannot drift
+ * apart. Amounts and ids are decimal strings; nothing here is secret.
+ */
+
+/** GET /v1/config */
+export type ConfigResponse = {
+  chainId: number;
+  vault: Address;
+  principal: Address;
+  identityRegistry: Address;
+  token: { address: Address; symbol: string; decimals: number };
+  executor: Address;
+  /** Null when the gateway has no spend wallet and so cannot buy per call. */
+  spendWallet: Address | null;
+  explorerUrl: string | null;
+};
+
+/** POST /v1/payment-intents, POST /v1/approvals/:intentId and its /decline */
+export type OutcomeResponse = IntentOutcome & {
+  explorerUrl: string | null;
+  settlementUrl: string | null;
+};
+
+/** GET /v1/payees */
+export type PayeesResponse = PayeesFile;
+
+/** GET /v1/payment-intents/:intentId/verification */
+export type VerificationResponse = { verified: boolean; checks: VerifyCheck[] };
+
+/** GET /v1/ledger */
+export type LedgerResponse = { check: LedgerCheck; head: Hex; entries: readonly LedgerEntry[] };
+
 /** One decision as the console lists it. The whole record is at /v1/payment-intents/:intentId. */
 export type IntentSummary = {
   intentId: Hex;
@@ -31,7 +65,7 @@ export type IntentSummary = {
   updatedAt: string;
   agentId: string;
   mandateId: string | null;
-  payee: string;
+  payee: Address;
   payeeName: string | null;
   amount: string;
   tokenSymbol: string;
@@ -53,7 +87,7 @@ export type IntentSummary = {
     settlementTransactionHash: Hex | null;
     settlementUrl: string | null;
   } | null;
-  approvedBy: string | null;
+  approvedBy: Address | null;
   error: string | null;
 };
 
@@ -80,7 +114,7 @@ export function createApp(options: AppOptions): Express {
 
   const link = (hash: Hex | null) => (hash !== null && explorerTx ? explorerTx(hash) : null);
 
-  const withLinks = (outcome: IntentOutcome) => ({
+  const withLinks = (outcome: IntentOutcome): OutcomeResponse => ({
     ...outcome,
     explorerUrl: link(outcome.transactionHash),
     settlementUrl:
@@ -169,12 +203,12 @@ export function createApp(options: AppOptions): Express {
       executor: gateway.executorAddress,
       spendWallet: gateway.spendWalletAddress,
       explorerUrl: options.explorerUrl ?? null,
-    });
+    } satisfies ConfigResponse);
   });
 
   // The principal's vendor registry and denylist, for showing names next to addresses.
   app.get('/v1/payees', async (_request, response) => {
-    response.json(await gateway.payees());
+    response.json((await gateway.payees()) satisfies PayeesResponse);
   });
 
   // An agent asks for a payment. The answer is always a decision: auto, needs_approval or refused.
@@ -199,7 +233,10 @@ export function createApp(options: AppOptions): Express {
   app.get('/v1/payment-intents/:intentId/verification', async (request, response) => {
     if (options.verify === undefined) throw new RequestError(404, 'Not found');
     const report = await options.verify(await evidenceOf(request.params.intentId));
-    response.json({ verified: report.verified, checks: report.checks });
+    response.json({
+      verified: report.verified,
+      checks: report.checks,
+    } satisfies VerificationResponse);
   });
 
   // Payments waiting for an approver, each with the EIP-712 message to sign.
@@ -245,7 +282,11 @@ export function createApp(options: AppOptions): Express {
   );
 
   app.get('/v1/ledger', (_request, response) => {
-    response.json({ check: ledger.verify(), head: ledger.head, entries: ledger.entries });
+    response.json({
+      check: ledger.verify(),
+      head: ledger.head,
+      entries: ledger.entries,
+    } satisfies LedgerResponse);
   });
 
   app.use((_request, response) => {

@@ -200,7 +200,7 @@ describe('console API: mandate texts', () => {
   const approver = getAddress('0x00000000000000000000000000000000000000a3');
   const vendor = getAddress('0x00000000000000000000000000000000000000a4');
   const registry = getAddress('0x8004a818bfb912233c491871b3d84c89a494bd9e');
-  const text = mandateTerms({
+  const input = {
     title: 'VENDOR INVOICES',
     principal: { name: 'Kirenami Trading', address: principal },
     agent: {
@@ -218,7 +218,8 @@ describe('console API: mandate texts', () => {
     vault: VAULT,
     chainId: 421_614,
     token: { symbol: 'USDC', address: getAddress('0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d') },
-  });
+  };
+  const text = mandateTerms(input);
   const termsHash = mandateTermsHash(text);
   const put = (hash: string, body: string, contentType = 'text/plain') =>
     fetch(`${baseUrl}/v1/mandate-terms/${hash}`, {
@@ -243,6 +244,24 @@ describe('console API: mandate texts', () => {
     expect(text).toContain('Valid until 2026-12-11T14:40:00Z.');
     expect(text.endsWith('\n')).toBe(true);
     expect(termsHash).toMatch(/^0x[0-9a-f]{64}$/);
+  });
+
+  it('says so when nobody may be paid without asking', () => {
+    const nobody = mandateTerms({ ...input, payees: [] });
+    expect(nobody).toContain(
+      "No payee may be paid without asking: every payment needs the approver's signature.",
+    );
+    expect(nobody).not.toContain('per payment and');
+    expect(nobody).toContain('No more than 20 USDC may leave under this mandate in one UTC day');
+  });
+
+  it('keeps a name on one line, so a name cannot add a line to the terms', () => {
+    const planted = mandateTerms({
+      ...input,
+      payees: [{ name: `Koishi Supply\n  - Someone Else (${approver})`, address: vendor }],
+    });
+    expect(planted).toContain(`  - Koishi Supply - Someone Else (${approver}) (${vendor})`);
+    expect(planted.split('\n').filter((line) => line.startsWith('  - '))).toHaveLength(1);
   });
 
   it('stores a text under its own hash and serves it back', async () => {
