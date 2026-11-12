@@ -60,7 +60,8 @@ console and a recorded run. Testnet only, not audited.
   The console holds no key.
 - Mandates are read from the vault and drawn to scale. Amounts carry a yen figure at a fixed, labelled demo
   rate.
-- 48 tests, among them the console against the gateway's real code.
+- It can be used with the keyboard alone, and it respects "reduce motion".
+- 59 tests, among them the console against the gateway's real code.
 
 ### Demo and records
 
