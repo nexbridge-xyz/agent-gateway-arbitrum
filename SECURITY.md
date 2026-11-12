@@ -108,8 +108,10 @@ transaction from the principal's wallet, which shows it before sending.
 
 The gateway listens on localhost and answers only requests addressed to this machine, so a web page
 elsewhere cannot have a browser read from it through a made-up host name. Everything that changes what the
-gateway does needs a signature: the agent's on a request, the approver's on an approval or a decline. The
-one write without a signature stores a mandate's text, and only under the text's own hash.
+gateway does needs a signature: the agent's on a request, the approver's on an approval or a decline. Two
+things are written for a caller who signed nothing. A request that the agent's wallet did not sign is
+refused, and the refusal is recorded like any other decision; it cannot use up the agent's own request, even
+if it carries the same intent. And a mandate's text is stored, but only under the text's own hash.
 
 ### A record is changed after the fact
 

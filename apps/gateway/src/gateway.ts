@@ -258,9 +258,14 @@ export class Gateway {
     const domain = { chainId: info.chainId, vault: info.vault };
     const id = intentId(domain, intent);
 
-    // The same intent always gets the same answer, and is never paid twice.
+    // The same request always gets the same answer, and is never paid twice. The id covers the intent
+    // and not its signature, so a copy of an intent that the agent did not sign has the id of the
+    // agent's own request. Such a copy is refused and recorded, but its record must not answer for the
+    // agent: only the record of a request the agent's wallet signed, or of these very bytes, is final.
     const known = await evidence.get(id);
-    if (known !== null) return outcomeOf(known);
+    if (known !== null && (isFinal(known) || sameSignature(known, signed))) {
+      return outcomeOf(known);
+    }
 
     const amount = BigInt(intent.amount);
     const resource = purchaseResource(intent.context);
@@ -702,6 +707,21 @@ export class Gateway {
     return outcomeOf(file);
   }
 }
+
+/**
+ * Whether a stored record settles its intent for good. A record of a request that the agent's
+ * registered wallet did not sign can only be a refusal, and says nothing about the agent's own request.
+ */
+function isFinal(file: EvidenceFile): boolean {
+  const { signer } = file.record.request;
+  const { agentWallet } = file.record.who;
+  const signedByAgent =
+    signer !== null && agentWallet !== null && isAddressEqual(signer, agentWallet);
+  return signedByAgent || file.result.status !== 'refused';
+}
+
+const sameSignature = (file: EvidenceFile, signed: SignedIntent) =>
+  file.record.request.signature.toLowerCase() === signed.signature.toLowerCase();
 
 /** The resource of a per-call purchase, from `context.mpp.resource`, or null for a direct payment. */
 function purchaseResource(context: SignedIntent['intent']['context']): string | null {
