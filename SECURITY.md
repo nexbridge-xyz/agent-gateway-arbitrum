@@ -40,6 +40,18 @@ A thief who holds every key the gateway holds, the executor key and the spend wa
 else the executor key can move goes **only to the listed vendors**, within the vendor mandate's caps. The
 vault enforces this, not the gateway.
 
+Three things this bound takes for granted:
+
+- **The approver signs nothing the thief puts in front of them.** With the approver's signature the vault
+  pays any address up to the mandate's hard ceiling: 20 USDC per UTC day in the demo, not 1. A gateway that
+  somebody else controls chooses what the console shows the approver, the payee's name included. What the
+  wallet itself displays before signing is the last check, and the approver has to read it.
+- **The gateway holds only its two keys.** In this demo every role's key is in one `.env` file on the
+  machine that runs the gateway. Whoever can read that file holds the principal's key as well.
+- **One spend-wallet mandate, and an empty spend wallet.** The cap is per mandate and per UTC day, so a
+  second mandate that lists the spend wallet opens a second 1 USDC. And the thief takes whatever a failed
+  purchase left in the spend wallet.
+
 The thief cannot pay any other address, cannot exceed a cap, cannot approve their own payment and cannot
 withdraw. Each of these is a revert in the vault:
 

@@ -225,6 +225,11 @@ holding every key the gateway holds can move at most 1 USDC a day to an address 
 else can only go to the listed vendors, within their caps. The vault enforces this, and step 6 of the demo
 shows it with three reverted transactions on Arbiscan.
 
+The bound has one condition that no contract can enforce: the approver signs nothing the thief puts in front
+of them. With the approver's signature the vault pays any address, up to the mandate's hard ceiling (20 USDC
+a day in the demo), and a gateway that somebody else controls chooses what the console shows the approver.
+What the wallet itself displays before signing is the last check.
+
 **A hijacked agent can only ask.** Text an agent reads can be written to steer it. The gateway decides by
 fixed rules, and a payee that appears only in something the agent read is refused. Step 5 of the demo
 plants such a note.
