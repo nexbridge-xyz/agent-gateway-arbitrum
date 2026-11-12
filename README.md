@@ -268,7 +268,7 @@ payee, a replayed approval, a lost executor key, a misbehaving merchant and a ch
 | `scripts`        | `pnpm demo`, the demo path on Arbitrum Sepolia, and `pnpm demo:record`                                                                                                                                                |
 | `docs`           | [Architecture](docs/ARCHITECTURE.md), [a recorded run](docs/sepolia-run/README.md), [console screenshots](docs/console/README.md), [how to record a run](docs/RECORDING.md), [the video script](docs/video/SCRIPT.md) |
 
-CI runs on every push: the contract tests with coverage, lint, typecheck, the TypeScript tests, a
+CI runs on every pull request and on every push to `main`: the contract tests with coverage, lint, typecheck, the TypeScript tests, a
 production build of the console, and a secret scan of the full history. [`CONTRIBUTING.md`](CONTRIBUTING.md)
 says how to run the same checks locally, and [`CHANGELOG.md`](CHANGELOG.md) lists what each version holds.
 

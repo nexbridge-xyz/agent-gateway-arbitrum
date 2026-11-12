@@ -35,7 +35,7 @@ pnpm test
 - `pnpm lint` is the format check, ESLint, the typecheck, and a contract build that fails on warnings.
 - `pnpm test` runs the contract tests (Foundry) and the tests of every TypeScript package (vitest).
 
-CI runs the same checks on every push, and also:
+CI runs the same checks on every pull request and on every push to `main`, and also:
 
 - the contract tests with coverage. `MandateVault` has every line covered; keep it that way
   (`pnpm contracts:coverage`);
