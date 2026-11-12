@@ -46,6 +46,11 @@ So if the executor key is stolen, the most it can move is `dailyCap` per day, an
 principal listed. If the executor and approver keys are both stolen, the most they can move is `hardCeiling`
 per day, until the principal revokes the mandate or pauses the vault.
 
+An agent can hold more than one mandate, and each counts its own day. The demo uses that to keep the
+gateway's spend wallet, whose key the gateway holds, on a small mandate of its own (0.50 USDC per payment,
+1 USDC per day) and off the vendor mandate. A thief with the gateway's keys can then move at most 1 USDC a
+day to an address of their own. See [`SECURITY.md`](../../SECURITY.md).
+
 ## Design notes
 
 - **UTC day buckets.** `day = block.timestamp / 86400`. Daily counters reset at 00:00 UTC (09:00 JST).
@@ -88,6 +93,7 @@ pnpm coverage
 | `test/MandateVault.t.sol`           | 80 unit tests: every function, every revert, and the "gateway compromised" drill.                                                                                                                |
 | `test/MandateVault.fuzz.t.sol`      | 22 property tests over random inputs: caps, expiry, allowlist, roles, approvals, revoke, pause.                                                                                                  |
 | `test/MandateVault.invariant.t.sol` | 5 invariants over random call sequences by every role, checked against the test's own books.                                                                                                     |
+| `test/MandateVault.split.t.sol`     | 8 tests of the demo's two mandates: what a stolen executor key can do with a vendor mandate and a small spend wallet mandate, including a fuzz test over arbitrary payment sequences.            |
 | `test/fork/`                        | 5 tests on a fork of Arbitrum Sepolia: the demo's onchain steps against Circle's test USDC and the live ERC-8004 Identity Registry, and a check that the deployed vault matches this repository. |
 
 Coverage of `src/MandateVault.sol` (`pnpm coverage`):

@@ -51,7 +51,7 @@ A request:
     "invoiceId": "KS-2026-1107",
     "context": {},
     "nonce": "0x…32 random bytes",
-    "expiresAt": 1794451437
+    "expiresAt": 1794455209
   },
   "signature": "0x…65 bytes"
 }
@@ -62,15 +62,15 @@ ahead. The answer:
 
 ```json
 {
-  "intentId": "0x15d6bca2…e7cf32ce",
+  "intentId": "0xfacad653…98fc784b",
   "decision": "auto",
   "reasons": ["All 14 checks passed"],
   "status": "paid",
-  "evidenceHash": "0x60dd8910…42c49124",
-  "transactionHash": "0xf065b734…62c69af1",
+  "evidenceHash": "0xaec6fba1…55af517b",
+  "transactionHash": "0x88770bd7…7cbae77f",
   "error": null,
   "purchase": null,
-  "explorerUrl": "https://sepolia.arbiscan.io/tx/0xf065b734…62c69af1",
+  "explorerUrl": "https://sepolia.arbiscan.io/tx/0x88770bd7…7cbae77f",
   "settlementUrl": null
 }
 ```
@@ -123,15 +123,19 @@ an intent whose `context.mpp.resource` is the URL it wants. The gateway then buy
 1. **Policy**, with three extra hard checks: the gateway has a spend wallet; the resource is on the API
    address the principal registered for this merchant (`origin` in `payees.json`); the price is within the
    per-call cap (0.50 USDC by default).
-2. **Top-up.** The vault pays the gateway's **spend wallet** exactly the price, with `payWithinMandate`.
-   The spend wallet is a payee on the mandate's allowlist, so the vault's caps bound everything it can
-   ever pay.
+2. **Top-up.** The vault pays the gateway's **spend wallet** exactly the price, with `payWithinMandate`,
+   under the mandate that lists the spend wallet. In the demo that is a small mandate of its own (0.50 USDC
+   per payment, 1 USDC per day), so the vault itself bounds everything the spend wallet can ever pay.
 3. **Purchase.** The spend wallet asks for the resource, checks the merchant's payment challenge and
    answers it with a signed USDC transfer authorization (EIP-3009). It signs only if the challenge asks for
    exactly the approved token, amount and registered merchant, as one plain authorization. The merchant
    submits the transfer and pays the gas.
 4. **Result.** The data goes back to the agent. The evidence keeps the merchant's settlement transaction
    and a hash of the response, not the response itself.
+
+What is onchain: the vault's payment to the spend wallet carries the evidence hash in the vault's event. The
+settlement, the spend wallet's transfer to the merchant, is a plain USDC transfer and does not. The evidence
+file links the two, and `verify-evidence` checks the settlement.
 
 A purchase is paid at once or refused. It never waits for an approver, because nobody is there to wait
 while an API call is open: a purchase that would need approval is refused instead.
@@ -141,6 +145,24 @@ use it to reach other addresses.
 
 Uses the [`@arbitrum/mpp`](https://github.com/OffchainLabs/arbitrum-mpp) client with `mppx`. The demo
 merchant is in [`apps/merchant`](../merchant/README.md).
+
+## More than one mandate
+
+An agent can hold several mandates, each with its own payees and caps in the vault. The demo's agent has
+two: one for vendor invoices, and a small one that lists only the gateway's spend wallet. For each request
+the gateway uses:
+
+1. the newest live mandate that lists the address the vault would pay. For a purchase that address is the
+   spend wallet, so purchases fall under the spend wallet's mandate and its caps;
+2. if no live mandate lists the address, the live mandate with the highest hard ceiling. The payment can
+   then only go through with the approver's signature.
+
+Only mandates with this gateway as executor count. A request that waits for approval stays with the mandate
+it was decided under. The rule is a pure function in [`src/chain/mandates.ts`](src/chain/mandates.ts).
+
+Keeping the spend wallet off the vendor mandate matters because the gateway holds the spend wallet's key:
+with a mandate of its own, the most that key can ever receive is that mandate's daily cap. See
+[`SECURITY.md`](../../SECURITY.md).
 
 ## Policy
 
@@ -219,7 +241,7 @@ text is printed with control characters escaped.
 Try it on the run recorded in [`docs/sepolia-run`](../../docs/sepolia-run/README.md). No keys are needed:
 
 ```bash
-pnpm verify-evidence docs/sepolia-run/evidence/0x64b65bcc89e6e77be788ceb99b8fd36ebbefb75c32a7083f08f664d5a7253f0e.json
+for file in docs/sepolia-run/evidence/*.json; do pnpm verify-evidence "$file"; done
 ```
 
 What it cannot show: that the gateway recorded every request it received, or that the ledger was not
@@ -251,12 +273,13 @@ Settings come from the repository's `.env`:
 pnpm --filter @agent-gateway/gateway test
 ```
 
-215 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
+232 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
 tamper checks, every policy rule and its boundaries, the gateway and its HTTP API against an in-memory
 stand-in for the chain, approvals and declines (wrong signer, the executor's own signature, a changed
 amount, an expired deadline, a used approval number, a mandate revoked while the request waited),
 per-call purchases (a challenge for another price, recipient or token, a redirect, a resource on another
-address), and the verifier against files that were changed in two dozen ways.
+address), the choice among an agent's mandates, and the verifier against files that were changed in two
+dozen ways.
 
 Seven more tests make a real purchase from the demo merchant, with settlement, on a local fork of Arbitrum
 Sepolia. They run when a fork is given:
@@ -274,7 +297,8 @@ MPP_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway test
 - A payment interrupted between decision and confirmation is not resumed.
 - If a purchase fails after the vault has funded the spend wallet, the amount stays in the spend wallet. It
   has counted toward the day's caps, and the principal, who holds that key, can move it back.
-- The spend wallet's own per-call cap is enforced by the gateway. Onchain, the spend wallet is bounded by
-  the mandate's per-payment and daily caps, not by a cap of its own.
+- The per-call cap (`GATEWAY_PURCHASE_CALL_CAP`) is the gateway's own check. The onchain bound on the spend
+  wallet is the mandate that lists it. A principal who lists the spend wallet on a wide mandate gives it
+  that mandate's caps.
 - Agents and approvers must sign with a plain key (ECDSA). The vault also accepts a smart-account approver
   (ERC-1271); the gateway does not pass such approvals through yet.
