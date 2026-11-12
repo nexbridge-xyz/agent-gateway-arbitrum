@@ -5,59 +5,73 @@ The demo path, run with `pnpm demo` on 2026-11-12 (UTC) against the deployed
 The agent was the **Scripted agent**. The files in this folder are kept exactly as the run wrote them.
 All company and vendor names are fictional. This is a testnet demo.
 
-Mandate 1 came from an earlier, partial run of this demo (steps 1, 3 and 6). Step 1 replaced it here. That run is in this folder's git history.
+Mandates 1 and 2 came from earlier runs of this demo, when a single mandate listed the spend wallet next to the vendors. Those runs are in this folder's git history.
 
-16 transactions: 13 succeeded and 3 reverted. The reverts are the point of step 6.
+15 transactions: 12 succeeded and 3 reverted. The reverts are the point of step 6.
 
 | Step | What happened | Result | Transaction |
 | ---- | ------------- | ------ | ----------- |
-| gas | Deployer sends 0.001 ETH to the merchant | Success | [`0xed8040f2…78e66498`](https://sepolia.arbiscan.io/tx/0xed8040f2a23a4f3366c80825b0ed04e04ed268b6884e2ce0444df5e178e66498) |
-| 1 | Principal allows the vault to take 3.50 USDC | Success | [`0xdb565afc…5702ac02`](https://sepolia.arbiscan.io/tx/0xdb565afc03898bcb2edc95ec71fd2e45bcf3f3ee9c43b096841d179c5702ac02) |
-| 1 | Principal deposits 3.50 USDC into the vault | Success | [`0x1402fef3…d91556db`](https://sepolia.arbiscan.io/tx/0x1402fef388847824287044f1021c06b178d2481caa65dad00dd5c794d91556db) |
-| 1 | Principal updates the registration file of agent 354 onchain: "Kirenami research and procurement agent" | Success | [`0x6e0dfa41…8d0d4070`](https://sepolia.arbiscan.io/tx/0x6e0dfa41e43e77f4764042ea891c4218954d09f00b517fd654c448178d0d4070) |
-| 1 | Principal revokes mandate 1, to replace it with a new one | Success | [`0x1722bf1c…412789ff`](https://sepolia.arbiscan.io/tx/0x1722bf1cc16f3cd311bde418b63b279375b6aa9780b13fb92fed59a5412789ff) |
-| 1 | Principal creates the mandate: 2 per payment, 8 per day, ceiling 20 USDC, 30 days | Success | [`0xf22e1f10…7e1ddbec`](https://sepolia.arbiscan.io/tx/0xf22e1f10bcd1b0b57e38a025b2b74896d675f37e95232caa23ca2e427e1ddbec) |
-| 2 | Gateway pays 0.10 USDC from the vault to its spend wallet, to buy from Tsukimi Data | Success | [`0xf0741e97…73e7cb47`](https://sepolia.arbiscan.io/tx/0xf0741e97d3657dedf7d3c7994bcc3306135fa8cbe8435cd6194186fc73e7cb47) |
-| 2 | Tsukimi Data settles the spend wallet's payment of 0.10 USDC (MPP) | Success | [`0x2e734c7e…bf90b6b8`](https://sepolia.arbiscan.io/tx/0x2e734c7e51c5ef7ed1af9167a60d10de0de422932362664613974cfcbf90b6b8) |
-| 3 | Gateway pays 1.50 USDC to Koishi Supply inside the mandate | Success | [`0xf065b734…62c69af1`](https://sepolia.arbiscan.io/tx/0xf065b734f752ed964f3d032cdd4a6ef31bf56dbb76e19a9bf3d828cf62c69af1) |
-| 4 | Gateway pays 6.00 USDC to Nagikumo Research with the approver's signature (payWithApproval) | Success | [`0x4d857a03…f95d1ad2`](https://sepolia.arbiscan.io/tx/0x4d857a039c04f18f450ed00bf2936c1110401f4786ff6b8bb912b3b5f95d1ad2) |
-| 5 | Gateway pays 0.10 USDC from the vault to its spend wallet, to buy from Tsukimi Data | Success | [`0x70201ac5…4221c705`](https://sepolia.arbiscan.io/tx/0x70201ac5f420e8a8b5bcc20de8fa8b43f768baf479e96ad611f3a7504221c705) |
-| 5 | Tsukimi Data settles the spend wallet's payment of 0.10 USDC (MPP) | Success | [`0x7a12b9b5…fd6bde8e`](https://sepolia.arbiscan.io/tx/0x7a12b9b5dcd5fdd9fdafb18c922c6df5a12a76add5a1e0a10f46573efd6bde8e) |
-| 6a | Drill a: executor key sends 9.00 USDC to an unlisted address 0xfB5eCBdE44F70cc64887210F8049db303B049b97; the vault reverts with `PayeeNotAllowed` | Reverted, as intended | [`0xeb9a700f…e8c39673`](https://sepolia.arbiscan.io/tx/0xeb9a700f8246935a87e63f95ef10c3fc286dbe1c827c031528b03338e8c39673) |
-| 6b | Drill b: executor key sends 9.00 USDC to a listed vendor, Koishi Supply, above the 2 USDC cap; the vault reverts with `PerPaymentCapExceeded` | Reverted, as intended | [`0x73942ff9…165354d0`](https://sepolia.arbiscan.io/tx/0x73942ff99f2220a23f0ff25846ac3da24e94f072b89a1724ed19c6da165354d0) |
-| 6c | Drill c: executor key signs its own approval for 9.00 USDC to 0xfB5eCBdE44F70cc64887210F8049db303B049b97; the vault reverts with `InvalidApproval` | Reverted, as intended | [`0xa86c31de…13203ee3`](https://sepolia.arbiscan.io/tx/0xa86c31de8f74a4cb34d278b3dc212e2d7a08148705b6e7cc83024a3813203ee3) |
-| 7 | Principal revokes mandate 2 | Success | [`0x198a021b…3c296af5`](https://sepolia.arbiscan.io/tx/0x198a021b74405f2afb2cdfe2ff18cefbe6a970a56e11e2f19ff206853c296af5) |
+| 1 | Principal allows the vault to take 7.70 USDC | Success | [`0x46a7a8a9…f5798f7d`](https://sepolia.arbiscan.io/tx/0x46a7a8a93c28704387fde6eca32e250315170f8f52d0ac77d894baeef5798f7d) |
+| 1 | Principal deposits 7.70 USDC into the vault | Success | [`0xdb3484ee…53af8e6d`](https://sepolia.arbiscan.io/tx/0xdb3484ee6c354345e2036c17bf5887289ab6f12d6a91da1eb618cef653af8e6d) |
+| 1 | Principal creates the mandate for vendor invoices: 2 per payment, 8 per day, ceiling 20 USDC, 30 days | Success | [`0x7b04b67b…b2ef3c1b`](https://sepolia.arbiscan.io/tx/0x7b04b67bfa41bd836d5f161c7c88e246540d756cb6f90cb334318643b2ef3c1b) |
+| 1 | Principal creates the mandate for the spend wallet: 0.5 per payment, 1 per day, ceiling 1 USDC, 30 days | Success | [`0xb81d62e0…03ea417c`](https://sepolia.arbiscan.io/tx/0xb81d62e02b3a760204f171ab7d04fdcb067ff8bd1c5e98bc076e83a703ea417c) |
+| 2 | Gateway pays 0.10 USDC from the vault to its spend wallet, to buy from Tsukimi Data | Success | [`0x37f40cef…deb20645`](https://sepolia.arbiscan.io/tx/0x37f40cefbdbdc2ae2155acb3b09ebe606b05e02b309c552f4c9f180edeb20645) |
+| 2 | Tsukimi Data settles the spend wallet's payment of 0.10 USDC (MPP) | Success | [`0x8b77910e…e06f44a7`](https://sepolia.arbiscan.io/tx/0x8b77910e01a65f8bd2c4824a02762c5ed2a59fa4d3df1a3c6eb118d1e06f44a7) |
+| 3 | Gateway pays 1.50 USDC to Koishi Supply inside the mandate | Success | [`0x88770bd7…7cbae77f`](https://sepolia.arbiscan.io/tx/0x88770bd71e5ec6fb055ebb4dda67cab69fc7bd163f760702c35706e97cbae77f) |
+| 4 | Gateway pays 6.00 USDC to Nagikumo Research with the approver's signature (payWithApproval) | Success | [`0xbee13c05…a379d187`](https://sepolia.arbiscan.io/tx/0xbee13c055e60c50105b6415fd9302bd44d71f728777f57b5e3aa0385a379d187) |
+| 5 | Gateway pays 0.10 USDC from the vault to its spend wallet, to buy from Tsukimi Data | Success | [`0x3c4cfd28…4a8299bd`](https://sepolia.arbiscan.io/tx/0x3c4cfd28389f62050240410b1e050645f1fb58d13a9080038895189c4a8299bd) |
+| 5 | Tsukimi Data settles the spend wallet's payment of 0.10 USDC (MPP) | Success | [`0xc4b9bd09…6cced33f`](https://sepolia.arbiscan.io/tx/0xc4b9bd097d443e781466b3cddca52aac287610cfebd1c55a010d0e986cced33f) |
+| 6a | Drill a: executor key sends 9.00 USDC to an unlisted address 0x6eF6d377D1e399CA5bd87B13f93A4AA40246B337; the vault reverts with `PayeeNotAllowed` | Reverted, as intended | [`0xbad81c02…e6a9226a`](https://sepolia.arbiscan.io/tx/0xbad81c02785a174999ca9fa72a10eb0a1ad000b74040df63e9d8efcee6a9226a) |
+| 6b | Drill b: executor key sends 9.00 USDC to a listed vendor, Koishi Supply, above the 2 USDC cap; the vault reverts with `PerPaymentCapExceeded` | Reverted, as intended | [`0xa6c5527a…902bd3bd`](https://sepolia.arbiscan.io/tx/0xa6c5527a047aeb6f0769bae36b7aa1ac888d22fd1d08a8c9ead14442902bd3bd) |
+| 6c | Drill c: executor key signs its own approval for 9.00 USDC to 0x6eF6d377D1e399CA5bd87B13f93A4AA40246B337; the vault reverts with `InvalidApproval` | Reverted, as intended | [`0x007a0d5b…2fbe0a3b`](https://sepolia.arbiscan.io/tx/0x007a0d5b39c49b8d07ac47558f03d5321b2c6f8d5b80f2b58aaa9f502fbe0a3b) |
+| 7 | Principal revokes mandate 3 (vendors) | Success | [`0x25b57e88…97fb76b4`](https://sepolia.arbiscan.io/tx/0x25b57e880bc92c9030711f6ebbaf0f835879b7c6e1535d4cdf008cd897fb76b4) |
+| 7 | Principal revokes mandate 4 (spend wallet) | Success | [`0xabf0dee2…ab4fd2c1`](https://sepolia.arbiscan.io/tx/0xabf0dee2c026bd84a919c4c340f4e8e9d593e2bae952198f1cafbc83ab4fd2c1) |
 
-The agent is ERC-8004 agent 354 in the Identity Registry on Arbitrum Sepolia. The demo ran under
-mandate 2 in the vault: 2 USDC per payment, 8 USDC per UTC day, hard ceiling 20 USDC.
+## The agent and its two mandates
+
+The agent is ERC-8004 agent 354 in the Identity Registry on Arbitrum Sepolia. It holds two mandates
+in the vault. The spend wallet has a small one of its own and is not on the vendor mandate's list, so the
+vault itself limits what can reach it.
+
+| Mandate | For | Limits | Text the principal approved |
+| ------- | --- | ------ | --------------------------- |
+| 3 | Vendor invoices: Koishi Supply and Nagikumo Research | 2 USDC per payment, 8 per UTC day, hard ceiling 20 | [`0x0383d340…d9a05763`](mandates/0x0383d34032740b9543c08d2f11aa343ff7d30d0c88401d12b9794c90d9a05763.txt) |
+| 4 | Funding the gateway's spend wallet, for per-call purchases | 0.50 USDC per payment, 1 per UTC day, hard ceiling 1 | [`0x2424075b…82b53c26`](mandates/0x2424075bc29d4ba4f9086a06ab9eacbf474be8531c18ce0c40c2633582b53c26.txt) |
 
 ## What the gateway decided
 
-Every request the agent signed, and what became of it. Each has an evidence file whose hash is in the
-vault's event when a payment was made.
+Every request, and what became of it. Each has an evidence file. When the vault paid, the vault's event
+carries the hash of that file's record.
 
-| Step | Request | Decision | Result | Evidence | Checks passed |
-| ---- | ------- | -------- | ------ | -------- | ------------- |
-| 2 | 0.10 USDC to Tsukimi Data | `auto` | paid | [`0x85f46d16…a5a7e1a3`](evidence/0x85f46d166693ac7be327580497ede36635b240ef5becc9c1484ca409a5a7e1a3.json) | 20 of 20 |
-| 3 | 1.50 USDC to Koishi Supply | `auto` | paid | [`0x15d6bca2…e7cf32ce`](evidence/0x15d6bca217c4cd07c4e985f7bbc78b95d8fadd58ed192660e3f86233e7cf32ce.json) | 18 of 18 |
-| 4 | 6.00 USDC to Nagikumo Research | `needs_approval`<br>The amount is above the per-payment cap of 2 USDC | paid | [`0x64b65bcc…a7253f0e`](evidence/0x64b65bcc89e6e77be788ceb99b8fd36ebbefb75c32a7083f08f664d5a7253f0e.json) | 21 of 21 |
-| 5 | 0.10 USDC to Tsukimi Data | `auto` | paid | [`0x272fd195…baa6a534`](evidence/0x272fd195b7ef6c1507e154d7cd24f00fb3b7d590f15a18e42514eb69baa6a534.json) | 20 of 20 |
-| 5 | 4.00 USDC to an address in no registry (`0x5c9ae0b4…6c902e47`) | `refused`<br>The payee is not in the principal's vendor registry. The address appears only in content the agent read (market-data response for TSK-FOOD30 from http://127.0.0.1:8788), which is not a trusted source | refused | [`0x0b2ea794…e07eb2c9`](evidence/0x0b2ea794abe2c57f7f09018c687c0958da381c0ef87351d7c8388ad8e07eb2c9.json) | 11 of 11 |
-| 7 | 1.50 USDC to Koishi Supply | `refused`<br>Mandate 2 has been revoked | refused | [`0x94b456e6…976e9d9e`](evidence/0x94b456e663b608b6ce76368eb2a5ff3d355c5e40b66d3eec61d98f28976e9d9e.json) | 11 of 11 |
+| Step | Request | Sent by | Mandate | Decision | Result | Evidence | Checks passed |
+| ---- | ------- | ------- | ------- | -------- | ------ | -------- | ------------- |
+| 2 | 0.10 USDC to Tsukimi Data | the agent | 4 | `auto` | paid | [`0x805667fa…ef622600`](evidence/0x805667fa1d559a7282f269941fd4a458fcc4e2fabd59d4c1a52bb0e0ef622600.json) | 20 of 20 |
+| 3 | 1.50 USDC to Koishi Supply | the agent | 3 | `auto` | paid | [`0xfacad653…98fc784b`](evidence/0xfacad653072d66e63d4b85c38a44eb72b2ce7c7c48cfb84af60a10e298fc784b.json) | 18 of 18 |
+| 4 | 6.00 USDC to Nagikumo Research | the agent | 3 | `needs_approval`<br>The amount is above the per-payment cap of 2 USDC | paid | [`0x1c49838c…721cb7d4`](evidence/0x1c49838c6d8d52a6ff41684f6a463fa1b1a0914f9b9ccc31cd01ce4c721cb7d4.json) | 21 of 21 |
+| 5 | 0.10 USDC to Tsukimi Data | the agent | 4 | `auto` | paid | [`0xaf9fb401…98b8ba5d`](evidence/0xaf9fb4016d47d3c26b4b88e3fc8610c295bbd24f01b27e5d786bae3f98b8ba5d.json) | 20 of 20 |
+| 5 | 4.00 USDC to an address in no registry (`0xfEc38508…124Cc813`) | the agent | 3 | `refused`<br>The payee is not in the principal's vendor registry. The address appears only in content the agent read (market-data response for TSK-FOOD30 from http://127.0.0.1:8788), which is not a trusted source | refused | [`0x5484e6fa…be2bb0bc`](evidence/0x5484e6faecfaae477bd3f70c5409f52aac1e52b7c87fcce71e10d565be2bb0bc.json) | 11 of 11 |
+| 7 | 1.50 USDC to Koishi Supply | the agent | 3 | `refused`<br>Mandate 3 has been revoked | refused | [`0xfae67c5b…90876c7a`](evidence/0xfae67c5b58053592e2254e8696b6514ca053de8ca7a61b43e1e3a79f90876c7a.json) | 11 of 11 |
 
-A market-data purchase shows up as two transactions: the vault pays the gateway's spend wallet exactly
-the price, inside the mandate, and the merchant then settles the spend wallet's signed payment.
+A market-data purchase is two transactions. First the vault pays the gateway's spend wallet exactly the
+price, inside the spend wallet's mandate: that payment carries the evidence hash onchain. Then the merchant
+settles the spend wallet's signed payment: that is a plain USDC transfer and does not carry the hash. The
+evidence file names the settlement, and `pnpm verify-evidence` checks it.
+
+### Step 5, exactly
+
+A vendor note planted in a market-data response asked for 4 USDC to `0xfEc38508E4BE025D9eba7Beb02663043124Cc813`, an address
+nobody had approved. The agent (Scripted agent) acted on the note and asked the gateway for the payment itself. The gateway refused it. Nothing was paid.
 
 ## "Gateway compromised" drills
 
-The executor key is the key the gateway holds. Here it is used directly, without the gateway. Each
+The executor key is the key the gateway pays with. Here it is used directly, without the gateway. Each
 attempt was sent as a real transaction, so the vault's refusal is on the public record.
 
 | Drill | Attempt | The vault's answer | Transaction |
 | ----- | ------- | ------------------ | ----------- |
-| a | Executor key sends 9.00 USDC to an unlisted address 0xfB5eCBdE44F70cc64887210F8049db303B049b97 | `PayeeNotAllowed(2, 0xfB5eCBdE44F70cc64887210F8049db303B049b97)` | [`0xeb9a700f…e8c39673`](https://sepolia.arbiscan.io/tx/0xeb9a700f8246935a87e63f95ef10c3fc286dbe1c827c031528b03338e8c39673) |
-| b | Executor key sends 9.00 USDC to a listed vendor, Koishi Supply, above the 2 USDC cap | `PerPaymentCapExceeded(9000000, 2000000)` | [`0x73942ff9…165354d0`](https://sepolia.arbiscan.io/tx/0x73942ff99f2220a23f0ff25846ac3da24e94f072b89a1724ed19c6da165354d0) |
-| c | Executor key signs its own approval for 9.00 USDC to 0xfB5eCBdE44F70cc64887210F8049db303B049b97 | `InvalidApproval()` | [`0xa86c31de…13203ee3`](https://sepolia.arbiscan.io/tx/0xa86c31de8f74a4cb34d278b3dc212e2d7a08148705b6e7cc83024a3813203ee3) |
+| a | Executor key sends 9.00 USDC to an unlisted address 0x6eF6d377D1e399CA5bd87B13f93A4AA40246B337 | `PayeeNotAllowed(3, 0x6eF6d377D1e399CA5bd87B13f93A4AA40246B337)` | [`0xbad81c02…e6a9226a`](https://sepolia.arbiscan.io/tx/0xbad81c02785a174999ca9fa72a10eb0a1ad000b74040df63e9d8efcee6a9226a) |
+| b | Executor key sends 9.00 USDC to a listed vendor, Koishi Supply, above the 2 USDC cap | `PerPaymentCapExceeded(9000000, 2000000)` | [`0xa6c5527a…902bd3bd`](https://sepolia.arbiscan.io/tx/0xa6c5527a047aeb6f0769bae36b7aa1ac888d22fd1d08a8c9ead14442902bd3bd) |
+| c | Executor key signs its own approval for 9.00 USDC to 0x6eF6d377D1e399CA5bd87B13f93A4AA40246B337 | `InvalidApproval()` | [`0x007a0d5b…2fbe0a3b`](https://sepolia.arbiscan.io/tx/0x007a0d5b39c49b8d07ac47558f03d5321b2c6f8d5b80f2b58aaa9f502fbe0a3b) |
 
 ## Who is who
 
@@ -65,12 +79,12 @@ attempt was sent as a real transaction, so the vault's refusal is on the public 
 | ---- | ------- |
 | Kirenami Trading: owns the vault, creates and revokes mandates | [`0xd42f974802a327789F217Db9f61DeA26EA5418A5`](https://sepolia.arbiscan.io/address/0xd42f974802a327789F217Db9f61DeA26EA5418A5) |
 | The gateway's executor: can only pay inside a mandate | [`0xB0aA521c777F8363DaA0446DD05807347d2f08B9`](https://sepolia.arbiscan.io/address/0xB0aA521c777F8363DaA0446DD05807347d2f08B9) |
-| Approver: signs for payments outside the mandate | [`0x062Ac773F7470034411A7f739a5664F6B3cfcE69`](https://sepolia.arbiscan.io/address/0x062Ac773F7470034411A7f739a5664F6B3cfcE69) |
+| Approver: signs for payments outside a mandate | [`0x062Ac773F7470034411A7f739a5664F6B3cfcE69`](https://sepolia.arbiscan.io/address/0x062Ac773F7470034411A7f739a5664F6B3cfcE69) |
 | Kirenami research and procurement agent: signs requests, holds no funds | [`0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a`](https://sepolia.arbiscan.io/address/0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a) |
 | Agent Gateway spend wallet: pays per-call API charges | [`0xcd08ecaA7FF642ffEdc77514C1442E59ddbb4CF9`](https://sepolia.arbiscan.io/address/0xcd08ecaA7FF642ffEdc77514C1442E59ddbb4CF9) |
 | Tsukimi Data: sells market data per call (MPP) | [`0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD`](https://sepolia.arbiscan.io/address/0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD) |
-| Koishi Supply: a vendor on the mandate's allowlist | [`0x84d6943216c05bc96b72791d5a76875e08D539F0`](https://sepolia.arbiscan.io/address/0x84d6943216c05bc96b72791d5a76875e08D539F0) |
-| Nagikumo Research: a vendor on the mandate's allowlist | [`0xDd76243f8563ea5D6E6186C0e26804F761A18792`](https://sepolia.arbiscan.io/address/0xDd76243f8563ea5D6E6186C0e26804F761A18792) |
+| Koishi Supply: a vendor on the vendor mandate's allowlist | [`0x84d6943216c05bc96b72791d5a76875e08D539F0`](https://sepolia.arbiscan.io/address/0x84d6943216c05bc96b72791d5a76875e08D539F0) |
+| Nagikumo Research: a vendor on the vendor mandate's allowlist | [`0xDd76243f8563ea5D6E6186C0e26804F761A18792`](https://sepolia.arbiscan.io/address/0xDd76243f8563ea5D6E6186C0e26804F761A18792) |
 
 ## Check it yourself
 
@@ -78,17 +92,23 @@ No keys are needed. This reads an evidence file, recomputes its hash, checks the
 compares the record with the vault's event onchain:
 
 ```bash
-pnpm verify-evidence docs/sepolia-run/evidence/0x85f46d166693ac7be327580497ede36635b240ef5becc9c1484ca409a5a7e1a3.json
+pnpm verify-evidence docs/sepolia-run/evidence/0x805667fa1d559a7282f269941fd4a458fcc4e2fabd59d4c1a52bb0e0ef622600.json
 ```
 
 It should end with `VERIFIED`. Add `--offline` to skip the chain. The same works for every file in
 `evidence/`.
 
-To check the mandate text against the chain, hash the file and compare it with the mandate's `termsHash`:
+To check a mandate's text against the chain, hash the file and compare it with the mandate's `termsHash`:
 
 ```bash
-cast keccak "0x$(xxd -p -c 100000 docs/sepolia-run/mandates/0x85973d32b8f1b42c2fb91d39b6870a764f99fdcc665308cc54a0ec47e764685a.txt)"
-cast call 0x7293763f6b73783834484cd976528D01Cb6c8CCf "getMandate(uint256)((uint256,address,uint64,bool,address,uint256,uint256,uint256,uint256,bytes32,address[]))" 2 \
+# Mandate 3 (vendors)
+cast keccak "0x$(xxd -p -c 100000 docs/sepolia-run/mandates/0x0383d34032740b9543c08d2f11aa343ff7d30d0c88401d12b9794c90d9a05763.txt)"
+cast call 0x7293763f6b73783834484cd976528D01Cb6c8CCf "getMandate(uint256)((uint256,address,uint64,bool,address,uint256,uint256,uint256,uint256,bytes32,address[]))" 3 \
+  --rpc-url https://sepolia-rollup.arbitrum.io/rpc
+
+# Mandate 4 (spend wallet)
+cast keccak "0x$(xxd -p -c 100000 docs/sepolia-run/mandates/0x2424075bc29d4ba4f9086a06ab9eacbf474be8531c18ce0c40c2633582b53c26.txt)"
+cast call 0x7293763f6b73783834484cd976528D01Cb6c8CCf "getMandate(uint256)((uint256,address,uint64,bool,address,uint256,uint256,uint256,uint256,bytes32,address[]))" 4 \
   --rpc-url https://sepolia-rollup.arbitrum.io/rpc
 ```
 
@@ -99,5 +119,5 @@ cast call 0x7293763f6b73783834484cd976528D01Cb6c8CCf "getMandate(uint256)((uint2
 | `demo-run.json` | The transactions, decisions and drills above, as the demo recorded them. |
 | `evidence/` | One evidence file per request: who asked, what for, every check, the decision and the result. |
 | `ledger.jsonl` | The gateway's hash-chained ledger for this run. |
-| `mandates/` | The plain-text mandate the principal approved. Its keccak256 hash is the mandate's `termsHash`. |
+| `mandates/` | The plain-text mandates the principal approved. The keccak256 hash of each is its mandate's `termsHash`. |
 | `payees.json` | The principal's vendor registry the gateway used. |

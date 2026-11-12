@@ -5,8 +5,8 @@
 Agent Gateway is a spending-control layer for AI agents that pay in stablecoins on Arbitrum.
 A company gives each agent an identity and a mandate: whom it may pay, how much per payment and per day,
 and until when. Payments inside the mandate go through on their own. Payments outside it wait for a person
-to approve. Payments against the rules are refused. Every decision leaves an evidence record whose hash is
-anchored onchain.
+to approve. Payments against the rules are refused. Every decision leaves an evidence record, and every
+payment out of the vault carries the hash of its record onchain.
 
 **Live on Arbitrum Sepolia:** `MandateVault` at
 [`0x7293763f6b73783834484cd976528D01Cb6c8CCf`](https://sepolia.arbiscan.io/address/0x7293763f6b73783834484cd976528D01Cb6c8CCf#code),
@@ -24,6 +24,13 @@ Control has two layers:
    gateway is compromised, it cannot move more than the vault's caps allow.
 
 The company owns the vault and the funds. The gateway holds only a capped executor role.
+
+**What a stolen gateway key is worth.** In the demo the agent has two mandates: one for vendor invoices, and
+a small one that only funds the gateway's spend wallet (0.50 USDC per payment, 1 USDC per day). A thief
+holding every key the gateway holds can move at most 1 USDC a day to an address of their own. Everything
+else can only go to the listed vendors, within their caps. The vault enforces this, and the demo shows it
+with real reverted transactions. [`SECURITY.md`](SECURITY.md) has the threat model and what is not
+production-ready.
 
 ## Repository layout
 
@@ -63,25 +70,31 @@ pnpm test              # contract tests (Foundry) and gateway, merchant and agen
 ## The demo
 
 `pnpm demo` runs the whole path on Arbitrum Sepolia and prints an Arbiscan link for every transaction.
-This is the run recorded in [`docs/sepolia-run`](docs/sepolia-run/README.md): 16 transactions, of which
-13 succeeded and 3 reverted. The reverts are the point of step 6.
 
-| Step | What happens                                                                                                                                                                              | Onchain                                                                                                                                                                                                                                                                                                                                                                                             |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | The principal funds the vault, registers the agent in the ERC-8004 Identity Registry and creates the mandate: 2 USDC per payment, 8 per day, hard ceiling 20.                             | [mandate created](https://sepolia.arbiscan.io/tx/0xf22e1f10bcd1b0b57e38a025b2b74896d675f37e95232caa23ca2e427e1ddbec)                                                                                                                                                                                                                                                                                |
-| 2    | The agent buys market data over MPP for 0.10 USDC. The gateway decides `auto`: the vault funds the spend wallet with exactly the price, and the spend wallet pays the merchant.           | [funded from the vault](https://sepolia.arbiscan.io/tx/0xf0741e97d3657dedf7d3c7994bcc3306135fa8cbe8435cd6194186fc73e7cb47), [settled by the merchant](https://sepolia.arbiscan.io/tx/0x2e734c7e51c5ef7ed1af9167a60d10de0de422932362664613974cfcbf90b6b8)                                                                                                                                            |
-| 3    | The agent asks to pay a known vendor 1.50 USDC. The gateway decides `auto` and pays through the vault.                                                                                    | [paid](https://sepolia.arbiscan.io/tx/0xf065b734f752ed964f3d032cdd4a6ef31bf56dbb76e19a9bf3d828cf62c69af1)                                                                                                                                                                                                                                                                                           |
-| 4    | The agent asks to pay a 6 USDC invoice, above the per-payment cap. The gateway decides `needs_approval`. The approver signs (EIP-712), and the vault checks that signature before paying. | [paid with approval](https://sepolia.arbiscan.io/tx/0x4d857a039c04f18f450ed00bf2936c1110401f4786ff6b8bb912b3b5f95d1ad2)                                                                                                                                                                                                                                                                             |
-| 5    | A vendor note planted in a market-data response asks for 4 USDC to an unknown address. The gateway decides `refused` and says where the address came from.                                | no transaction; [evidence](docs/sepolia-run/evidence/0x0b2ea794abe2c57f7f09018c687c0958da381c0ef87351d7c8388ad8e07eb2c9.json)                                                                                                                                                                                                                                                                       |
-| 6    | "Gateway compromised" drills. The executor key is used directly, without the gateway: to an unlisted address, to a listed vendor above the cap, and with an approval it signed itself.    | reverted by the vault: [`PayeeNotAllowed`](https://sepolia.arbiscan.io/tx/0xeb9a700f8246935a87e63f95ef10c3fc286dbe1c827c031528b03338e8c39673), [`PerPaymentCapExceeded`](https://sepolia.arbiscan.io/tx/0x73942ff99f2220a23f0ff25846ac3da24e94f072b89a1724ed19c6da165354d0), [`InvalidApproval`](https://sepolia.arbiscan.io/tx/0xa86c31de8f74a4cb34d278b3dc212e2d7a08148705b6e7cc83024a3813203ee3) |
-| 7    | The principal revokes the mandate. The agent's next request is refused.                                                                                                                   | [revoked](https://sepolia.arbiscan.io/tx/0x198a021b74405f2afb2cdfe2ff18cefbe6a970a56e11e2f19ff206853c296af5)                                                                                                                                                                                                                                                                                        |
+<!-- demo-run:start -->
+
+This is the run recorded in [`docs/sepolia-run`](docs/sepolia-run/README.md), made on 2026-11-12 (UTC) with the
+**Scripted agent**: 15 transactions, of which 12 succeeded and 3 reverted. The reverts are the
+point of step 6.
+
+| Step | What happened                                                                                                                                                                                                                                                                                                      | Onchain                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | The principal funds the vault, registers the agent in the ERC-8004 Identity Registry and creates its two mandates: one for vendor invoices (2 USDC per payment, 8 per UTC day, hard ceiling 20) and a small one that only funds the gateway's spend wallet (0.50 USDC per payment, 1 per UTC day, hard ceiling 1). | [vendor mandate](https://sepolia.arbiscan.io/tx/0x7b04b67bfa41bd836d5f161c7c88e246540d756cb6f90cb334318643b2ef3c1b), [spend wallet mandate](https://sepolia.arbiscan.io/tx/0xb81d62e02b3a760204f171ab7d04fdcb067ff8bd1c5e98bc076e83a703ea417c)                                                                                                                                                      |
+| 2    | The agent buys market data over MPP for 0.10 USDC. The gateway decides `auto`: the vault funds the spend wallet with exactly the price, and the spend wallet pays the merchant.                                                                                                                                    | [funded from the vault](https://sepolia.arbiscan.io/tx/0x37f40cefbdbdc2ae2155acb3b09ebe606b05e02b309c552f4c9f180edeb20645), [settled by the merchant](https://sepolia.arbiscan.io/tx/0x8b77910e01a65f8bd2c4824a02762c5ed2a59fa4d3df1a3c6eb118d1e06f44a7)                                                                                                                                            |
+| 3    | The agent asks to pay a known vendor 1.50 USDC. The gateway decides `auto` and pays through the vault.                                                                                                                                                                                                             | [paid](https://sepolia.arbiscan.io/tx/0x88770bd71e5ec6fb055ebb4dda67cab69fc7bd163f760702c35706e97cbae77f)                                                                                                                                                                                                                                                                                           |
+| 4    | The agent asks to pay a 6 USDC invoice, above the per-payment cap. The gateway decides `needs_approval`. The approver signs (EIP-712), and the vault checks that signature before paying.                                                                                                                          | [paid with approval](https://sepolia.arbiscan.io/tx/0xbee13c055e60c50105b6415fd9302bd44d71f728777f57b5e3aa0385a379d187)                                                                                                                                                                                                                                                                             |
+| 5    | A vendor note planted in a market-data response asks for 4 USDC to an unknown address. The agent (Scripted agent) acted on the note and asked the gateway for the payment itself. The gateway refused it.                                                                                                          | no transaction; [evidence](docs/sepolia-run/evidence/0x5484e6faecfaae477bd3f70c5409f52aac1e52b7c87fcce71e10d565be2bb0bc.json)                                                                                                                                                                                                                                                                       |
+| 6    | "Gateway compromised" drills. The executor key is used directly, without the gateway: to an unlisted address, to a listed vendor above the cap, and with an approval it signed itself.                                                                                                                             | reverted by the vault: [`PayeeNotAllowed`](https://sepolia.arbiscan.io/tx/0xbad81c02785a174999ca9fa72a10eb0a1ad000b74040df63e9d8efcee6a9226a), [`PerPaymentCapExceeded`](https://sepolia.arbiscan.io/tx/0xa6c5527a047aeb6f0769bae36b7aa1ac888d22fd1d08a8c9ead14442902bd3bd), [`InvalidApproval`](https://sepolia.arbiscan.io/tx/0x007a0d5b39c49b8d07ac47558f03d5321b2c6f8d5b80f2b58aaa9f502fbe0a3b) |
+| 7    | The principal revokes the agent's mandates. The agent's next request is refused.                                                                                                                                                                                                                                   | [vendor mandate revoked](https://sepolia.arbiscan.io/tx/0x25b57e880bc92c9030711f6ebbaf0f835879b7c6e1535d4cdf008cd897fb76b4), [spend wallet mandate revoked](https://sepolia.arbiscan.io/tx/0xabf0dee2c026bd84a919c4c340f4e8e9d593e2bae952198f1cafbc83ab4fd2c1)                                                                                                                                      |
 
 Anyone can check the evidence against the chain, without keys. For example, the approved payment of
 step 4:
 
 ```bash
-pnpm verify-evidence docs/sepolia-run/evidence/0x64b65bcc89e6e77be788ceb99b8fd36ebbefb75c32a7083f08f664d5a7253f0e.json
+pnpm verify-evidence docs/sepolia-run/evidence/0x1c49838c6d8d52a6ff41684f6a463fa1b1a0914f9b9ccc31cd01ce4c721cb7d4.json
 ```
+
+<!-- demo-run:end -->
 
 To run it yourself you need your own vault, because a vault's principal is fixed when it is deployed:
 
@@ -93,9 +106,12 @@ pnpm contracts:deploy:sepolia    # deploys and verifies; see apps/contracts/READ
 pnpm demo
 ```
 
-- **The agent.** With `ANTHROPIC_API_KEY` in `.env`, the agent is Claude with tool use. Without it, a
-  scripted agent runs the same tools through the same gateway and is labelled "Scripted agent". The
-  recorded run used the scripted agent.
+- **The agent.** With `ANTHROPIC_API_KEY` in `.env`, the agent is Claude with tool use; those calls cost
+  money. Without it, a scripted agent runs the same tools through the same gateway and is labelled
+  "Scripted agent". The table above names the agent of the recorded run.
+- **Step 5 with either agent.** The scripted agent acts on the planted note, as a fooled agent would. Claude
+  usually ignores it. The gateway must not depend on that, so the runner then sends the request the note
+  asks for, signed with the agent's key, and says on screen that it did. Either way the gateway refuses it.
 - **The approver.** In this terminal demo the approver's key signs in the terminal. The console will ask a
   wallet for the same signature.
 - **The merchant** runs on localhost; its payments settle on Arbitrum Sepolia.

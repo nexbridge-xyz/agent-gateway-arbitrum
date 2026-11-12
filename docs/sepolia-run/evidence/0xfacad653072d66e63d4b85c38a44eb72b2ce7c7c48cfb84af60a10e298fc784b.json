@@ -1,23 +1,23 @@
 {
   "format": "agent-gateway-arbitrum/evidence/v1",
-  "evidenceHash": "0x0077c24c257e41902dfc58b0b656b70fb9e23cd7fd254086024696512cb30ebe",
+  "evidenceHash": "0xaec6fba15318433c24396aa2160e0ebd9d84c98aa0e03e8b834eea9655af517b",
   "record": {
     "format": "agent-gateway-arbitrum/evidence-record/v1",
-    "intentId": "0x94b456e663b608b6ce76368eb2a5ff3d355c5e40b66d3eec61d98f28976e9d9e",
-    "decidedAt": "2026-11-12T02:39:26.834Z",
+    "intentId": "0xfacad653072d66e63d4b85c38a44eb72b2ce7c7c48cfb84af60a10e298fc784b",
+    "decidedAt": "2026-11-12T03:41:49.879Z",
     "chain": {
       "chainId": 421614,
       "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
       "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
       "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-      "blockNumber": "328373883",
-      "blockTimestamp": 1794451165
+      "blockNumber": "328388327",
+      "blockTimestamp": 1794454908
     },
     "who": {
       "agentId": "354",
       "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
       "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
-      "mandateId": "2",
+      "mandateId": "3",
       "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
       "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
     },
@@ -27,28 +27,28 @@
       "amount": "1500000",
       "tokenSymbol": "USDC",
       "tokenDecimals": 6,
-      "purpose": "Invoice KS-2026-1108: packing materials, December",
-      "invoiceId": "KS-2026-1108"
+      "purpose": "Invoice KS-2026-1107: packing materials, November",
+      "invoiceId": "KS-2026-1107"
     },
     "request": {
       "intent": {
         "agentId": "354",
         "payee": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
         "amount": "1500000",
-        "purpose": "Invoice KS-2026-1108: packing materials, December",
-        "invoiceId": "KS-2026-1108",
+        "purpose": "Invoice KS-2026-1107: packing materials, November",
+        "invoiceId": "KS-2026-1107",
         "context": {},
-        "nonce": "0xda9bb331ff7c0e2c97f3f4dfb0978ebaaf18d00f080db12c3c70dd8ab1979d96",
-        "expiresAt": 1794451466
+        "nonce": "0x9f6d99178ee641b9e805118ee527f97439c59c73864aea7fc95ec8bbaad321a0",
+        "expiresAt": 1794455209
       },
-      "signature": "0xd20331c089b9b16e66423c55101e04b3b6d7df65420e5e1c70444b957ed9313b6c837f9569c1c209652095c5ff820d7aa4147f9731cdeb9b57db6a4125ecdc6c1b",
+      "signature": "0xfa526e20120b4a70e94d0125100c8901ca63092b96f2b115607c4b05ad8d2a5629e9ac7106d532a9e2c5b35e8dc1d7bb4d5750a6d289e03404c0ac51be94b81a1b",
       "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
     },
     "purchase": null,
     "why": {
-      "decision": "refused",
+      "decision": "auto",
       "reasons": [
-        "Mandate 2 has been revoked"
+        "All 14 checks passed"
       ],
       "checks": [
         {
@@ -82,9 +82,9 @@
         {
           "key": "mandate_active",
           "kind": "hard",
-          "result": "fail",
+          "result": "pass",
           "label": "Agent has an active mandate with this gateway as executor",
-          "detail": "mandate 2, valid until 2026-12-12T02:38:45Z, revoked"
+          "detail": "mandate 3, valid until 2026-12-12T03:41:36Z"
         },
         {
           "key": "vault_open",
@@ -117,44 +117,48 @@
         {
           "key": "within_hard_ceiling",
           "kind": "hard",
-          "result": "skipped",
+          "result": "pass",
           "label": "Day total stays within the mandate's hard ceiling",
-          "detail": "no usable mandate"
+          "detail": "0 USDC paid today + 1.5 USDC vs ceiling 20 USDC"
         },
         {
           "key": "vault_funded",
           "kind": "hard",
           "result": "pass",
           "label": "Vault holds enough funds",
-          "detail": "vault holds 4.3 USDC"
+          "detail": "vault holds 11.9 USDC"
         },
         {
           "key": "payee_on_allowlist",
           "kind": "soft",
-          "result": "skipped",
+          "result": "pass",
           "label": "Payee is on the mandate's allowlist",
-          "detail": "no usable mandate"
+          "detail": "on the allowlist"
         },
         {
           "key": "within_per_payment_cap",
           "kind": "soft",
-          "result": "skipped",
+          "result": "pass",
           "label": "Amount is within the per-payment cap",
-          "detail": "no usable mandate"
+          "detail": "1.5 USDC vs cap 2 USDC"
         },
         {
           "key": "within_daily_cap",
           "kind": "soft",
-          "result": "skipped",
+          "result": "pass",
           "label": "Day total stays within the daily cap",
-          "detail": "no usable mandate"
+          "detail": "0 USDC paid today + 1.5 USDC vs cap 8 USDC"
         }
       ]
     }
   },
   "approval": null,
   "result": {
-    "status": "refused"
+    "status": "paid",
+    "transactionHash": "0x88770bd71e5ec6fb055ebb4dda67cab69fc7bd163f760702c35706e97cbae77f",
+    "blockNumber": "328388337",
+    "event": "MandatePayment",
+    "executedAt": "2026-11-12T03:41:51.899Z"
   },
-  "updatedAt": "2026-11-12T02:39:26.834Z"
+  "updatedAt": "2026-11-12T03:41:51.901Z"
 }

@@ -1,0 +1,18 @@
+AGENT PAYMENT MANDATE: PER-CALL PURCHASES
+
+Principal: Kirenami Trading (0xd42f974802a327789F217Db9f61DeA26EA5418A5)
+Agent: Kirenami research and procurement agent, ERC-8004 agent 354 in eip155:421614:0x8004A818BFB912233c491871b3d84c89A494BD9e
+Executor (gateway): 0xB0aA521c777F8363DaA0446DD05807347d2f08B9
+Approver: 0x062Ac773F7470034411A7f739a5664F6B3cfcE69
+
+The gateway may fund this wallet without asking:
+  - Agent Gateway spend wallet (0xcd08ecaA7FF642ffEdc77514C1442E59ddbb4CF9)
+up to 0.5 USDC per payment and 1 USDC per UTC day.
+
+The spend wallet pays for single API calls at Tsukimi Data (0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD).
+It is funded one call at a time, with exactly the price of that call.
+
+No more than 1 USDC may leave under this mandate in one UTC day.
+
+Valid until 2026-12-12T03:41:38Z. The principal may revoke this mandate at any time.
+Vault: 0x7293763f6b73783834484cd976528D01Cb6c8CCf on Arbitrum Sepolia (421614). Token: USDC (0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d).

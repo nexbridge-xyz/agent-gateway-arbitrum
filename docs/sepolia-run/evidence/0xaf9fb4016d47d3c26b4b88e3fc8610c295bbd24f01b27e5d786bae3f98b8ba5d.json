@@ -1,23 +1,23 @@
 {
   "format": "agent-gateway-arbitrum/evidence/v1",
-  "evidenceHash": "0x2c8c85a2b80649629e5db2187aba651f1bd5806f8b83c7ab3112fa984845d597",
+  "evidenceHash": "0x8b43e3c6234e8a6d4cd44fcae06409b530e13514b6c1f2951a9c5c7c8afaa227",
   "record": {
     "format": "agent-gateway-arbitrum/evidence-record/v1",
-    "intentId": "0x272fd195b7ef6c1507e154d7cd24f00fb3b7d590f15a18e42514eb69baa6a534",
-    "decidedAt": "2026-11-12T02:39:09.240Z",
+    "intentId": "0xaf9fb4016d47d3c26b4b88e3fc8610c295bbd24f01b27e5d786bae3f98b8ba5d",
+    "decidedAt": "2026-11-12T03:42:00.203Z",
     "chain": {
       "chainId": 421614,
       "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
       "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
       "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-      "blockNumber": "328373813",
-      "blockTimestamp": 1794451147
+      "blockNumber": "328388366",
+      "blockTimestamp": 1794454918
     },
     "who": {
       "agentId": "354",
       "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
       "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
-      "mandateId": "2",
+      "mandateId": "4",
       "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
       "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
     },
@@ -43,10 +43,10 @@
           },
           "payeeSource": "payment request from http://127.0.0.1:8788"
         },
-        "nonce": "0x48d1338624738fda3c11e9ecf8a3e7374ec976dfdb1746e3923a19f35906aa2d",
-        "expiresAt": 1794451448
+        "nonce": "0x39c2dfa7de28f5f00da266fed7c6972a19ecdf91fec6f7d8121710378d9f985f",
+        "expiresAt": 1794455219
       },
-      "signature": "0x38106222260763e4650813956c4d4a25364795b78d02c135f61cab440c16e65e07c9fd548c5a4546ad2a9704a748f13f6cfaac97b2a6ff4b56d627293ec3e2621c",
+      "signature": "0xd2b587b2718a74fa436083be7ff1f7a109614adf536dc1f7f82245b148fe28b73e7760e9b908aab7ab5bea13e7a23ac70dbbc01fe80dd680db17fe9cd80495e61c",
       "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
     },
     "purchase": {
@@ -93,7 +93,7 @@
           "kind": "hard",
           "result": "pass",
           "label": "Agent has an active mandate with this gateway as executor",
-          "detail": "mandate 2, valid until 2026-12-12T02:38:45Z"
+          "detail": "mandate 4, valid until 2026-12-12T03:41:38Z"
         },
         {
           "key": "vault_open",
@@ -128,7 +128,7 @@
           "kind": "hard",
           "result": "pass",
           "label": "Day total stays within the mandate's hard ceiling",
-          "detail": "7.6 USDC paid today + 0.1 USDC vs ceiling 20 USDC"
+          "detail": "0.1 USDC paid today + 0.1 USDC vs ceiling 1 USDC"
         },
         {
           "key": "vault_funded",
@@ -170,14 +170,14 @@
           "kind": "hard",
           "result": "pass",
           "label": "Amount is within the per-payment cap",
-          "detail": "0.1 USDC vs cap 2 USDC"
+          "detail": "0.1 USDC vs cap 0.5 USDC"
         },
         {
           "key": "within_daily_cap",
           "kind": "hard",
           "result": "pass",
           "label": "Day total stays within the daily cap",
-          "detail": "7.6 USDC paid today + 0.1 USDC vs cap 8 USDC"
+          "detail": "0.1 USDC paid today + 0.1 USDC vs cap 1 USDC"
         }
       ]
     }
@@ -185,16 +185,16 @@
   "approval": null,
   "result": {
     "status": "paid",
-    "transactionHash": "0x70201ac5f420e8a8b5bcc20de8fa8b43f768baf479e96ad611f3a7504221c705",
-    "blockNumber": "328373822",
+    "transactionHash": "0x3c4cfd28389f62050240410b1e050645f1fb58d13a9080038895189c4a8299bd",
+    "blockNumber": "328388375",
     "event": "MandatePayment",
-    "executedAt": "2026-11-12T02:39:11.331Z",
+    "executedAt": "2026-11-12T03:42:02.236Z",
     "purchase": {
       "status": "settled",
-      "settlementTransactionHash": "0x7a12b9b5dcd5fdd9fdafb18c922c6df5a12a76add5a1e0a10f46573efd6bde8e",
-      "settledAt": "2026-11-12T02:39:13.878Z",
-      "responseHash": "0x9538a16f1a9182441d280c841b463ce764b7af9cfc89bfb72ae316c4e62d3875"
+      "settlementTransactionHash": "0xc4b9bd097d443e781466b3cddca52aac287610cfebd1c55a010d0e986cced33f",
+      "settledAt": "2026-11-12T03:42:04.225Z",
+      "responseHash": "0xfeb90997489348d865b73966470ef330b2262750244542fb05ce4ecaec20e059"
     }
   },
-  "updatedAt": "2026-11-12T02:39:13.881Z"
+  "updatedAt": "2026-11-12T03:42:04.227Z"
 }
