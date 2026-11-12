@@ -542,15 +542,15 @@ export class Gateway {
         agentId: BigInt(record.who.agentId),
         payee: record.what.payee,
         executor: executor.address,
+        // The mandate the request was decided under applies, even if the agent has a newer one now.
+        mandateId: record.who.mandateId === null ? undefined : BigInt(record.who.mandateId),
       }),
       this.options.loadPayees(),
     ]);
     const mandate = snapshot.mandate;
     const problems: string[] = [];
     if (mandate === null || mandate.id.toString() !== record.who.mandateId) {
-      problems.push(
-        'The mandate this request was decided under is no longer the one the agent has',
-      );
+      problems.push('The mandate this request was decided under no longer exists for this agent');
     } else {
       const recheck = this.evaluate(info, snapshot, payees, {
         payee: record.what.payee,

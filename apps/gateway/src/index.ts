@@ -1,5 +1,6 @@
 export * from './chain/abis';
 export * from './chain/executor';
+export * from './chain/mandates';
 export * from './chain/reader';
 export * from './chain/registrationFile';
 export * from './gateway';

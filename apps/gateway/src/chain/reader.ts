@@ -2,6 +2,7 @@ import { type Address, type PublicClient, erc20Abi, isAddressEqual, zeroAddress 
 
 import type { MandateFacts } from '../policy/evaluate';
 import { identityRegistryAbi, mandateVaultAbi } from './abis';
+import { chooseMandate, listsPayee } from './mandates';
 import { activeFlagFromUri } from './registrationFile';
 
 /** What the gateway needs to know about the chain. The policy engine never calls the chain itself. */
@@ -33,13 +34,21 @@ export type Snapshot = {
 
 export interface ChainReader {
   info(): Promise<ChainInfo>;
-  /** `payee` is the address the vault would pay; the allowlist is checked for it. */
-  snapshot(query: { agentId: bigint; payee: Address; executor: Address }): Promise<Snapshot>;
+  /**
+   * `payee` is the address the vault would pay. It decides which of the agent's mandates applies,
+   * unless `mandateId` names the mandate a waiting request was decided under.
+   */
+  snapshot(query: {
+    agentId: bigint;
+    payee: Address;
+    executor: Address;
+    mandateId?: bigint | undefined;
+  }): Promise<Snapshot>;
   /** The nonce the next approval for this mandate must carry, and the current block time. */
   approvalState(mandateId: bigint): Promise<{ nonce: bigint; blockTimestamp: number }>;
 }
 
-/** How many of the newest mandates are searched for the agent's mandate. */
+/** How many of the newest mandates are searched for the agent's mandates. */
 const MANDATE_SEARCH_LIMIT = 200n;
 
 export function createChainReader(client: PublicClient, vault: Address): ChainReader {
@@ -65,7 +74,7 @@ export function createChainReader(client: PublicClient, vault: Address): ChainRe
     return cached;
   };
 
-  const snapshot: ChainReader['snapshot'] = async ({ agentId, payee, executor }) => {
+  const snapshot: ChainReader['snapshot'] = async ({ agentId, payee, executor, mandateId }) => {
     const { token, identityRegistry } = await info();
     const block = await client.getBlock({ blockTag: 'latest' });
     const at = { blockNumber: block.number } as const;
@@ -103,8 +112,7 @@ export function createChainReader(client: PublicClient, vault: Address): ChainRe
       active: registered && uri.status === 'success' ? activeFlagFromUri(uri.result) : null,
     };
 
-    // Find the agent's mandate: the newest live one with this gateway as executor, or failing that
-    // the newest one of any kind, so that the refusal can say what is wrong with it.
+    // Read the agent's mandates, newest first, and choose the one this request falls under.
     const newest = mandateCount.result;
     const oldest = newest > MANDATE_SEARCH_LIMIT ? newest - MANDATE_SEARCH_LIMIT + 1n : 1n;
     const ids: bigint[] = [];
@@ -125,38 +133,34 @@ export function createChainReader(client: PublicClient, vault: Address): ChainRe
 
     const timestamp = Number(block.timestamp);
     const candidates = terms
-      .map((mandate, index) => ({ id: ids[index] as bigint, mandate }))
-      .filter(({ mandate }) => mandate.agentId === agentId);
-    const live = (candidate: (typeof candidates)[number]) =>
-      !candidate.mandate.revoked && timestamp <= Number(candidate.mandate.validUntil);
-    const ours = (candidate: (typeof candidates)[number]) =>
-      isAddressEqual(candidate.mandate.executor, executor);
-    const chosen =
-      candidates.find((candidate) => ours(candidate) && live(candidate)) ??
-      candidates.find((candidate) => ours(candidate)) ??
-      candidates[0];
+      .map((mandate, index) => ({
+        ...mandate,
+        id: ids[index] as bigint,
+        validUntil: Number(mandate.validUntil),
+      }))
+      .filter((candidate) => candidate.agentId === agentId);
+    const chosen = chooseMandate(candidates, { payee, executor, now: timestamp, mandateId });
 
     let mandate: MandateFacts | null = null;
-    if (chosen !== undefined) {
-      const [payeeAllowed, spentToday] = await client.multicall({
+    if (chosen !== null) {
+      const spentToday = await client.readContract({
+        ...vaultContract,
         ...at,
-        allowFailure: false,
-        contracts: [
-          { ...vaultContract, functionName: 'isAllowedPayee', args: [chosen.id, payee] },
-          { ...vaultContract, functionName: 'spentToday', args: [chosen.id] },
-        ],
+        functionName: 'spentToday',
+        args: [chosen.id],
       });
       mandate = {
         id: chosen.id,
-        executor: chosen.mandate.executor,
-        approver: chosen.mandate.approver,
-        revoked: chosen.mandate.revoked,
-        validUntil: Number(chosen.mandate.validUntil),
-        perPaymentCap: chosen.mandate.perPaymentCap,
-        dailyCap: chosen.mandate.dailyCap,
-        hardCeiling: chosen.mandate.hardCeiling,
-        approvalNonce: chosen.mandate.approvalNonce,
-        payeeAllowed,
+        executor: chosen.executor,
+        approver: chosen.approver,
+        revoked: chosen.revoked,
+        validUntil: chosen.validUntil,
+        perPaymentCap: chosen.perPaymentCap,
+        dailyCap: chosen.dailyCap,
+        hardCeiling: chosen.hardCeiling,
+        approvalNonce: chosen.approvalNonce,
+        // The allowlist is fixed when the mandate is created, so the list is the whole truth.
+        payeeAllowed: listsPayee(chosen, payee),
         spentToday,
       };
     }
