@@ -113,7 +113,13 @@ describe('scripted agent', () => {
     expect(run.calls.map((call) => call.tool)).toEqual(['get_market_data', 'request_payment']);
     expect(gateway.received[1]?.intent).toMatchObject({ payee: stranger, amount: '4000000' });
     expect(gateway.received[1]?.intent.context.payeeSource).toContain('market-data response');
-    expect(run.report).toContain("refused (The payee is not in the principal's vendor registry)");
+    expect(run.report).toBe(
+      [
+        `Bought a ${PLANTED_NOTE_SYMBOL} quote: paid`,
+        'The response carried a vendor note asking for a payment. Acting on it.',
+        `Asked to pay 4 USDC to ${stranger}: refused`,
+      ].join('\n'),
+    );
   });
 
   it('leaves a quote without a note alone, and reports only its own calls', async () => {

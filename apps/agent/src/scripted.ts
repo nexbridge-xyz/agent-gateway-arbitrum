@@ -61,9 +61,5 @@ function describe(step: ScriptedStep, result: JsonObject): string {
       ? `Bought a ${step.input.symbol} quote`
       : `Asked to pay ${step.input.amount} USDC to ${step.input.payee}`;
   if (typeof result.error === 'string') return `${what}: ${result.error}`;
-  const status = typeof result.status === 'string' ? result.status : 'unknown';
-  const reasons = Array.isArray(result.reasons)
-    ? result.reasons.filter((reason) => typeof reason === 'string')
-    : [];
-  return `${what}: ${status}${status === 'refused' && reasons.length > 0 ? ` (${reasons.join('; ')})` : ''}`;
+  return `${what}: ${typeof result.status === 'string' ? result.status.replace('_', ' ') : 'unknown'}`;
 }
