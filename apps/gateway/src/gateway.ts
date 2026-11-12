@@ -1,4 +1,4 @@
-import { type Address, type Hex, formatUnits, isAddressEqual } from 'viem';
+import { type Address, type Hex, formatUnits, hashTypedData, isAddressEqual } from 'viem';
 import { z } from 'zod';
 
 import { type PaymentExecutor, PaymentError, type PaymentReceipt } from './chain/executor';
@@ -593,23 +593,36 @@ export class Gateway {
 
     if (deadline < BigInt(snapshot.blockTimestamp))
       throw new RequestError(400, 'The approval has expired');
-    const signer = await recoverApprovalSigner(
-      { chainId: info.chainId, address: info.vault },
-      {
-        mandateId: mandate.id,
-        payee: record.what.payee,
-        amount,
-        evidenceHash: file.evidenceHash,
-        nonce: mandate.approvalNonce,
-        deadline,
-      },
+    const vault = { chainId: info.chainId, address: info.vault };
+    const approval = {
+      mandateId: mandate.id,
+      payee: record.what.payee,
+      amount,
+      evidenceHash: file.evidenceHash,
+      nonce: mandate.approvalNonce,
+      deadline,
+    };
+    // Check the signature the way the vault will, so that a signature the vault would refuse is
+    // turned away here, before a transaction is sent and the request is spent.
+    const byCode = await chain.askApproverCode(
+      mandate.approver,
+      hashTypedData(approvalTypedData(vault, approval)),
       signature,
     );
-    if (signer === null || !isAddressEqual(signer, mandate.approver)) {
+    if (byCode === 'not-confirmed') {
       throw new RequestError(
         400,
-        `The signature is not the approver's signature for this payment and approval number ${mandate.approvalNonce}`,
+        `The approver's address ${mandate.approver} has contract code: it is a smart account, or a key with an EIP-7702 delegation. The vault asks that code to confirm a signature, and it did not confirm this one`,
       );
+    }
+    if (byCode === 'no-code') {
+      const signer = await recoverApprovalSigner(vault, approval, signature);
+      if (signer === null || !isAddressEqual(signer, mandate.approver)) {
+        throw new RequestError(
+          400,
+          `The signature is not the approver's signature for this payment and approval number ${mandate.approvalNonce}`,
+        );
+      }
     }
 
     const receivedAt = this.now();

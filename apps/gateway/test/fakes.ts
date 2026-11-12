@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { type Address, type Hex, getAddress, keccak256, stringToHex } from 'viem';
+import { type Address, type Hex, getAddress, keccak256, recoverAddress, stringToHex } from 'viem';
 
 import {
   type ApprovedPaymentRequest,
@@ -18,7 +18,7 @@ import {
   PurchaseError,
   type PurchaseRequest,
 } from '../src/chain/purchases';
-import type { ChainInfo, ChainReader, Snapshot } from '../src/chain/reader';
+import type { ApproverCodeAnswer, ChainInfo, ChainReader, Snapshot } from '../src/chain/reader';
 import { Gateway } from '../src/gateway';
 import { recoverApprovalSigner } from '../src/protocol/approval';
 import type { Json } from '../src/protocol/json';
@@ -99,6 +99,14 @@ export class FakeWorld implements ChainReader, PaymentExecutor {
 
   /** Called between the gateway's decision and its payment, to simulate the world changing. */
   beforePayment: (() => void) | null = null;
+
+  /**
+   * What sits at the approver's address. A plain key has no code. A smart account, or a key with an
+   * EIP-7702 delegation, has code: the vault then asks that code about a signature through ERC-1271,
+   * and the key's own signature does not count. `confirms` is code that confirms the key's signature;
+   * `refuses` is code that does not.
+   */
+  approverCode: 'none' | 'confirms' | 'refuses' = 'none';
 
   /**
    * Splits the agent's authority the way the demo does: the first mandate keeps the vendors, and a new
@@ -203,6 +211,18 @@ export class FakeWorld implements ChainReader, PaymentExecutor {
     return Promise.resolve({ nonce: mandate?.approvalNonce ?? 0n, blockTimestamp: this.time });
   }
 
+  /** What the approver's code answers through ERC-1271, as the vault would hear it. */
+  async askApproverCode(
+    _approver: Address,
+    digest: Hex,
+    signature: Hex,
+  ): Promise<ApproverCodeAnswer> {
+    if (this.approverCode === 'none') return 'no-code';
+    if (this.approverCode === 'refuses') return 'not-confirmed';
+    const signer = await recoverAddress({ hash: digest, signature }).catch(() => null);
+    return signer === this.approver ? 'confirmed' : 'not-confirmed';
+  }
+
   private refuse(error: string): Promise<never> {
     return Promise.reject(new PaymentError(`the vault refused: ${error}`, null));
   }
@@ -274,6 +294,8 @@ export class FakeWorld implements ChainReader, PaymentExecutor {
       },
       request.signature,
     );
+    // SignatureChecker: code at the approver's address is asked instead of the key.
+    if (this.approverCode === 'refuses') return this.refuse('InvalidApproval()');
     if (signer !== this.approver) return this.refuse('InvalidApproval()');
     if (this.usedEvidence.has(request.evidenceHash)) return this.refuse('EvidenceAlreadyUsed()');
     if (request.amount > this.balance) return this.refuse('ERC20InsufficientBalance()');

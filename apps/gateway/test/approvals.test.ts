@@ -338,6 +338,64 @@ describe('approvals: paying with the approver signature', () => {
     expect(error.reasons[0]).toContain('hard ceiling');
   });
 
+  it('turns away a signature the vault would refuse because the approver has contract code', async () => {
+    // The approver's address carries code that does not confirm the signature: a smart account that
+    // expects something else, or a key with an EIP-7702 delegation. The vault would revert with
+    // InvalidApproval. The gateway must say so before it sends anything, and keep the request open.
+    const outcome = await waitingRequest();
+    const pending = await onlyPending();
+    h.world.approverCode = 'refuses';
+
+    const error = await failure(
+      h.gateway.approve(outcome.intentId, {
+        signature: await sign(pending),
+        deadline: pending.approval.message.deadline,
+      }),
+    );
+    expect(error.status).toBe(400);
+    expect(error.message).toContain('has contract code');
+    expect(error.message).toContain('EIP-7702');
+    expect(h.world.payments).toHaveLength(0);
+    expect(h.ledger.entries.map((entry) => entry.kind)).toEqual(['INTENT_DECIDED']);
+    expect((await h.gateway.evidenceFor(outcome.intentId))?.result.status).toBe('pending_approval');
+
+    // Once the code is gone, the same signature goes through: nothing was spent on the refusal.
+    h.world.approverCode = 'none';
+    const paid = await h.gateway.approve(outcome.intentId, {
+      signature: await sign(pending),
+      deadline: pending.approval.message.deadline,
+    });
+    expect(paid.status).toBe('paid');
+  });
+
+  it("pays when the code at the approver's address confirms the signature", async () => {
+    const outcome = await waitingRequest();
+    const pending = await onlyPending();
+    h.world.approverCode = 'confirms';
+
+    const paid = await h.gateway.approve(outcome.intentId, {
+      signature: await sign(pending),
+      deadline: pending.approval.message.deadline,
+    });
+    expect(paid.status).toBe('paid');
+    expect(h.world.payments).toHaveLength(1);
+  });
+
+  it("does not let code at the approver's address confirm somebody else's signature", async () => {
+    const outcome = await waitingRequest();
+    const pending = await onlyPending();
+    h.world.approverCode = 'confirms';
+
+    const error = await failure(
+      h.gateway.approve(outcome.intentId, {
+        signature: await sign(pending, newAccount()),
+        deadline: pending.approval.message.deadline,
+      }),
+    );
+    expect(error.status).toBe(400);
+    expect(h.world.payments).toHaveLength(0);
+  });
+
   it('records a failed payment when the vault refuses after all', async () => {
     const outcome = await waitingRequest();
     const pending = await onlyPending();

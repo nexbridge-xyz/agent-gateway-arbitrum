@@ -1,4 +1,12 @@
-import { type Address, type PublicClient, erc20Abi, isAddressEqual, zeroAddress } from 'viem';
+import {
+  type Address,
+  type Hex,
+  type PublicClient,
+  erc20Abi,
+  isAddressEqual,
+  parseAbi,
+  zeroAddress,
+} from 'viem';
 
 import type { MandateFacts } from '../policy/evaluate';
 import { identityRegistryAbi, mandateVaultAbi } from './abis';
@@ -32,6 +40,17 @@ export type Snapshot = {
   vault: { paused: boolean; balance: bigint };
 };
 
+/**
+ * What an approver's address answers when it has code: `no-code` for a plain key, otherwise whether
+ * the code confirmed the signature.
+ */
+export type ApproverCodeAnswer = 'no-code' | 'confirmed' | 'not-confirmed';
+
+const erc1271Abi = parseAbi([
+  'function isValidSignature(bytes32 hash, bytes signature) view returns (bytes4)',
+]);
+const ERC1271_CONFIRMED = '0x1626ba7e';
+
 export interface ChainReader {
   info(): Promise<ChainInfo>;
   /**
@@ -46,6 +65,13 @@ export interface ChainReader {
   }): Promise<Snapshot>;
   /** The nonce the next approval for this mandate must carry, and the current block time. */
   approvalState(mandateId: bigint): Promise<{ nonce: bigint; blockTimestamp: number }>;
+  /**
+   * Asks the approver's address about a signature the way the vault will. The vault's rule
+   * (OpenZeppelin SignatureChecker): an address without code must have signed with its key. An
+   * address with code, which is a smart account or a key with an EIP-7702 delegation, is asked
+   * through ERC-1271 instead, and its key's signature alone does not count.
+   */
+  askApproverCode(approver: Address, digest: Hex, signature: Hex): Promise<ApproverCodeAnswer>;
 }
 
 /** How many of the newest mandates are searched for the agent's mandates. */
@@ -186,5 +212,22 @@ export function createChainReader(client: PublicClient, vault: Address): ChainRe
     return { nonce: mandate.approvalNonce, blockTimestamp: Number(block.timestamp) };
   };
 
-  return { info, snapshot, approvalState };
+  const askApproverCode: ChainReader['askApproverCode'] = async (approver, digest, signature) => {
+    const code = await client.getCode({ address: approver });
+    if (code === undefined || code === '0x') return 'no-code';
+    try {
+      const answer = await client.readContract({
+        address: approver,
+        abi: erc1271Abi,
+        functionName: 'isValidSignature',
+        args: [digest, signature],
+      });
+      return answer === ERC1271_CONFIRMED ? 'confirmed' : 'not-confirmed';
+    } catch {
+      // The code does not speak ERC-1271, or it reverted. The vault takes both as a no.
+      return 'not-confirmed';
+    }
+  };
+
+  return { info, snapshot, approvalState, askApproverCode };
 }
