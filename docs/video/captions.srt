@@ -39,7 +39,7 @@ Arbitrum.
 
 10
 00:00:33,473 --> 00:00:37,750
-The agent gets an onchain identity.
+The agent has an onchain identity.
 
 11
 00:00:38,200 --> 00:00:41,738

@@ -105,7 +105,7 @@ principal holds. The vault is filled to 12 USDC in step 1, so the principal need
 vault already holds. The demo stops with a clear message if that is missing.
 
 Then give the run a clean data folder, so that its ledger and evidence hold this run only. Keep
-`demo-state.json`: it names the agent.
+`demo-state.json`: it names the agent and the transaction that registered it.
 
 ```bash
 cd apps/gateway/data
@@ -152,9 +152,13 @@ pnpm verify-evidence docs/sepolia-run/evidence/*.json
 ```
 
 `demo:record` copies the run into `docs/sepolia-run`, writes its README, and rewrites the demo table and
-the gas figures in the main README. It refuses a run that stopped early, or one in which the approver
-declined. The second command must end with `6 of 6 files verified`. Then look at `git diff --stat`:
-only `docs/sepolia-run` and `README.md` should have changed.
+the gas figures in the main README. It says what this run did: the agent was registered in an earlier run,
+so step 1 names that transaction as an earlier one. It refuses a run that stopped early, or one in which
+the approver declined. To add a line of context under the page's introduction, for example where the
+mandates with lower numbers came from, pass `--note "..."`.
+
+The second command must end with `6 of 6 files verified`. Then look at `git diff --stat`: only
+`docs/sepolia-run` and `README.md` should have changed.
 
 ## 5. Screenshots
 
