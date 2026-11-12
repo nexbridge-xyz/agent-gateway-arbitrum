@@ -189,10 +189,17 @@ deployed. Three more commands:
 
 2. Send Arbitrum Sepolia ETH to `DEPLOYER` and at least 12 test USDC to `PRINCIPAL`
    ([faucet.circle.com](https://faucet.circle.com)). Then deploy your vault, and put the printed address
-   into `.env` as `MANDATE_VAULT_ADDRESS`.
+   into `.env` as `MANDATE_VAULT_ADDRESS`. The command also verifies the source on Arbiscan, and stops
+   before deploying unless `ETHERSCAN_API_KEY` is set in `.env`.
 
    ```bash
    pnpm contracts:deploy:sepolia
+   ```
+
+   To deploy without verifying, and without that key:
+
+   ```bash
+   bash apps/contracts/scripts/deploy-sepolia.sh --skip-verify
    ```
 
 3. Run the demo.
