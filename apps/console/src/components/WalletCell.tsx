@@ -43,6 +43,18 @@ export const WRONG_NETWORK =
 /** The menu opens from its trigger in 200 ms on the brand's curve, as the brand's motion rules say. */
 const MENU = 'min-w-64 rounded-none duration-200 ease-(--ease-brand)';
 
+/**
+ * The wallets to offer, each once. A browser wallet that announces itself (EIP-6963) is listed by its
+ * name. "Browser wallet" is the entry for one that does not; next to an announced wallet it would be a
+ * second way to the same wallet, so it is left out then.
+ */
+export function offered<T extends { id: string; type: string }>(connectors: readonly T[]): T[] {
+  const announced = connectors.some(
+    (connector) => connector.type === 'injected' && connector.id !== 'injected',
+  );
+  return connectors.filter((connector) => !(announced && connector.id === 'injected'));
+}
+
 /** The wallet's place in the top strip: connect, see who is connected and as what, disconnect. */
 export function WalletCell() {
   const { address, chainId, isConnected } = useConnection();
@@ -74,7 +86,7 @@ export function WalletCell() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className={MENU}>
           <DropdownMenuLabel className="label">Sign with</DropdownMenuLabel>
-          {connectors.map((connector) => (
+          {offered(connectors).map((connector) => (
             <DropdownMenuItem
               key={connector.uid}
               className="rounded-none"

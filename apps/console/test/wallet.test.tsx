@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { getAddress } from 'viem';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { WalletCell } from '@/components/WalletCell';
+import { WalletCell, offered } from '@/components/WalletCell';
 import { setDataMode } from '@/lib/data';
 import { sample } from '@/lib/sample';
 
@@ -53,5 +53,21 @@ describe('the wallet in the top strip', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Connect wallet/ })).toHaveFocus();
     });
+  });
+});
+
+describe('the wallets the menu offers', () => {
+  const generic = { id: 'injected', type: 'injected', name: 'Injected' };
+  const named = { id: 'test.standin.wallet', type: 'injected', name: 'Stand-in Wallet' };
+  const test = { id: 'test-approver', type: 'mock', name: 'Test wallet: approver' };
+
+  it('lists a wallet that announces itself by its name, and only once', () => {
+    expect(offered([generic, named])).toEqual([named]);
+    expect(offered([generic, named, test])).toEqual([named, test]);
+  });
+
+  it('keeps "Browser wallet" for a wallet that does not announce itself', () => {
+    expect(offered([generic])).toEqual([generic]);
+    expect(offered([generic, test])).toEqual([generic, test]);
   });
 });
