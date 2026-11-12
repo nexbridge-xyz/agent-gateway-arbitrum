@@ -35,10 +35,16 @@ import { OTHER_CHAIN, bridge, fakeNode, show, testConfig } from './helpers';
 // the vault with the limits typed into the form and the hash of the text that was stored.
 
 // Mandates are read from the chain. Here they are read from the gateway's test chain instead.
-const chainState = vi.hoisted(() => ({ mandates: (): unknown[] => [] }));
+// So is what the vault and its token say of themselves, which the console compares with the gateway's
+// description before it sends or signs anything.
+const chainState = vi.hoisted(() => ({
+  mandates: (): unknown[] => [],
+  facts: (): Promise<unknown> => Promise.reject(new Error('no chain yet')),
+}));
 vi.mock('@/lib/vault', async (original) => ({
   ...(await original<typeof import('@/lib/vault')>()),
   readMandates: () => Promise.resolve(chainState.mandates()),
+  readVaultFacts: () => chainState.facts(),
 }));
 
 const TERMS_HASH: Hex = `0x${'11'.repeat(32)}`;
@@ -73,6 +79,14 @@ beforeEach(async () => {
   h = await createHarness();
   chainState.mandates = () =>
     [h.world.spendMandate, h.world.mandate].filter((mandate) => mandate !== null).map(asMandate);
+  chainState.facts = async () => {
+    const info = await h.world.info();
+    return {
+      principal: info.principal,
+      identityRegistry: info.identityRegistry,
+      token: { address: info.token, symbol: info.tokenSymbol, decimals: info.tokenDecimals },
+    };
+  };
 
   server = createApp({
     gateway: h.gateway,
@@ -164,6 +178,17 @@ async function open(hash: string, wallets: Address[] = []) {
     });
   }
   return view;
+}
+
+/**
+ * A button that sends or signs is offered once the console has compared what the gateway says about
+ * the vault with the chain. That takes a moment after the page opens.
+ */
+async function ready(button: HTMLElement): Promise<HTMLElement> {
+  await waitFor(() => {
+    expect(button).toBeEnabled();
+  });
+  return button;
 }
 
 describe('live feed', () => {
@@ -414,7 +439,7 @@ describe('mandates', () => {
     await open('#/mandates', [h.world.principal]);
     await screen.findByRole('region', { name: 'Mandate 1' });
 
-    await user.click(screen.getByRole('button', { name: /New mandate/ }));
+    await user.click(await ready(screen.getByRole('button', { name: /New mandate/ })));
     const dialog = await screen.findByRole('dialog', { name: 'New mandate' });
     const create = within(dialog).getByRole('button', { name: /Create mandate/ });
     expect(create).toBeDisabled();
@@ -469,7 +494,7 @@ describe('mandates', () => {
     const user = userEvent.setup();
     await open('#/mandates', [h.world.principal]);
     await screen.findByRole('region', { name: 'Mandate 1' });
-    await user.click(screen.getByRole('button', { name: /New mandate/ }));
+    await user.click(await ready(screen.getByRole('button', { name: /New mandate/ })));
     const dialog = await screen.findByRole('dialog', { name: 'New mandate' });
     const says = (text: string | RegExp) => {
       expect(within(dialog).getByRole('status')).toHaveTextContent(text);
@@ -502,7 +527,7 @@ describe('mandates', () => {
     await open('#/mandates', [h.world.principal]);
     const mandate = await screen.findByRole('region', { name: 'Mandate 1' });
 
-    await user.click(within(mandate).getByRole('button', { name: 'Revoke' }));
+    await user.click(await ready(within(mandate).getByRole('button', { name: 'Revoke' })));
     expect(node.sent('eth_sendTransaction')).toHaveLength(0);
     expect(
       within(mandate).getByText('Revoking takes effect at once and cannot be undone.'),
@@ -524,7 +549,7 @@ describe('mandates', () => {
     const user = userEvent.setup();
     await open('#/mandates', [h.world.principal]);
     const mandate = await screen.findByRole('region', { name: 'Mandate 1' });
-    await user.click(within(mandate).getByRole('button', { name: 'Revoke' }));
+    await user.click(await ready(within(mandate).getByRole('button', { name: 'Revoke' })));
     // The question appears with the focus on the safe answer.
     expect(within(mandate).getByRole('button', { name: 'Keep it' })).toHaveFocus();
     await user.click(within(mandate).getByRole('button', { name: 'Keep it' }));

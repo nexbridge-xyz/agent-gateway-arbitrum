@@ -50,10 +50,17 @@ after the last step until you press Ctrl+C. Without `--console` the approver's k
 
 Settings are read from the shell, not from `.env`:
 
-| Variable       | Meaning                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------ |
-| `GATEWAY_PORT` | Where the gateway listens. Set it for the console too if you changed it. Defaults to 8787. |
-| `VITE_RPC_URL` | The RPC endpoint the browser reads the vault from. Defaults to the public one.             |
+| Variable                | Meaning                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GATEWAY_PORT`          | Where the gateway listens. Set it for the console too if you changed it. Defaults to 8787.                                                                     |
+| `MANDATE_VAULT_ADDRESS` | The vault the console is for. Set it if the gateway serves a vault of your own. Defaults to the vault this repository records as deployed on Arbitrum Sepolia. |
+| `VITE_RPC_URL`          | The RPC endpoint the browser reads the vault from. Defaults to the public one.                                                                                 |
+
+The console does not take the vault's address from the gateway. It reads the vault's principal, token and
+identity registry, and the token's symbol and decimals, from the chain, and compares them with what the
+gateway says in `/v1/config`. While they differ it shows why, sends no transaction and asks for no
+signature: a gateway that somebody else controls cannot point the principal's wallet at a contract of its
+own, or have an amount read with other decimals than the token has.
 
 ## Wallets
 
@@ -83,8 +90,8 @@ confirm the signature; nothing is sent in that case.
   registry and the texts of mandates. The requests go through the development server, so the browser speaks
   to one origin only. The types of these answers are the gateway's own (`@agent-gateway/gateway`), imported
   as types only.
-- **From the chain, directly:** the mandates. The limits and today's spending on the Mandates screen come
-  from the vault, not from the gateway.
+- **From the chain, directly:** the mandates, and what the vault and its token say of themselves. The
+  limits and today's spending on the Mandates screen come from the vault, not from the gateway.
 
 A new mandate's text is built in the browser, stored at the gateway under its own hash, and that hash goes
 into the vault with the limits. Anyone holding the text can check it against the chain.

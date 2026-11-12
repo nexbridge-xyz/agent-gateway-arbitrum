@@ -10,10 +10,12 @@ import {
   useApprovals,
   useDataMode,
   useGatewayConfig,
+  useGatewayProblem,
 } from '@/lib/data';
 import { DEMO_JPY_PER_USDC } from '@/lib/format';
 import { SCREENS, type Screen, href } from '@/lib/route';
 import { cn } from '@/lib/utils';
+import { VAULT } from '@/lib/vault';
 
 const TITLES: Record<Screen, string> = {
   feed: 'Live feed',
@@ -48,6 +50,7 @@ export function Shell({ screen, children }: { screen: Screen; children: ReactNod
   const mode = useDataMode();
   const waiting = approvals.data?.length ?? 0;
   const explorer = config.data?.explorerUrl ?? null;
+  const gatewayProblem = useGatewayProblem();
 
   return (
     <div className="sheet min-h-screen grid-cols-1 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
@@ -147,14 +150,14 @@ export function Shell({ screen, children }: { screen: Screen; children: ReactNod
           <div className="cell py-3">
             <div className="label">Vault</div>
             <div className="mt-0.5">
-              {config.data ? (
-                <HashValue
-                  value={config.data.vault}
-                  href={explorer ? `${explorer}/address/${config.data.vault}` : null}
-                  label="vault address"
-                />
-              ) : (
-                <span className="text-text-3 text-xs">
+              {/* The console's own vault, not the one the gateway names. */}
+              <HashValue
+                value={VAULT}
+                href={explorer ? `${explorer}/address/${VAULT}` : null}
+                label="vault address"
+              />
+              {config.data ? null : (
+                <span className="text-text-3 ml-2 text-xs">
                   {config.isError ? 'gateway not reached' : 'reading…'}
                 </span>
               )}
@@ -179,6 +182,11 @@ export function Shell({ screen, children }: { screen: Screen; children: ReactNod
           {mode !== 'live' ? (
             <p className="bg-wait-soft text-wait border-b px-5 py-2 text-xs" role="status">
               {MODE_BANNERS[mode]}
+            </p>
+          ) : null}
+          {gatewayProblem !== null && !gatewayProblem.startsWith('Checking') ? (
+            <p className="bg-stop-soft text-stop border-b px-5 py-2 text-xs" role="alert">
+              {gatewayProblem}
             </p>
           ) : null}
           {children}

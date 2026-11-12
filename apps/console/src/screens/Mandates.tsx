@@ -24,6 +24,7 @@ import { type GatewayConfig, api } from '@/lib/api';
 import {
   useDataMode,
   useGatewayConfig,
+  useGatewayProblem,
   useMandates,
   useNames,
   useNow,
@@ -31,7 +32,7 @@ import {
   useTerms,
 } from '@/lib/data';
 import { day, short, until } from '@/lib/format';
-import { type Mandate, stateOf } from '@/lib/vault';
+import { VAULT, type Mandate, stateOf } from '@/lib/vault';
 import { cn } from '@/lib/utils';
 
 /** Names used in the text of a new mandate. They are the demo's fictional company and agent. */
@@ -53,15 +54,18 @@ export function Mandates() {
   const [creating, setCreating] = useState(false);
   const newButton = useRef<HTMLButtonElement>(null);
   const list = mandates.data ?? [];
+  const gatewayProblem = useGatewayProblem();
 
   const cannot =
     mode !== 'live'
       ? 'This is made-up data. Creating and revoking are switched off.'
-      : !role.principal
-        ? `Connect the principal's wallet${config.data ? `, ${short(config.data.principal)},` : ''} to create or revoke a mandate.`
-        : role.wrongNetwork
-          ? WRONG_NETWORK
-          : null;
+      : gatewayProblem !== null
+        ? gatewayProblem
+        : !role.principal
+          ? `Connect the principal's wallet${config.data ? `, ${short(config.data.principal)},` : ''} to create or revoke a mandate.`
+          : role.wrongNetwork
+            ? WRONG_NETWORK
+            : null;
 
   return (
     <div className="sheet content-start">
@@ -171,7 +175,7 @@ function MandateBlock({
     setBusy(true);
     try {
       const hash = await write.mutateAsync({
-        address: config.vault,
+        address: VAULT,
         abi: mandateVaultAbi,
         functionName: 'revokeMandate',
         args: [mandate.id],
@@ -495,7 +499,7 @@ function CreateMandate({
         },
         notes: PRESETS[kind].notes,
         validUntil,
-        vault: config.vault,
+        vault: VAULT,
         chainId: config.chainId,
         token: { symbol: config.token.symbol, address: config.token.address },
       });
@@ -506,7 +510,7 @@ function CreateMandate({
       await api.storeTerms(termsHash, text);
       setBusy('sign');
       const hash = await write.mutateAsync({
-        address: config.vault,
+        address: VAULT,
         abi: mandateVaultAbi,
         functionName: 'createMandate',
         args: [

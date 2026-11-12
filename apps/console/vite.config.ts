@@ -8,8 +8,14 @@ import { defineConfig } from 'vite';
 // only ever speaks to one origin and the gateway needs no cross-origin rules.
 const gateway = `http://127.0.0.1:${process.env.GATEWAY_PORT ?? '8787'}`;
 
+// The vault the console is for. Like the port it comes from the shell, not from the gateway: the
+// console checks what the gateway says against this address. Empty means the vault this repository
+// records as deployed.
+const vault = process.env.VITE_VAULT_ADDRESS ?? process.env.MANDATE_VAULT_ADDRESS ?? '';
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: { 'import.meta.env.VITE_VAULT_ADDRESS': JSON.stringify(vault) },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

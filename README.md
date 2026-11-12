@@ -201,8 +201,13 @@ deployed. Three more commands:
    pnpm demo
    ```
 
-To watch the run and sign step 4 yourself, start `pnpm console` in one terminal and run
-`pnpm demo --console` in another.
+To watch the run and sign step 4 yourself, start the console in one terminal and run
+`pnpm demo --console` in another. The console is started for one vault and does not take the address from
+the gateway, so name yours. This reads it from `.env`:
+
+```bash
+MANDATE_VAULT_ADDRESS=$(grep '^MANDATE_VAULT_ADDRESS=' .env | cut -d= -f2) pnpm console
+```
 
 ## Security model
 

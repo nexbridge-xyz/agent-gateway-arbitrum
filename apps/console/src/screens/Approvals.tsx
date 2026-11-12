@@ -9,7 +9,14 @@ import { LimitRail } from '@/components/LimitRail';
 import { Field, HashValue, Mark, Money, Note, Purpose, ScreenHead } from '@/components/parts';
 import { WRONG_NETWORK, useRole } from '@/components/WalletCell';
 import { ApiError, type Outcome, type PendingApproval, api } from '@/lib/api';
-import { useApprovals, useDataMode, useGatewayConfig, useMandates, useNow } from '@/lib/data';
+import {
+  useApprovals,
+  useDataMode,
+  useGatewayConfig,
+  useGatewayProblem,
+  useMandates,
+  useNow,
+} from '@/lib/data';
 import { clock, money, short, until } from '@/lib/format';
 import { href } from '@/lib/route';
 import { cn } from '@/lib/utils';
@@ -207,18 +214,21 @@ function Waiting({
   const deadline = Number(message.deadline);
   const expired = deadline <= now;
   const isApprover = address?.toLowerCase() === pending.approver.toLowerCase();
+  const gatewayProblem = useGatewayProblem();
   const blocked =
     mode !== 'live'
       ? 'This is made-up data. Signing is switched off.'
-      : !isConnected
-        ? "Connect the approver's wallet to sign."
-        : !isApprover
-          ? `The connected wallet is not this mandate's approver, ${short(pending.approver)}.`
-          : wrongNetwork
-            ? WRONG_NETWORK
-            : expired
-              ? 'This signing window has passed. A new one opens in a moment.'
-              : null;
+      : gatewayProblem !== null
+        ? gatewayProblem
+        : !isConnected
+          ? "Connect the approver's wallet to sign."
+          : !isApprover
+            ? `The connected wallet is not this mandate's approver, ${short(pending.approver)}.`
+            : wrongNetwork
+              ? WRONG_NETWORK
+              : expired
+                ? 'This signing window has passed. A new one opens in a moment.'
+                : null;
 
   const refresh = async () => {
     await Promise.all(
