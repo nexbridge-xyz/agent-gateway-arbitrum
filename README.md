@@ -270,6 +270,7 @@ says how to run the same checks locally, and [`CHANGELOG.md`](CHANGELOG.md) list
 | Component              | Version | Where it is pinned                    |
 | ---------------------- | ------- | ------------------------------------- |
 | Solidity               | 0.8.30  | `apps/contracts/foundry.toml`         |
+| Foundry (in CI)        | 1.9.0   | `.github/workflows/ci.yml`            |
 | OpenZeppelin Contracts | 5.7.0   | git submodule in `apps/contracts/lib` |
 | forge-std              | 1.17.0  | git submodule in `apps/contracts/lib` |
 | `@arbitrum/mpp`        | 0.1.0   | `catalog` in `pnpm-workspace.yaml`    |

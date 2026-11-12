@@ -30,7 +30,9 @@ jobs:
           submodules: recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/foundry-toolchain@dba66c27052e63476d886f22216e119ba7e615bf # v1.9.2
+        with:
+          version: v1.9.0
 
       - name: Show Forge version
         run: forge --version
@@ -112,7 +114,9 @@ jobs:
         run: pnpm verify-evidence docs/sepolia-run/evidence/*.json --offline
 
       - name: Install Foundry (for the fork below)
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/foundry-toolchain@dba66c27052e63476d886f22216e119ba7e615bf # v1.9.2
+        with:
+          version: v1.9.0
 
       # A real purchase over MPP between the gateway's spend wallet and the demo merchant, on a local
       # fork. It needs a public RPC endpoint without an SLA. If the endpoint does not answer, the step is
