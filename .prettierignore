@@ -18,3 +18,4 @@ docs/sepolia-run/
 
 # Local agent settings and skills
 .claude/
+.agents/

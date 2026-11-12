@@ -25,6 +25,7 @@ apps/gateway/data/
 
 # Local agent settings and skills
 .claude/
+.agents/
 
 # Editors and OS
 .DS_Store
