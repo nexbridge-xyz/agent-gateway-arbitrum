@@ -1,7 +1,14 @@
-import { type Address, type Hex, type PublicClient, isAddressEqual, parseEventLogs } from 'viem';
+import {
+  type Address,
+  type Hex,
+  type PublicClient,
+  erc20Abi,
+  isAddressEqual,
+  parseEventLogs,
+} from 'viem';
 
 import { identityRegistryAbi, mandateVaultAbi } from './chain/abis';
-import { recoverApprovalSigner } from './protocol/approval';
+import { recoverApprovalSigner, recoverDeclineSigner } from './protocol/approval';
 import {
   type EvidenceFile,
   type EvidenceRecord,
@@ -48,6 +55,15 @@ export type VerifierChain = {
       nonce: bigint | null;
     }[];
   }>;
+  /** The token transfers in one transaction, for checking a merchant's settlement. */
+  tokenTransfers(
+    token: Address,
+    transactionHash: Hex,
+  ): Promise<{
+    found: boolean;
+    succeeded: boolean;
+    transfers: { from: Address; to: Address; value: bigint }[];
+  }>;
 };
 
 export type VerifyOptions = {
@@ -88,6 +104,8 @@ export async function verifyEvidence(
 
   const file = parsed.data;
   const { record, result, approval } = file;
+  const purchase = record.purchase ?? null;
+  const vault = { chainId: record.chain.chainId, address: record.chain.vault };
   const checks: VerifyCheck[] = [];
   const add = (ok: boolean | 'skipped', label: string, detail = '') => {
     checks.push({ verdict: ok === 'skipped' ? 'skipped' : ok ? 'pass' : 'fail', label, detail });
@@ -139,7 +157,7 @@ export async function verifyEvidence(
     const expected =
       record.why.decision === 'auto'
         ? ['paid', 'failed', 'executing']
-        : ['paid', 'failed', 'pending_approval'];
+        : ['paid', 'failed', 'pending_approval', 'declined'];
     add(
       expected.includes(result.status),
       'Result fits the decision',
@@ -166,7 +184,7 @@ export async function verifyEvidence(
       record.who.mandateId === null
         ? null
         : await recoverApprovalSigner(
-            { chainId: record.chain.chainId, address: record.chain.vault },
+            vault,
             {
               mandateId: BigInt(record.who.mandateId),
               payee: record.what.payee,
@@ -181,6 +199,28 @@ export async function verifyEvidence(
       same(approvalSigner, record.who.approver) && same(approval.approver, record.who.approver),
       "Approval is signed by the mandate's approver, for this payee, amount and evidence hash",
       approvalSigner ?? 'unreadable signature',
+    );
+  }
+
+  if (result.status === 'declined') {
+    const decliner = await recoverDeclineSigner(
+      vault,
+      record.intentId,
+      file.evidenceHash,
+      result.signature,
+    );
+    add(
+      same(decliner, record.who.approver) && same(result.approver, record.who.approver),
+      "Decline is signed by the mandate's approver, for this request",
+      decliner ?? 'unreadable signature',
+    );
+  }
+
+  if (purchase !== null && result.status === 'paid') {
+    add(
+      purchase.spendWallet !== null && result.purchase !== undefined,
+      'A per-call purchase names the spend wallet and says what happened at the merchant',
+      result.purchase?.status ?? 'no purchase outcome',
     );
   }
 
@@ -220,6 +260,8 @@ export async function verifyEvidence(
 
     const used = await chain.evidenceUsed(record.chain.vault, file.evidenceHash);
     if (result.status === 'paid') {
+      // For a purchase the vault pays the gateway's spend wallet; otherwise it pays the payee.
+      const paidByVault = purchase === null ? record.what.payee : purchase.spendWallet;
       const payment = await chain.payment(record.chain.vault, result.transactionHash);
       add(
         payment.found && payment.succeeded,
@@ -236,7 +278,7 @@ export async function verifyEvidence(
           event.name === result.event &&
           event.mandateId.toString() === record.who.mandateId &&
           event.agentId.toString() === record.who.agentId &&
-          same(event.payee, record.what.payee) &&
+          same(event.payee, paidByVault) &&
           event.amount.toString() === record.what.amount,
         'Vault event carries this evidence hash and the same mandate, agent, payee and amount',
         event === undefined ? 'no event with this evidence hash' : event.name,
@@ -255,6 +297,25 @@ export async function verifyEvidence(
         );
       }
       add(used, 'Vault marks this evidence hash as used');
+
+      if (purchase !== null && result.purchase?.status === 'settled') {
+        const settlement = await chain.tokenTransfers(
+          record.chain.token,
+          result.purchase.settlementTransactionHash,
+        );
+        add(
+          settlement.found &&
+            settlement.succeeded &&
+            settlement.transfers.some(
+              (transfer) =>
+                same(transfer.from, purchase.spendWallet) &&
+                same(transfer.to, record.what.payee) &&
+                transfer.value.toString() === record.what.amount,
+            ),
+          "Merchant's settlement moved the same amount from the spend wallet to the merchant",
+          result.purchase.settlementTransactionHash,
+        );
+      }
     } else {
       add(!used, 'Vault has not paid anything on this evidence hash', `status: ${result.status}`);
     }
@@ -287,6 +348,15 @@ export async function verifyEvidence(
             entry.data.transactionHash === result.transactionHash,
         ),
         'Ledger records this payment',
+      );
+    }
+    if (approval !== null) {
+      add(
+        mine.some(
+          (entry) =>
+            entry.kind === 'APPROVAL_RECEIVED' && entry.data.approver === approval.approver,
+        ),
+        'Ledger records the approval',
       );
     }
   }
@@ -360,10 +430,7 @@ export function createVerifierChain(client: PublicClient): VerifierChain {
         abi: mandateVaultAbi,
         logs,
         eventName: 'ApprovedPayment',
-      }).map((log) => ({
-        name: 'ApprovedPayment' as const,
-        ...log.args,
-      }));
+      }).map((log) => ({ name: 'ApprovedPayment' as const, ...log.args }));
       return {
         found: true,
         succeeded: receipt.status === 'success',
@@ -372,6 +439,24 @@ export function createVerifierChain(client: PublicClient): VerifierChain {
         blockNumber: receipt.blockNumber,
         events: [...inside, ...approved],
       };
+    },
+
+    async tokenTransfers(token, transactionHash) {
+      let receipt;
+      try {
+        receipt = await client.getTransactionReceipt({ hash: transactionHash });
+      } catch {
+        return { found: false, succeeded: false, transfers: [] };
+      }
+      const logs = receipt.logs.filter((log) => isAddressEqual(log.address, token));
+      const transfers = parseEventLogs({ abi: erc20Abi, logs, eventName: 'Transfer' }).map(
+        (log) => ({
+          from: log.args.from,
+          to: log.args.to,
+          value: log.args.value,
+        }),
+      );
+      return { found: true, succeeded: receipt.status === 'success', transfers };
     },
   };
 }

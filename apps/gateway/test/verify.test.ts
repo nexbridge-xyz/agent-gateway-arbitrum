@@ -1,11 +1,16 @@
 import type { Address, Hex } from 'viem';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { approvalTypedData } from '../src/protocol/approval';
+import type { PendingApproval } from '../src/gateway';
+import {
+  APPROVAL_DECLINE_TYPES,
+  PAYMENT_APPROVAL_TYPES,
+  approvalTypedData,
+} from '../src/protocol/approval';
 import { type EvidenceFile, evidenceHash } from '../src/protocol/evidence';
 import { signIntent } from '../src/protocol/intent';
 import { type VerifierChain, verifyEvidence } from '../src/verify';
-import { type Harness, createHarness } from './fakes';
+import { type Harness, MERCHANT_ORIGIN, createHarness } from './fakes';
 import { DOMAIN, USDC, VAULT, makeIntent, newAccount, newAddress } from './helpers';
 
 let h: Harness;
@@ -40,6 +45,14 @@ function chainOf(file: EvidenceFile, changes: Partial<VerifierChain> = {}): Veri
     agentWallet: (_registry, agentId) =>
       Promise.resolve(h.world.agents.get(agentId)?.wallet ?? null),
     evidenceUsed: (_vault, hash) => Promise.resolve(h.world.usedEvidence.has(hash)),
+    tokenTransfers: (_token, transactionHash) => {
+      const transfer = h.purchases?.settlements.get(transactionHash);
+      return Promise.resolve(
+        transfer === undefined
+          ? { found: false, succeeded: false, transfers: [] }
+          : { found: true, succeeded: true, transfers: [transfer] },
+      );
+    },
     payment: (_vault, transactionHash) => {
       const paid = h.world.payments.find((payment) => payment.evidenceHash === file.evidenceHash);
       if (
@@ -56,6 +69,7 @@ function chainOf(file: EvidenceFile, changes: Partial<VerifierChain> = {}): Veri
           events: [],
         });
       }
+      const approved = paid.event === 'ApprovedPayment';
       return Promise.resolve({
         found: true,
         succeeded: true,
@@ -64,14 +78,14 @@ function chainOf(file: EvidenceFile, changes: Partial<VerifierChain> = {}): Veri
         blockNumber: BigInt(file.result.blockNumber),
         events: [
           {
-            name: 'MandatePayment' as const,
+            name: paid.event,
             mandateId: paid.mandateId,
             agentId: h.world.agentId,
             payee: paid.payee,
             amount: paid.amount,
             evidenceHash: paid.evidenceHash,
-            approver: null,
-            nonce: null,
+            approver: approved ? h.world.approver : null,
+            nonce: approved ? (h.world.approvalNonces.get(paid.evidenceHash) ?? null) : null,
           },
         ],
       });
@@ -402,5 +416,185 @@ describe('verify-evidence: approvals', () => {
     forged.record.request.intent.amount = (7n * USDC).toString();
     const report = await verifyEvidence(rehash(forged), { chain });
     expect(report.verified).toBe(false);
+  });
+});
+
+describe('verify-evidence: approvals and declines as the gateway records them', () => {
+  async function waiting(): Promise<{ file: EvidenceFile; pending: PendingApproval }> {
+    const file = await decide({ payee: h.world.vendorB, amount: (6n * USDC).toString() });
+    const pending = (await h.gateway.pendingApprovals())[0] as PendingApproval;
+    return { file, pending };
+  }
+
+  function signApproval(pending: PendingApproval, account = h.world.approverAccount) {
+    const { message } = pending.approval;
+    return account.signTypedData({
+      domain: pending.approval.domain,
+      types: PAYMENT_APPROVAL_TYPES,
+      primaryType: 'PaymentApproval',
+      message: {
+        mandateId: BigInt(message.mandateId),
+        payee: message.payee,
+        amount: BigInt(message.amount),
+        evidenceHash: message.evidenceHash,
+        nonce: BigInt(message.nonce),
+        deadline: BigInt(message.deadline),
+      },
+    });
+  }
+
+  function signDecline(pending: PendingApproval, account = h.world.approverAccount) {
+    return account.signTypedData({
+      domain: pending.decline.domain,
+      types: APPROVAL_DECLINE_TYPES,
+      primaryType: 'ApprovalDecline',
+      message: pending.decline.message,
+    });
+  }
+
+  it('verifies an approved payment against itself, the chain and the ledger', async () => {
+    const { file, pending } = await waiting();
+    await h.gateway.approve(file.record.intentId, {
+      signature: await signApproval(pending),
+      deadline: pending.approval.message.deadline,
+    });
+    const paid = (await h.gateway.evidenceFor(file.record.intentId)) as EvidenceFile;
+
+    const report = await verifyEvidence(paid, { chain: chainOf(paid), ledger: h.ledger.entries });
+    expect(failedLabels(report)).toEqual([]);
+    expect(report.checks.map((check) => check.label)).toEqual(
+      expect.arrayContaining([
+        'A payment that needed approval carries the approval',
+        "Approval is signed by the mandate's approver, for this payee, amount and evidence hash",
+        'Vault event names the approver and the approval nonce',
+        'Ledger records the approval',
+      ]),
+    );
+  });
+
+  it('catches an approval swapped for one signed by the executor', async () => {
+    const { file, pending } = await waiting();
+    await h.gateway.approve(file.record.intentId, {
+      signature: await signApproval(pending),
+      deadline: pending.approval.message.deadline,
+    });
+    const paid = (await h.gateway.evidenceFor(file.record.intentId)) as EvidenceFile;
+    const forged = structuredClone(paid);
+    if (forged.approval === null) throw new Error('expected an approval');
+    forged.approval.signature = await signApproval(pending, h.world.executorAccount);
+
+    const report = await verifyEvidence(forged, { chain: chainOf(paid), ledger: h.ledger.entries });
+    expect(failedLabels(report)).toEqual([
+      "Approval is signed by the mandate's approver, for this payee, amount and evidence hash",
+    ]);
+  });
+
+  it('catches an approval removed from a payment that needed one', async () => {
+    const { file, pending } = await waiting();
+    await h.gateway.approve(file.record.intentId, {
+      signature: await signApproval(pending),
+      deadline: pending.approval.message.deadline,
+    });
+    const paid = (await h.gateway.evidenceFor(file.record.intentId)) as EvidenceFile;
+    const report = await verifyEvidence({ ...paid, approval: null }, { chain: chainOf(paid) });
+    expect(failedLabels(report)).toContain('A payment that needed approval carries the approval');
+  });
+
+  it('verifies a declined request: signed by the approver, nothing paid', async () => {
+    const { file, pending } = await waiting();
+    await h.gateway.decline(file.record.intentId, { signature: await signDecline(pending) });
+    const declined = (await h.gateway.evidenceFor(file.record.intentId)) as EvidenceFile;
+
+    const report = await verifyEvidence(declined, {
+      chain: chainOf(declined),
+      ledger: h.ledger.entries,
+    });
+    expect(failedLabels(report)).toEqual([]);
+    expect(report.checks.map((check) => check.label)).toEqual(
+      expect.arrayContaining([
+        "Decline is signed by the mandate's approver, for this request",
+        'Vault has not paid anything on this evidence hash',
+      ]),
+    );
+  });
+
+  it('catches a decline that the approver did not sign', async () => {
+    const { file, pending } = await waiting();
+    await h.gateway.decline(file.record.intentId, { signature: await signDecline(pending) });
+    const declined = (await h.gateway.evidenceFor(file.record.intentId)) as EvidenceFile;
+    const forged = structuredClone(declined);
+    if (forged.result.status !== 'declined') throw new Error('expected a declined record');
+    forged.result.signature = await signDecline(pending, newAccount());
+
+    const report = await verifyEvidence(forged, { chain: chainOf(declined) });
+    expect(failedLabels(report)).toEqual([
+      "Decline is signed by the mandate's approver, for this request",
+    ]);
+  });
+});
+
+describe('verify-evidence: per-call purchases', () => {
+  async function bought(): Promise<EvidenceFile> {
+    return decide({
+      payee: h.world.merchant,
+      amount: '100000',
+      purpose: 'Market data: TSK-LOGI20 quote',
+      invoiceId: '',
+      context: { mpp: { resource: `${MERCHANT_ORIGIN}/v1/quotes/TSK-LOGI20` } },
+    });
+  }
+
+  it('verifies the top-up from the vault and the settlement at the merchant', async () => {
+    const file = await bought();
+    const report = await verifyEvidence(file, { chain: chainOf(file), ledger: h.ledger.entries });
+
+    expect(failedLabels(report)).toEqual([]);
+    expect(report.checks.map((check) => check.label)).toEqual(
+      expect.arrayContaining([
+        'A per-call purchase names the spend wallet and says what happened at the merchant',
+        "Merchant's settlement moved the same amount from the spend wallet to the merchant",
+      ]),
+    );
+  });
+
+  it.each<[string, (transfer: { from: Address; to: Address; value: bigint }) => void]>([
+    ['went to another address', (transfer) => (transfer.to = newAddress())],
+    ['came from another wallet', (transfer) => (transfer.from = newAddress())],
+    ['moved a different amount', (transfer) => (transfer.value += 1n)],
+  ])('catches a settlement that %s', async (_name, change) => {
+    const file = await bought();
+    for (const transfer of h.purchases!.settlements.values()) change(transfer);
+    const report = await verifyEvidence(file, { chain: chainOf(file) });
+    expect(failedLabels(report)).toEqual([
+      "Merchant's settlement moved the same amount from the spend wallet to the merchant",
+    ]);
+  });
+
+  it('catches a settlement transaction that does not exist', async () => {
+    const file = await bought();
+    h.purchases!.settlements.clear();
+    const report = await verifyEvidence(file, { chain: chainOf(file) });
+    expect(report.verified).toBe(false);
+  });
+
+  it('catches a purchase recorded as paid to the merchant directly', async () => {
+    // The vault paid the spend wallet. A record that drops the purchase claims the vault paid the merchant.
+    const file = await bought();
+    const forged = structuredClone(file);
+    forged.record.purchase = null;
+    const report = await verifyEvidence(rehash(forged), { chain: chainOf(file) });
+    expect(report.verified).toBe(false);
+  });
+
+  it('verifies a purchase that failed at the merchant, and shows that it did', async () => {
+    h.purchases!.failWith = 'the merchant answered 503 after payment';
+    const file = await bought();
+    const report = await verifyEvidence(file, { chain: chainOf(file), ledger: h.ledger.entries });
+    expect(failedLabels(report)).toEqual([]);
+    expect(
+      report.checks.find((check) =>
+        check.label.startsWith('A per-call purchase names the spend wallet'),
+      )?.detail,
+    ).toBe('failed');
   });
 });

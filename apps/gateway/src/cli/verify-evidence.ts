@@ -49,7 +49,27 @@ function print(report: VerifyReport, extra: string[]): void {
     );
     console.log(`  purpose: ${show(record.what.purpose)}`);
     for (const reason of record.why.reasons) console.log(`  reason: ${show(reason, 400)}`);
-    if (result.status === 'paid') console.log(`  ${explorerTx(result.transactionHash)}`);
+    const purchase = record.purchase ?? null;
+    if (purchase !== null) {
+      console.log(
+        `  per-call purchase of ${show(purchase.resource)}, paid through spend wallet ${purchase.spendWallet ?? 'none'}`,
+      );
+    }
+    if (result.status === 'paid') {
+      console.log(
+        `  ${purchase === null ? 'payment' : 'top-up from the vault'}: ${explorerTx(result.transactionHash)}`,
+      );
+      if (result.purchase?.status === 'settled') {
+        console.log(
+          `  settlement at the merchant: ${explorerTx(result.purchase.settlementTransactionHash)}`,
+        );
+      }
+      if (result.purchase?.status === 'failed') {
+        console.log(`  the purchase failed at the merchant: ${show(result.purchase.error, 400)}`);
+      }
+    }
+    if (result.status === 'declined')
+      console.log(`  declined by approver ${result.approver} at ${show(result.declinedAt, 40)}`);
     console.log('');
   }
 
