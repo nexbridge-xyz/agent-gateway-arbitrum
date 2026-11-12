@@ -50,12 +50,19 @@ jobs:
       - name: ABI is up to date
         run: node scripts/export-abi.mjs --check
 
-      # Runs against a public RPC endpoint without an SLA, so a failure here does not fail the build.
+      # The deployed vault against this source, and the vault against the real USDC and registry. These
+      # need a public RPC endpoint without an SLA. If the endpoint does not answer, the step is skipped
+      # with a warning. If it answers, a failing test fails the build: this is the only place where CI
+      # checks that the deployed code is what this repository builds. One retry, for a throttled endpoint.
       - name: Fork tests (Arbitrum Sepolia)
-        continue-on-error: true
         env:
           ARBITRUM_SEPOLIA_RPC_URL: https://sepolia-rollup.arbitrum.io/rpc
-        run: forge test --match-path 'test/fork/*' -vv
+        run: |
+          if ! cast chain-id --rpc-url "$ARBITRUM_SEPOLIA_RPC_URL" >/dev/null 2>&1; then
+            echo "::warning::The public Arbitrum Sepolia endpoint did not answer. The fork tests were skipped."
+            exit 0
+          fi
+          forge test --match-path 'test/fork/*' -vv || { sleep 30; forge test --match-path 'test/fork/*' -vv; }
 
   typescript:
     name: Gateway, merchant, agent, console and scripts (TypeScript)
@@ -108,10 +115,14 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       # A real purchase over MPP between the gateway's spend wallet and the demo merchant, on a local
-      # fork. It needs a public RPC endpoint without an SLA, so a failure here does not fail the build.
+      # fork. It needs a public RPC endpoint without an SLA. If the endpoint does not answer, the step is
+      # skipped with a warning. If it answers, a failing test fails the build.
       - name: MPP purchase on an Arbitrum Sepolia fork
-        continue-on-error: true
         run: |
+          if ! cast chain-id --rpc-url https://sepolia-rollup.arbitrum.io/rpc >/dev/null 2>&1; then
+            echo "::warning::The public Arbitrum Sepolia endpoint did not answer. The MPP purchase test was skipped."
+            exit 0
+          fi
           anvil --fork-url https://sepolia-rollup.arbitrum.io/rpc --port 8546 --silent &
           for attempt in $(seq 1 30); do
             cast chain-id --rpc-url http://127.0.0.1:8546 >/dev/null 2>&1 && break

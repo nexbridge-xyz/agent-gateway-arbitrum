@@ -44,8 +44,8 @@ CI runs the same checks on every push, and also:
 - every evidence file in `docs/sepolia-run`, checked against itself;
 - a secret scan of the full history with gitleaks.
 
-Two more suites need a fork of Arbitrum Sepolia and so a network. CI runs them without failing the build
-when the public endpoint is down:
+Two more suites need a fork of Arbitrum Sepolia and so a network. CI skips them with a warning when the
+public endpoint does not answer. When it answers, a failing test fails the build:
 
 ```bash
 pnpm --filter @agent-gateway/contracts run test:fork
