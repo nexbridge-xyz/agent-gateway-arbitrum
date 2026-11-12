@@ -98,15 +98,19 @@ pnpm verify-evidence docs/sepolia-run/evidence/0x805667fa1d559a7282f269941fd4a45
 It should end with `VERIFIED`. Add `--offline` to skip the chain. The same works for every file in
 `evidence/`.
 
-To check a mandate's text against the chain, hash the file and compare it with the mandate's `termsHash`:
+To check a mandate's text against the chain, hash the file and compare it with the mandate's `termsHash`.
+
+Mandate 3 (vendors):
 
 ```bash
-# Mandate 3 (vendors)
 cast keccak "0x$(xxd -p -c 100000 docs/sepolia-run/mandates/0x0383d34032740b9543c08d2f11aa343ff7d30d0c88401d12b9794c90d9a05763.txt)"
 cast call 0x7293763f6b73783834484cd976528D01Cb6c8CCf "getMandate(uint256)((uint256,address,uint64,bool,address,uint256,uint256,uint256,uint256,bytes32,address[]))" 3 \
   --rpc-url https://sepolia-rollup.arbitrum.io/rpc
+```
 
-# Mandate 4 (spend wallet)
+Mandate 4 (spend wallet):
+
+```bash
 cast keccak "0x$(xxd -p -c 100000 docs/sepolia-run/mandates/0x2424075bc29d4ba4f9086a06ab9eacbf474be8531c18ce0c40c2633582b53c26.txt)"
 cast call 0x7293763f6b73783834484cd976528D01Cb6c8CCf "getMandate(uint256)((uint256,address,uint64,bool,address,uint256,uint256,uint256,uint256,bytes32,address[]))" 4 \
   --rpc-url https://sepolia-rollup.arbitrum.io/rpc

@@ -258,10 +258,15 @@ const reissuedSentence =
 const mandateChecks = KINDS.map((kind) => demoMandate(kind))
   .filter((mandate): mandate is LoggedMandate => mandate !== undefined)
   .map(
-    (mandate) => `# Mandate ${mandate.mandateId} (${mandate.kind})
+    // The mandate's name stands in the text, not as a comment in the block: an interactive zsh does
+    // not know comments, and would take one for a command.
+    (mandate) => `Mandate ${mandate.mandateId} (${mandate.kind}):
+
+\`\`\`bash
 cast keccak "0x$(xxd -p -c 100000 docs/sepolia-run/mandates/${mandate.termsHash}.txt)"
 cast call ${run.vault} "getMandate(uint256)((uint256,address,uint64,bool,address,uint256,uint256,uint256,uint256,bytes32,address[]))" ${mandate.mandateId} \\
-  --rpc-url https://sepolia-rollup.arbitrum.io/rpc`,
+  --rpc-url https://sepolia-rollup.arbitrum.io/rpc
+\`\`\``,
   );
 
 const runReadme = `# A recorded run on Arbitrum Sepolia
@@ -344,11 +349,9 @@ ${
   mandateChecks.length === 0
     ? ''
     : `
-To check a mandate's text against the chain, hash the file and compare it with the mandate's \`termsHash\`:
+To check a mandate's text against the chain, hash the file and compare it with the mandate's \`termsHash\`.
 
-\`\`\`bash
 ${mandateChecks.join('\n\n')}
-\`\`\`
 `
 }
 ## Files
