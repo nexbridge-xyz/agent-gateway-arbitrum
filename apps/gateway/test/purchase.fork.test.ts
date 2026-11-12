@@ -25,10 +25,15 @@ import { PurchaseError, createPurchaseClient } from '../src/chain/purchases';
  *
  *   anvil --fork-url https://sepolia-rollup.arbitrum.io/rpc --port 8546
  *   MPP_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway test
+ *
+ * Use a fresh fork. The public RPC keeps state for recent blocks only, so a fork that has been running
+ * for an hour or so starts to fail with "historical state is not available".
  */
-const rpcUrl = process.env.MPP_FORK_RPC_URL;
+const fork = process.env.MPP_FORK_RPC_URL;
+// The suite is collected even when it is skipped, and a client needs some address to be built.
+const rpcUrl = fork ?? 'http://127.0.0.1:8546';
 
-describe.skipIf(rpcUrl === undefined)('purchase over MPP on an Arbitrum Sepolia fork', () => {
+describe.skipIf(fork === undefined)('purchase over MPP on an Arbitrum Sepolia fork', () => {
   const merchant = privateKeyToAccount(generatePrivateKey());
   const spendWallet = privateKeyToAccount(generatePrivateKey());
   const chainId = 421_614;
@@ -63,7 +68,7 @@ describe.skipIf(rpcUrl === undefined)('purchase over MPP on an Arbitrum Sepolia 
 
     const app = createMerchantApp({
       account: merchant,
-      rpcUrl: rpcUrl as string,
+      rpcUrl: rpcUrl,
       secretKey: 'fork-test-secret-'.repeat(3),
       log: (line) => sold.push(line),
     });
@@ -78,7 +83,7 @@ describe.skipIf(rpcUrl === undefined)('purchase over MPP on an Arbitrum Sepolia 
   });
 
   it('pays 0.10 USDC from the spend wallet to the merchant and gets the quote', async () => {
-    const purchases = createPurchaseClient(spendWallet, { rpcUrl: rpcUrl as string });
+    const purchases = createPurchaseClient(spendWallet, { rpcUrl: rpcUrl });
     const purchase = await purchases.buy({
       resource: `${origin}/v1/quotes/TSK-LOGI20`,
       merchant: merchant.address,
@@ -114,7 +119,7 @@ describe.skipIf(rpcUrl === undefined)('purchase over MPP on an Arbitrum Sepolia 
   ])(
     'signs nothing when the gateway approved %s',
     async (_name, approved) => {
-      const purchases = createPurchaseClient(spendWallet, { rpcUrl: rpcUrl as string });
+      const purchases = createPurchaseClient(spendWallet, { rpcUrl: rpcUrl });
       const before = await balanceOf(spendWallet.address);
       const soldBefore = sold.length;
 
@@ -137,7 +142,7 @@ describe.skipIf(rpcUrl === undefined)('purchase over MPP on an Arbitrum Sepolia 
 
   it('fails cleanly when the spend wallet is empty, and gets no data', async () => {
     const empty = privateKeyToAccount(generatePrivateKey());
-    const purchases = createPurchaseClient(empty, { rpcUrl: rpcUrl as string });
+    const purchases = createPurchaseClient(empty, { rpcUrl: rpcUrl });
     const soldBefore = sold.length;
     await expect(
       purchases.buy({
@@ -154,7 +159,7 @@ describe.skipIf(rpcUrl === undefined)('purchase over MPP on an Arbitrum Sepolia 
   }, 120_000);
 
   it('reports what the merchant said when it sells no such thing', async () => {
-    const purchases = createPurchaseClient(spendWallet, { rpcUrl: rpcUrl as string });
+    const purchases = createPurchaseClient(spendWallet, { rpcUrl: rpcUrl });
     await expect(
       purchases.buy({
         resource: `${origin}/v1/quotes/NOPE`,
