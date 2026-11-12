@@ -1,0 +1,264 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import './tokens.css';
+
+/* The brand tokens under the names the component library reads. */
+:root {
+  --background: var(--nb-bg);
+  --foreground: var(--nb-text);
+  --card: var(--nb-surface);
+  --card-foreground: var(--nb-text);
+  --popover: var(--nb-surface-2);
+  --popover-foreground: var(--nb-text);
+  --primary: var(--nb-signal);
+  --primary-foreground: var(--nb-signal-ink);
+  --secondary: var(--nb-surface-2);
+  --secondary-foreground: var(--nb-text);
+  --muted: var(--nb-surface);
+  --muted-foreground: var(--nb-text-2);
+  --accent: var(--nb-surface-3);
+  --accent-foreground: var(--nb-text);
+  --destructive: var(--console-stop);
+  --border: var(--nb-line-2);
+  --input: var(--nb-line-2);
+  --ring: var(--nb-blue);
+  --radius: var(--nb-radius-s);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ink: var(--nb-bg);
+  --color-ink-2: var(--nb-bg-2);
+  --color-surface: var(--nb-surface);
+  --color-surface-2: var(--nb-surface-2);
+  --color-surface-3: var(--nb-surface-3);
+  --color-text-2: var(--nb-text-2);
+  --color-text-3: var(--nb-text-3);
+  --color-line: var(--nb-line);
+  --color-line-2: var(--nb-line-2);
+  --color-line-3: var(--nb-line-3);
+  --color-ice: var(--nb-ice);
+  --color-blue: var(--nb-blue);
+  --color-blue-2: var(--nb-blue-2);
+  --color-blue-soft: var(--nb-blue-soft);
+  --color-signal: var(--nb-signal);
+  --color-signal-2: var(--nb-signal-2);
+  --color-signal-ink: var(--nb-signal-ink);
+  --color-signal-soft: var(--nb-signal-soft);
+  --color-ok: var(--nb-ok);
+  --color-ok-soft: var(--console-ok-soft);
+  --color-wait: var(--console-wait);
+  --color-wait-soft: var(--console-wait-soft);
+  --color-stop: var(--console-stop);
+  --color-stop-soft: var(--console-stop-soft);
+
+  --font-sans: var(--nb-sans);
+  --font-mono: var(--nb-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+
+  --ease-brand: var(--nb-ease);
+}
+
+@layer base {
+  * {
+    border-color: var(--nb-line);
+  }
+  html {
+    font-size: 16px;
+  }
+  body {
+    margin: 0;
+    background: var(--nb-bg);
+    color: var(--nb-text);
+    font-family: var(--nb-sans);
+    font-size: 0.875rem;
+    line-height: 1.5;
+    letter-spacing: -0.003em;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.12;
+  }
+  a {
+    color: var(--nb-blue-2);
+    text-underline-offset: 3px;
+  }
+  a:hover {
+    color: var(--nb-ice);
+  }
+  :focus-visible {
+    outline: 2px solid var(--nb-blue);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--nb-blue-soft);
+  }
+}
+
+@layer components {
+  /* A small label above a value: uppercase, mono, quiet. */
+  .label {
+    font-family: var(--nb-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--nb-text-3);
+  }
+
+  /* Numbers line up in columns. */
+  .num {
+    font-family: var(--nb-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  /*
+   * The ruled sheet. The screen is one sheet of cells divided by hairlines that run from edge to
+   * edge. There are no cards and no shadows: a cell is a place on the sheet, not an object on it.
+   */
+  .sheet {
+    display: grid;
+    background: var(--console-rule);
+    gap: 1px;
+  }
+  .sheet > * {
+    background: var(--nb-bg);
+  }
+  /* A sheet inside a sheet keeps its own rules. */
+  .sheet > .sheet {
+    background: var(--console-rule);
+  }
+  .cell {
+    padding: 0.875rem 1.25rem;
+    min-width: 0;
+  }
+
+  /* The one call to action on a screen: a filled cell at the end of a ruled row. */
+  .action-cell {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 3rem;
+    padding: 0 1.125rem;
+    border: 0;
+    border-radius: 0;
+    background: var(--nb-signal);
+    color: var(--nb-signal-ink);
+    font-family: var(--nb-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color var(--nb-press) var(--nb-ease),
+      transform var(--nb-press) var(--nb-ease);
+  }
+  .action-cell:hover:not(:disabled) {
+    background: var(--nb-signal-2);
+  }
+  .action-cell:active:not(:disabled) {
+    transform: scale(0.985);
+  }
+  /* Not available yet: the cell is ruled out, not greyed out. */
+  .action-cell:disabled {
+    background:
+      repeating-linear-gradient(135deg, var(--nb-line) 0 1px, transparent 1px 7px), var(--nb-bg-2);
+    color: var(--nb-text-3);
+    cursor: not-allowed;
+  }
+
+  /* A second, quieter action. */
+  .quiet-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0 1.125rem;
+    border: 0;
+    background: transparent;
+    color: var(--nb-text-2);
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color var(--nb-press) var(--nb-ease),
+      color var(--nb-press) var(--nb-ease);
+  }
+  .quiet-action:hover:not(:disabled) {
+    background: var(--nb-surface-2);
+    color: var(--nb-text);
+  }
+  .quiet-action:disabled {
+    color: var(--nb-text-3);
+    cursor: not-allowed;
+  }
+  .quiet-action[data-tone='stop']:hover:not(:disabled) {
+    background: var(--console-stop-soft);
+    color: var(--console-stop);
+  }
+
+  /* A row that arrives in a list. */
+  .arrive {
+    animation: arrive var(--nb-dropdown) var(--nb-ease) both;
+  }
+  @keyframes arrive {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  /* The dot that says the feed is live. */
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--nb-ok);
+    animation: live 1.6s var(--nb-ease) infinite;
+  }
+  @keyframes live {
+    50% {
+      opacity: 0.35;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

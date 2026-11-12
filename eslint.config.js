@@ -1,5 +1,6 @@
 // Lint rules for the TypeScript packages and scripts. Solidity is linted by Foundry.
 import js from '@eslint/js';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -29,6 +30,16 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
     },
+  },
+  {
+    // The console: the rules of hooks, and what React's compiler expects of a component.
+    files: ['apps/console/src/**/*.{ts,tsx}'],
+    ...reactHooks.configs.flat.recommended,
+  },
+  {
+    // Components installed by the shadcn CLI are kept as the CLI wrote them.
+    files: ['apps/console/src/components/ui/**'],
+    rules: { '@typescript-eslint/no-unnecessary-type-assertion': 'off' },
   },
   {
     files: ['**/*.js', '**/*.mjs'],

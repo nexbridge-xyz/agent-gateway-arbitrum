@@ -1,0 +1,77 @@
+/*
+ * NexBridge brand tokens, theme "Ink & Signal".
+ * Copied from the NexBridge brand tokens file (tokens.json, version 1, updated 2026-11-09,
+ * md5 97e57306b1b45cccae55da1b625dfe69). Change the values there first, then here.
+ */
+:root {
+  /* Ground and surfaces */
+  --nb-bg: #05070b;
+  --nb-bg-2: #080b12;
+  --nb-surface: #0c1019;
+  --nb-surface-2: #111624;
+  --nb-surface-3: #171d2e;
+
+  /* Text */
+  --nb-text: #eef2f8;
+  --nb-text-2: rgba(226, 232, 244, 0.72);
+  --nb-text-3: rgba(226, 232, 244, 0.56);
+
+  /* Rules */
+  --nb-line: rgba(196, 212, 255, 0.1);
+  --nb-line-2: rgba(196, 212, 255, 0.18);
+  --nb-line-3: rgba(196, 212, 255, 0.3);
+  --nb-grad-line: linear-gradient(
+    90deg,
+    rgba(143, 176, 255, 0) 0%,
+    rgba(143, 176, 255, 0.55) 50%,
+    rgba(143, 176, 255, 0) 100%
+  );
+
+  /* Light and links */
+  --nb-ice: #c9dbff;
+  --nb-blue: #5b86ff;
+  --nb-blue-2: #8fb0ff;
+  --nb-blue-soft: rgba(91, 134, 255, 0.14);
+
+  /* Signal: the one call to action on a screen, key numbers and the yen sign. Use it sparingly. */
+  --nb-signal: #ff5a2c;
+  --nb-signal-2: #ff8a5c;
+  --nb-signal-ink: #140803;
+  --nb-signal-soft: rgba(255, 90, 44, 0.14);
+
+  /* Done, normal */
+  --nb-ok: #43e2a4;
+
+  /* Type */
+  --nb-sans:
+    'Geist Variable', 'Geist', 'Noto Sans JP', 'Hiragino Sans', system-ui, -apple-system,
+    'Segoe UI', sans-serif;
+  --nb-mono:
+    'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SFMono-Regular', 'Menlo', 'Consolas',
+    monospace;
+
+  /* Radius */
+  --nb-radius-s: 10px;
+
+  /* Motion, console tier: short, because these controls are pressed many times a day. */
+  --nb-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --nb-press: 120ms;
+  --nb-dropdown: 200ms;
+  --nb-modal: 250ms;
+
+  /*
+   * Not in the brand tokens. The console needs two more states than the brand defines, and the
+   * brief asks for amber and red. The red leans to rose so that it is not mistaken for the signal.
+   */
+  --console-wait: #f5b544;
+  --console-wait-soft: rgba(245, 181, 68, 0.12);
+  --console-stop: #ff5d73;
+  --console-stop-soft: rgba(255, 93, 115, 0.12);
+  --console-ok-soft: rgba(67, 226, 164, 0.1);
+
+  /*
+   * The sheet's rules: the brand's line colour (--nb-line-2) laid on the ground, as one opaque colour.
+   * A sheet inside a sheet would otherwise lay translucent lines on translucent lines.
+   */
+  --console-rule: color-mix(in srgb, rgb(196 212 255) 15%, var(--nb-bg));
+}
