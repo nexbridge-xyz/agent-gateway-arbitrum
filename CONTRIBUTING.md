@@ -1,0 +1,86 @@
+# Contributing
+
+Agent Gateway is a testnet demo, and it is kept small on purpose. Issues and pull requests are welcome.
+For a security problem, do not open an issue: see [`SECURITY.md`](SECURITY.md).
+
+## Set up
+
+You need Node 22 or later, [Foundry](https://getfoundry.sh) 1.0 or later, and git.
+
+```bash
+git clone --recurse-submodules https://github.com/nexbridge-xyz/agent-gateway-arbitrum.git
+cd agent-gateway-arbitrum
+nvm use                # Node 22, from .nvmrc
+corepack enable        # pnpm, at the version pinned in package.json
+pnpm install
+```
+
+Nothing above needs a key. Tests run without keys and without a network. To run the demo on Arbitrum
+Sepolia you need testnet keys and your own vault: see the quickstart in the [README](README.md).
+
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) says how the parts fit together and where to read the code.
+
+## Before you open a pull request
+
+```bash
+pnpm format            # Prettier for TypeScript and Markdown, forge fmt for Solidity
+pnpm lint              # format check, ESLint, typecheck, and a contract build that fails on warnings
+pnpm test              # contract tests (Foundry) and every TypeScript package (vitest)
+```
+
+CI runs the same checks on every push, and also:
+
+- the contract tests with coverage. `MandateVault` has every line covered; keep it that way
+  (`pnpm contracts:coverage`);
+- a check that the exported ABI matches the contract (`pnpm --filter @agent-gateway/contracts run abi:check`);
+- a production build of the console;
+- every evidence file in `docs/sepolia-run`, checked against itself;
+- a secret scan of the full history with gitleaks.
+
+Two more suites need a fork of Arbitrum Sepolia and so a network. CI runs them without failing the build
+when the public endpoint is down:
+
+```bash
+pnpm --filter @agent-gateway/contracts run test:fork
+anvil --fork-url https://sepolia-rollup.arbitrum.io/rpc --port 8546
+MPP_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway test
+```
+
+## Commits
+
+- [Conventional Commits](https://www.conventionalcommits.org): `feat(gateway): …`, `fix(console): …`,
+  `test(contracts): …`, `docs: …`, `ci: …`.
+- Small commits, one topic each. Say in the message why the change is needed, not only what it does.
+- A change in behaviour comes with a test that fails without it.
+
+## Rules of the house
+
+- **No secrets, ever.** Keys live only in `.env`, which git ignores. Do not paste a key into an issue, a
+  commit, a test or a log. Tests create throwaway keys at run time.
+- **Testnet only.** The gateway refuses to start on any chain but Arbitrum Sepolia.
+- **Say only what can be checked.** A claim in the docs points to a transaction, a test or a source. Say
+  what is onchain and what is only in the gateway's files. No "first", no "only", no claims of audits.
+- **Fictional names only** in demo data, screenshots and examples. No real companies, no third-party logos.
+- **English** for code, comments, the console and the docs.
+- **Pinned dependencies.** Exact versions. Shared ones are in the catalog in `pnpm-workspace.yaml`.
+
+## Things that are generated
+
+Do not edit these by hand:
+
+| What                                                                     | Made by                                                                          |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `docs/sepolia-run/`                                                      | `pnpm demo:record`, from the latest run. The run's files are kept byte for byte. |
+| The demo table and the gas figures in `README.md`, between their markers | `pnpm demo:record`                                                               |
+| `apps/contracts/abi/`                                                    | `pnpm --filter @agent-gateway/contracts run build`                               |
+| `apps/console/src/components/ui/`                                        | The shadcn CLI. Restyle through class names where they are used.                 |
+
+## Changing the contract
+
+The vault on Arbitrum Sepolia cannot be changed: it has no upgrade path. A change to
+`apps/contracts/src/MandateVault.sol` therefore means a new deployment, a new address in the docs, and a
+new recorded run. Open an issue first.
+
+## License
+
+By contributing you agree that your contribution is licensed under the [MIT License](LICENSE).
