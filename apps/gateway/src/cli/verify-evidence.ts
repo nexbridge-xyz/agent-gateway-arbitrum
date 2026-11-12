@@ -1,9 +1,11 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
-import { createPublicClient, formatUnits, http } from 'viem';
+import { type Address, createPublicClient, formatUnits, getAddress, http, isAddress } from 'viem';
+
+import deployment from '@agent-gateway/contracts/deployments/arbitrum-sepolia.json' with { type: 'json' };
 
 import { explorerTx, repositoryRoot } from '../runtime';
 import { type LedgerEntry, parseLedger } from '../store/ledger';
@@ -11,11 +13,14 @@ import { type VerifyReport, createVerifierChain, verifyEvidence } from '../verif
 
 const USAGE = `Check Agent Gateway evidence files.
 
-  pnpm verify-evidence <file>... [--offline] [--rpc <url>] [--ledger <file>]
+  pnpm verify-evidence <file>... [--vault <address>] [--offline] [--rpc <url>] [--ledger <file>]
 
-  --offline        check each file against itself only; do not contact the chain
-  --rpc <url>      RPC endpoint (default: ARBITRUM_SEPOLIA_RPC_URL, or the public Arbitrum Sepolia endpoint)
-  --ledger <file>  the gateway's ledger (default: ledger.jsonl next to the evidence folder, if it exists)
+  --vault <address>  the vault the files must be about (default: MANDATE_VAULT_ADDRESS from the
+                     environment or the repository's .env, or else the vault this repository records
+                     as deployed). A file about any other contract does not verify.
+  --offline          check each file against itself only; do not contact the chain
+  --rpc <url>        RPC endpoint (default: ARBITRUM_SEPOLIA_RPC_URL, or the public Arbitrum Sepolia endpoint)
+  --ledger <file>    the gateway's ledger (default: ledger.jsonl next to the evidence folder, if it exists)
 
 Exit code 0 when every check of every file passes, 1 when one fails, 2 when a file cannot be read.`;
 
@@ -43,6 +48,7 @@ function print(report: VerifyReport, extra: string[]): void {
         ? record.what.payee
         : `${show(record.what.payeeName, 80)} (${record.what.payee})`;
     console.log(`Evidence for intent ${record.intentId}`);
+    console.log(`  vault ${record.chain.vault} on chain ${record.chain.chainId}`);
     console.log(`  ${record.why.decision} -> ${result.status}: ${money} to ${payee}`);
     console.log(
       `  agent ${record.who.agentId}, mandate ${record.who.mandateId ?? 'none'}, decided ${record.decidedAt}`,
@@ -100,6 +106,29 @@ function print(report: VerifyReport, extra: string[]): void {
 
 type Options = { offline: boolean; rpc?: string | undefined; ledger?: string | undefined };
 
+/** One value from an env file, without loading the rest of the file (it holds keys) into this process. */
+function envFileValue(path: string, name: string): string | undefined {
+  if (!existsSync(path)) return undefined;
+  for (const line of readFileSync(path, 'utf8').split('\n')) {
+    const found = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/.exec(line);
+    if (found?.[1] === name) return (found[2] ?? '').replace(/^(['"])(.*)\1$/, '$2');
+  }
+  return undefined;
+}
+
+/**
+ * The vault the reader means: --vault, or the one this checkout is set up for, or the one this
+ * repository records as deployed. Null if what was given is not an address.
+ */
+function expectedVault(flag: string | undefined): Address | null {
+  const text =
+    flag ??
+    (process.env.MANDATE_VAULT_ADDRESS ||
+      envFileValue(join(repositoryRoot, '.env'), 'MANDATE_VAULT_ADDRESS') ||
+      deployment.contracts.MandateVault.address);
+  return isAddress(text, { strict: false }) ? getAddress(text) : null;
+}
+
 async function main(): Promise<number> {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -107,6 +136,7 @@ async function main(): Promise<number> {
       offline: { type: 'boolean', default: false },
       rpc: { type: 'string' },
       ledger: { type: 'string' },
+      vault: { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
     },
   });
@@ -115,13 +145,20 @@ async function main(): Promise<number> {
     return values.help ? 0 : 2;
   }
 
+  const vault = expectedVault(values.vault);
+  if (vault === null) {
+    console.log('NOT VERIFIED: the vault to check against is not an address. Pass --vault 0x…');
+    return 2;
+  }
+  const expected = { chainId: deployment.chainId, vault };
+
   // pnpm runs scripts from the package folder; paths are meant relative to where the user stood.
   const base = process.env.INIT_CWD ?? process.cwd();
   let worst = 0;
   let verified = 0;
   for (const [index, name] of positionals.entries()) {
     if (index > 0) console.log('');
-    const code = await checkFile(resolve(base, name), base, values);
+    const code = await checkFile(resolve(base, name), base, values, expected);
     if (code === 0) verified += 1;
     worst = Math.max(worst, code);
   }
@@ -133,7 +170,12 @@ async function main(): Promise<number> {
 }
 
 /** Checks one file and prints its report. Returns the exit code that file alone would give. */
-async function checkFile(path: string, base: string, values: Options): Promise<number> {
+async function checkFile(
+  path: string,
+  base: string,
+  values: Options,
+  expected: { chainId: number; vault: Address },
+): Promise<number> {
   let input: unknown;
   try {
     input = JSON.parse(await readFile(path, 'utf8'));
@@ -179,7 +221,7 @@ async function checkFile(path: string, base: string, values: Options): Promise<n
     chain = createVerifierChain(createPublicClient({ transport: http(rpc) }));
   }
 
-  const report = await verifyEvidence(input, { chain, ledger });
+  const report = await verifyEvidence(input, { chain, ledger, expected });
   print(report, extra);
   return report.verified ? 0 : 1;
 }

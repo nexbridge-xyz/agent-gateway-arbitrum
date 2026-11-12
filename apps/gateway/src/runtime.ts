@@ -163,6 +163,11 @@ export function appOptions(runtime: Runtime): AppOptions {
     explorerUrl: EXPLORER_URL,
     mandateTerms,
     verify: (file) =>
-      verifyEvidence(file, { chain: createVerifierChain(publicClient), ledger: ledger.entries }),
+      verifyEvidence(file, {
+        chain: createVerifierChain(publicClient),
+        ledger: ledger.entries,
+        // This gateway's own vault: a file about any other one is not its evidence.
+        expected: { chainId: arbitrumSepolia.id, vault: runtime.config.vault },
+      }),
   };
 }

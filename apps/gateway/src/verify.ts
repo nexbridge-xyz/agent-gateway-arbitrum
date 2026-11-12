@@ -71,6 +71,12 @@ export type VerifyOptions = {
   chain: VerifierChain | null;
   /** The gateway's ledger, if the verifier has it. */
   ledger?: readonly LedgerEntry[];
+  /**
+   * The vault the reader means. A file names its own vault, token and registry, and every other check
+   * follows what the file names. Without this, a file about somebody else's contract verifies as well
+   * as one about yours: say which vault you mean.
+   */
+  expected?: { chainId: number; vault: Address } | undefined;
 };
 
 export type VerifyReport = {
@@ -110,6 +116,18 @@ export async function verifyEvidence(
   const add = (ok: boolean | 'skipped', label: string, detail = '') => {
     checks.push({ verdict: ok === 'skipped' ? 'skipped' : ok ? 'pass' : 'fail', label, detail });
   };
+
+  // --- The file against what the reader asked about ------------------------------------------------
+
+  if (options.expected !== undefined) {
+    const { expected } = options;
+    add(
+      record.chain.chainId === expected.chainId &&
+        isAddressEqual(record.chain.vault, expected.vault),
+      'Record is about the vault this check was asked for',
+      `record: vault ${record.chain.vault} on chain ${record.chain.chainId}; asked for: vault ${expected.vault} on chain ${expected.chainId}`,
+    );
+  }
 
   // --- The file against itself ---------------------------------------------------------------------
 

@@ -239,12 +239,15 @@ hash, so an approval is tied to one record.
 ## Check an evidence file
 
 ```text
-pnpm verify-evidence <file>... [--offline] [--rpc <url>] [--ledger <file>]
+pnpm verify-evidence <file>... [--vault <address>] [--offline] [--rpc <url>] [--ledger <file>]
 ```
 
 That is the shape of the command, not a line to paste; there is one to paste further down. It takes one
 file or several, prints PASS or FAIL for each check, and exits with 0 only if all pass:
 
+- the record is about the vault you mean: `--vault`, or `MANDATE_VAULT_ADDRESS`, or else the vault this
+  repository records as deployed. A file names its own vault, and every onchain check follows what the
+  file names, so a file about somebody else's contract passes all the other checks;
 - the evidence hash is the hash of the record, and the intent id is the hash of the signed request;
 - the request signature recovers the recorded signer, and the record says what the agent signed;
 - the decision follows from the recorded checks, and the result fits the decision;

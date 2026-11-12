@@ -429,6 +429,7 @@ async function checkEvidence(
   const report = await verifyEvidence(file, {
     chain: createVerifierChain(publicClient),
     ledger: runtime.ledger.entries,
+    expected: { chainId: context.info.chainId, vault: context.info.vault },
   });
   const passed = report.checks.filter((check) => check.verdict === 'pass').length;
   const checks = `${passed} of ${report.checks.length}`;
