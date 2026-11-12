@@ -1,0 +1,10 @@
+# Secret scanning rules: gitleaks defaults, plus the public addresses that look like keys to it.
+title = "agent-gateway-arbitrum"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Circle's public test USDC contract on Arbitrum Sepolia, stored under a field named `token`"
+regexTarget = "match"
+regexes = ['''(?i)token['"]?\s*[:=]\s*['"]0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d['"]''']
