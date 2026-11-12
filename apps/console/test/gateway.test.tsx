@@ -247,6 +247,8 @@ describe('approvals', () => {
     const decided = await screen.findByRole('region', { name: 'Decided in this session' });
     expect(within(decided).getByText('Paid, approved')).toBeInTheDocument();
     expect(await screen.findByText('Nothing is waiting for approval')).toBeInTheDocument();
+    // The button that was pressed is gone. The focus is on the result.
+    expect(within(decided).getByRole('heading', { name: 'Decided in this session' })).toHaveFocus();
 
     // The wallet was asked for one signature, over exactly this payment.
     const [signing] = node.sent('eth_signTypedData_v4');
@@ -429,6 +431,10 @@ describe('mandates', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
+    // The dialog is gone, and the focus is back on the button that opened it.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /New mandate/ })).toHaveFocus();
+    });
 
     const [sent] = node.sent('eth_sendTransaction');
     const transaction = sent?.params[0] as { from: string; to: string; data: Hex };
@@ -519,8 +525,11 @@ describe('mandates', () => {
     await open('#/mandates', [h.world.principal]);
     const mandate = await screen.findByRole('region', { name: 'Mandate 1' });
     await user.click(within(mandate).getByRole('button', { name: 'Revoke' }));
+    // The question appears with the focus on the safe answer.
+    expect(within(mandate).getByRole('button', { name: 'Keep it' })).toHaveFocus();
     await user.click(within(mandate).getByRole('button', { name: 'Keep it' }));
     expect(within(mandate).getByRole('button', { name: 'Revoke' })).toBeEnabled();
+    expect(within(mandate).getByRole('button', { name: 'Revoke' })).toHaveFocus();
     expect(node.sent('eth_sendTransaction')).toHaveLength(0);
   });
 });

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, Plus } from 'lucide-react';
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { type Address, BaseError, getAddress, isAddress, parseUnits } from 'viem';
 import { usePublicClient, useWriteContract } from 'wagmi';
 
@@ -51,6 +51,7 @@ export function Mandates() {
   const role = useRole();
   const mode = useDataMode();
   const [creating, setCreating] = useState(false);
+  const newButton = useRef<HTMLButtonElement>(null);
   const list = mandates.data ?? [];
 
   const cannot =
@@ -69,6 +70,7 @@ export function Mandates() {
         about="A mandate says whom an agent may pay, how much per payment and per day, and until when. The vault on Arbitrum holds these limits and enforces them on every payment, whatever the gateway does."
         action={
           <button
+            ref={newButton}
             type="button"
             className="action-cell h-full min-w-48"
             disabled={cannot !== null || config.data === undefined}
@@ -116,6 +118,9 @@ export function Mandates() {
           onClose={() => {
             setCreating(false);
           }}
+          returnFocus={() => {
+            newButton.current?.focus();
+          }}
         />
       ) : null}
     </div>
@@ -141,6 +146,19 @@ function MandateBlock({
   const [problem, setProblem] = useState<string | null>(null);
   const [showTerms, setShowTerms] = useState(false);
   const terms = useTerms(showTerms ? mandate.termsHash : null);
+
+  // Revoking takes two presses, and the buttons change in between. The focus goes with them: to "Keep
+  // it", the safe answer, when the question appears; back to "Revoke" when it is kept; and to the
+  // mandate's title once it is revoked and the buttons are gone.
+  const title = useRef<HTMLHeadingElement>(null);
+  const revokeButton = useRef<HTMLButtonElement>(null);
+  const keepButton = useRef<HTMLButtonElement>(null);
+  const asked = useRef(false);
+  useEffect(() => {
+    if (confirming) keepButton.current?.focus();
+    else if (asked.current) (revokeButton.current ?? title.current)?.focus();
+    asked.current = confirming;
+  }, [confirming]);
 
   const state = stateOf(mandate);
   const decimals = config?.token.decimals ?? 6;
@@ -175,7 +193,7 @@ function MandateBlock({
     >
       <div className="cell space-y-3 py-5">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl">
+          <h2 ref={title} tabIndex={-1} className="text-xl focus:outline-none">
             Mandate <span className="num">{mandate.id.toString()}</span>
           </h2>
           {state === 'active' ? (
@@ -189,9 +207,9 @@ function MandateBlock({
         <Field label="Agent (ERC-8004)">
           <span className="num text-sm break-all">{mandate.agentId.toString()}</span>
         </Field>
-        <Field label={state === 'expired' ? 'Was valid until' : 'Valid until'}>
+        <Field label={state === 'expired' ? 'Was valid until, UTC' : 'Valid until, UTC'}>
           <span className="text-sm">{day(mandate.validUntil)}</span>
-          {state === 'active' ? (
+          {state === 'active' && day(mandate.validUntil) !== 'no end date' ? (
             <span className="text-text-3 ml-2 text-xs">{until(mandate.validUntil, now)}</span>
           ) : null}
         </Field>
@@ -231,7 +249,7 @@ function MandateBlock({
             <ul className="m-0 grid list-none grid-cols-1 gap-x-6 gap-y-1.5 p-0 md:grid-cols-2">
               {mandate.payees.map((payee) => (
                 <li key={payee} className="flex min-w-0 items-baseline gap-2">
-                  <span className="min-w-0 truncate text-sm">
+                  <span className="min-w-0 truncate text-sm" title={names(payee) ?? undefined}>
                     {names(payee) ?? 'Not in the vendor registry'}
                   </span>
                   <span className="num text-text-3 shrink-0 text-xs">{short(payee)}</span>
@@ -299,6 +317,7 @@ function MandateBlock({
               {busy ? 'Revoking…' : `Yes, revoke mandate ${mandate.id}`}
             </button>
             <button
+              ref={keepButton}
               type="button"
               className="quiet-action w-full border-t"
               disabled={busy}
@@ -314,6 +333,7 @@ function MandateBlock({
           </>
         ) : (
           <button
+            ref={revokeButton}
             type="button"
             data-tone="stop"
             className="quiet-action w-full"
@@ -334,6 +354,12 @@ function MandateBlock({
     </section>
   );
 }
+
+/**
+ * What was typed into a field, as the form reads it: without spaces around it, and with full-width
+ * digits and letters (as a Japanese keyboard types them) turned into the plain ones.
+ */
+const typed = (text: string) => text.normalize('NFKC').trim();
 
 type Kind = 'vendors' | 'spend';
 const PRESETS: Record<
@@ -371,10 +397,13 @@ function CreateMandate({
   config,
   approver,
   onClose,
+  returnFocus,
 }: {
   config: GatewayConfig;
   approver: Address | null;
   onClose: () => void;
+  /** Puts the focus back on the button that opened the dialog. */
+  returnFocus: () => void;
 }) {
   const payees = usePayees();
   const client = usePublicClient();
@@ -410,18 +439,18 @@ function CreateMandate({
   const selected = chosen ?? preset(kind);
 
   const amount = (text: string) =>
-    /^[0-9]{1,12}(\.[0-9]{1,6})?$/.test(text.trim())
-      ? parseUnits(text.trim(), config.token.decimals)
+    /^[0-9]{1,12}(\.[0-9]{1,6})?$/.test(typed(text))
+      ? parseUnits(typed(text), config.token.decimals)
       : null;
   const perPayment = amount(caps.perPayment);
   const daily = amount(caps.daily);
   const ceiling = amount(caps.ceiling);
-  const validDays = /^[0-9]{1,3}$/.test(days) ? Number(days) : 0;
-  const invalid = !/^[0-9]{1,30}$/.test(agentId.trim())
+  const validDays = /^[0-9]{1,3}$/.test(typed(days)) ? Number(typed(days)) : 0;
+  const invalid = !/^[0-9]{1,30}$/.test(typed(agentId))
     ? "Enter the agent's id in the ERC-8004 Identity Registry."
-    : !isAddress(approverText.trim())
+    : !isAddress(typed(approverText))
       ? "Enter the approver's address."
-      : getAddress(approverText.trim()) === config.executor
+      : getAddress(typed(approverText)) === config.executor
         ? 'The approver must not be the gateway itself.'
         : perPayment === null || daily === null || ceiling === null
           ? 'Enter the three limits as amounts, such as 2 or 0.50.'
@@ -450,19 +479,19 @@ function CreateMandate({
         principal: { name: DEMO.principal, address: config.principal },
         agent: {
           name: DEMO.agent,
-          id: BigInt(agentId.trim()),
+          id: BigInt(typed(agentId)),
           identityRegistry: config.identityRegistry,
         },
         executor: config.executor,
-        approver: getAddress(approverText.trim()),
+        approver: getAddress(typed(approverText)),
         payeesIntro: PRESETS[kind].intro,
         payees: options
           .filter((vendor) => selected.has(vendor.address))
           .map(({ name, address }) => ({ name, address })),
         caps: {
-          perPayment: caps.perPayment.trim(),
-          daily: caps.daily.trim(),
-          hardCeiling: caps.ceiling.trim(),
+          perPayment: typed(caps.perPayment),
+          daily: typed(caps.daily),
+          hardCeiling: typed(caps.ceiling),
         },
         notes: PRESETS[kind].notes,
         validUntil,
@@ -481,9 +510,9 @@ function CreateMandate({
         abi: mandateVaultAbi,
         functionName: 'createMandate',
         args: [
-          BigInt(agentId.trim()),
+          BigInt(typed(agentId)),
           config.executor,
-          getAddress(approverText.trim()),
+          getAddress(typed(approverText)),
           options.filter((vendor) => selected.has(vendor.address)).map((vendor) => vendor.address),
           perPayment,
           daily,
@@ -509,7 +538,14 @@ function CreateMandate({
         if (!open && busy === null) onClose();
       }}
     >
-      <DialogContent className="bg-background max-h-[92vh] gap-0 overflow-y-auto rounded-none p-0 sm:max-w-2xl">
+      <DialogContent
+        className="bg-background max-h-[92vh] gap-0 overflow-y-auto rounded-none p-0 duration-[250ms] ease-(--ease-brand) sm:max-w-2xl"
+        onCloseAutoFocus={(event) => {
+          // The dialog has no trigger of its own to return to, so it is told where the focus belongs.
+          event.preventDefault();
+          returnFocus();
+        }}
+      >
         <DialogHeader className="border-b px-6 py-5 text-left">
           <DialogTitle className="text-xl tracking-tight">New mandate</DialogTitle>
           <DialogDescription className="text-text-2">
@@ -521,6 +557,12 @@ function CreateMandate({
         <form
           onSubmit={(event) => {
             void submit(event);
+          }}
+          onKeyDown={(event) => {
+            // Enter that confirms a conversion in a Japanese or Chinese input method is not "submit".
+            if (event.key === 'Enter' && (event.nativeEvent.isComposing || event.keyCode === 229)) {
+              event.preventDefault();
+            }
           }}
         >
           <fieldset className="grid grid-cols-2 border-b" disabled={busy !== null}>

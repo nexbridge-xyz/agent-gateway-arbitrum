@@ -1,7 +1,16 @@
 import { Check, Minus, X } from 'lucide-react';
 import type { Hex } from 'viem';
 
-import { Field, HashValue, Mark, Money, Note, ScreenHead, Stamp } from '@/components/parts';
+import {
+  Field,
+  HashValue,
+  Mark,
+  Money,
+  Note,
+  Purpose,
+  ScreenHead,
+  Stamp,
+} from '@/components/parts';
 import type { EvidenceFile } from '@/lib/api';
 import { useEvidence, useGatewayConfig, useIntents, useVerification } from '@/lib/data';
 import { clock, day, short } from '@/lib/format';
@@ -120,7 +129,7 @@ export function Evidence({ intentId }: { intentId: string | null }) {
                 <HashValue value={record.what.payee} label="payee address" />
               </Field>
               <Field label="For">
-                <div className="text-sm break-words">{record.what.purpose}</div>
+                <Purpose text={record.what.purpose} />
                 {record.what.invoiceId ? (
                   <div className="num text-text-3 text-xs">Invoice {record.what.invoiceId}</div>
                 ) : null}

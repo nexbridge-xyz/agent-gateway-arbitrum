@@ -144,6 +144,23 @@ export function HashValue({
   );
 }
 
+/**
+ * What a payment is for, in the agent's words. A purpose can be a single space; it is then said to be
+ * missing instead of leaving a blank line. With `clamp`, long text is cut after two lines and the whole
+ * of it is in the tooltip and on the evidence screen.
+ */
+export function Purpose({ text, clamp = false }: { text: string; clamp?: boolean }) {
+  if (text.trim() === '') return <div className="text-text-3 text-sm">(no purpose given)</div>;
+  return (
+    <div
+      className={cn('min-w-0 text-sm break-words', clamp && 'line-clamp-2')}
+      title={clamp ? text : undefined}
+    >
+      {text}
+    </div>
+  );
+}
+
 /** A label with its value under it. */
 export function Field({
   label,
@@ -193,7 +210,10 @@ export function ScreenHead({
   return (
     <header className={cn('sheet', action ? 'grid-cols-[1fr_auto]' : 'grid-cols-1')}>
       <div className="cell py-5">
-        <h1 className="text-[1.75rem]">{title}</h1>
+        {/* The title can take the focus: it does when the screen changes, so the keyboard goes on from here. */}
+        <h1 id="screen-title" tabIndex={-1} className="text-[1.75rem] focus:outline-none">
+          {title}
+        </h1>
         <p className="text-text-2 mt-1.5 max-w-[72ch] text-sm">{about}</p>
       </div>
       {action ? <div className="flex items-stretch">{action}</div> : null}

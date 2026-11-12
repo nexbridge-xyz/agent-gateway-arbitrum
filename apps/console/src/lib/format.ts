@@ -37,6 +37,8 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 /** A date in UTC: 12 Nov 2026. */
 export function day(value: string | number): string {
+  // Seconds past the year 9999 are a way of saying "never", not a date to print.
+  if (typeof value === 'number' && value > 253_402_300_799) return 'no end date';
   const date = new Date(typeof value === 'number' ? value * 1000 : value);
   if (Number.isNaN(date.getTime())) return 'unknown date';
   return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()] ?? ''} ${date.getUTCFullYear()}`;
@@ -49,5 +51,6 @@ export function until(unixSeconds: number, nowSeconds: number): string {
   if (left < 90) return `in ${left} s`;
   if (left < 5400) return `in ${Math.round(left / 60)} min`;
   if (left < 172_800) return `in ${Math.round(left / 3600)} h`;
+  if (left > 36_500 * 86_400) return 'in more than 100 years';
   return `in ${Math.round(left / 86_400)} days`;
 }

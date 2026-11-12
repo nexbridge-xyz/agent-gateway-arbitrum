@@ -81,15 +81,19 @@ into the vault with the limits. Anyone holding the text can check it against the
 
 ## Data shown
 
-The switch at the bottom left chooses what the screens show:
+The switch at the bottom left chooses what the screens show. It is a tool for building the console: it
+exists in the development build only, and a production build always shows the gateway and the chain.
 
 - **Live:** the gateway and the chain.
-- **Worst:** made-up data that strains the layout: a thousand requests, very long, one-letter and non-Latin
-  names, amounts with eighteen digits, every outcome, an expired signing window, a ledger whose chain is
-  broken. A banner says that none of it is real, and signing is switched off.
+- **Worst:** made-up data that strains the layout, taken from what the gateway and the vault accept: a
+  thousand requests, the longest name and purpose, one-letter and non-Latin names, the largest amount
+  (2^256 − 1), text that must not be run or formatted, every outcome, a page-long error, an expired signing
+  window, a mandate with forty payees and no end date, a ledger whose chain is broken.
+- **One:** exactly one of everything, to check words such as "1 payee" and "1 entry".
 - **Empty:** the screens with nothing in them.
 
-`?data=worst` and `?data=empty` in the address do the same.
+A banner says when the data is made up, and signing is switched off. `?data=worst`, `?data=one` and
+`?data=empty` in the address do the same as the switch.
 
 ## Rehearse on a local fork
 
@@ -125,8 +129,14 @@ treats them as smart accounts (see "Wallets" above). Clear the code on the fork 
   lands.
 - **The signal colour.** Vermilion is kept for the one call to action on a screen and for the yen sign. An
   outcome is always written as a word; its colour only repeats it.
-- **Motion.** Short and rare: a new row in the feed arrives over 200 ms, a press answers in 120 ms. With
-  "reduce motion" set in the system, nothing moves.
+- **Motion.** Short and rare: a new row in the feed arrives over 200 ms, a press answers in 120 ms, a menu
+  opens from its button in 200 ms and the dialog in 250 ms, all on the brand's curve. Only `transform` and
+  `opacity` are animated. Hover styles apply only to a pointer that can hover. With "reduce motion" set in
+  the system, fades stay and everything that moves, grows or pulses is taken out.
+- **Keyboard.** Every action can be reached and done with the keyboard. The first stop skips to the
+  content. The focus follows what was just done: to a screen's title when the screen changes, to the result
+  after a signature, to the safe answer when a mandate is about to be revoked, and back to the button that
+  opened a menu or the dialog.
 - **Components.** Buttons, inputs, the dialog and the menus are [shadcn/ui](https://ui.shadcn.com)
   components (Radix underneath), installed into `src/components/ui` and restyled with the tokens. Fonts are
   Geist and Geist Mono, bundled with the app.
@@ -137,21 +147,28 @@ treats them as smart accounts (see "Wallets" above). Clear the code on the fork 
 pnpm --filter @agent-gateway/console test
 ```
 
-48 tests, without a network and without a browser:
+59 tests, without a network and without a browser:
 
 - **Against the gateway's real code.** The gateway runs in the test process on its in-memory stand-in for
   the chain, the console talks to it over HTTP, and a stand-in node plays the wallet. This pins down that
   the approval the console asks a wallet to sign is the one the gateway and the vault accept, that a decline
   is recorded and pays nothing, that a wallet which is not the approver or is on another network cannot
-  sign, and that a new mandate
-  goes to the vault with the limits from the form and the hash of the text that was stored.
-- **Under strain.** Every screen on the worst-case data and on no data.
+  sign, and that a new mandate goes to the vault with the limits from the form and the hash of the text
+  that was stored.
+- **Under strain.** Every screen on the worst-case data, on one of everything and on no data: nothing is
+  cut that must be read in full, text is shown as it was sent, and counts are in the singular where they
+  should be.
+- **The focus.** Where it is after a screen change, a signature, a revocation, a menu and the dialog.
 - **The parts.** Amounts and yen figures in whole-number arithmetic, times in UTC, the limit rail, the
-  wallet menu, the address-bar routes.
+  wallet menu, the address-bar routes, and that made-up data cannot be chosen in a production build.
 
-The path through a real browser, a real node and the vault was rehearsed on a local fork as described
-above: steps 1 to 7 of the demo with the approval signed in the console, and a mandate created and revoked
-from the console.
+Three things were checked in a real browser on a local fork, as described above:
+
+- the whole path: steps 1 to 7 of the demo with the approval signed in the console, and a mandate created
+  and revoked from the console;
+- the same with the keyboard only: connecting a wallet, signing, the dialog and the two steps of revoking;
+- every screen on the worst-case data at 1440 px, at 200% zoom, at 320 px and at 2560 px, without a sideways
+  scroll, and what moves with and without "reduce motion".
 
 ## Limits
 
@@ -160,4 +177,7 @@ from the console.
 - It shows the newest 200 requests and the newest 300 ledger entries, and reads the newest 12 mandates.
 - It refreshes by asking again every few seconds. There is no push from the gateway.
 - Names in a new mandate's text are the demo's fictional company and agent.
+- A mandate's payees are all listed, however many there are, and the feed is not virtualized: it draws the
+  200 rows it shows.
+- Not tried with a screen reader, and only in Chrome.
 - English only.

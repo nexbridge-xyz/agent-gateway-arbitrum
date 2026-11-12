@@ -54,6 +54,12 @@ describe('times, always in UTC', () => {
     expect(day('not a date')).toBe('unknown date');
   });
 
+  it('does not print a date for an end that is as far away as a number can say', () => {
+    // 2^64 - 1 seconds: what a mandate stores when it is meant to have no end.
+    expect(day(Number(2n ** 64n - 1n))).toBe('no end date');
+    expect(until(Number(2n ** 64n - 1n), 1_794_000_000)).toBe('in more than 100 years');
+  });
+
   it('says how long is left in the unit that fits', () => {
     expect(until(1000, 1000)).toBe('passed');
     expect(until(1045, 1000)).toBe('in 45 s');

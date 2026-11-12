@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 
-import { HashValue, Money, Note, ScreenHead, Stamp } from '@/components/parts';
+import { HashValue, Money, Note, Purpose, ScreenHead, Stamp } from '@/components/parts';
 import type { IntentSummary } from '@/lib/api';
 import { useDataMode, useIntents } from '@/lib/data';
 import { clock, day, short } from '@/lib/format';
@@ -138,16 +138,25 @@ function Row({ row, arriving, order }: { row: IntentSummary; arriving: boolean; 
         <div className="num text-text-3 text-xs">{short(row.payee)}</div>
       </div>
       <div className="col-start-2 min-w-0 md:col-start-auto">
-        <div className="line-clamp-2 text-sm break-words">{row.purpose}</div>
+        <Purpose text={row.purpose} clamp />
         {row.purchase ? (
-          <div className="text-text-3 mt-0.5 truncate text-xs">
+          <div className="text-text-3 mt-0.5 truncate text-xs" title={row.purchase.resource}>
             Bought per call from {row.purchase.resource}
           </div>
         ) : null}
         {explained ? (
           <ul className="text-text-2 mt-1.5 list-none space-y-1 p-0 text-xs">
             {(row.error ? [row.error] : row.reasons).map((reason) => (
-              <li key={reason} className="border-line-3 border-l pl-2 break-words">
+              // A reason is the gateway's own sentence and is shown whole. An error can be a page of
+              // text from somewhere else: three lines here, all of it on the evidence screen.
+              <li
+                key={reason}
+                className={cn(
+                  'border-line-3 border-l pl-2 break-words',
+                  row.error && 'line-clamp-3',
+                )}
+                title={row.error ? reason : undefined}
+              >
                 {reason}
               </li>
             ))}

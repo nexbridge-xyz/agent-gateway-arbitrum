@@ -1,12 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useConnection, useSignTypedData } from 'wagmi';
 
 import { APPROVAL_DECLINE_TYPES, PAYMENT_APPROVAL_TYPES } from '@agent-gateway/gateway/protocol';
 
 import { LimitRail } from '@/components/LimitRail';
-import { Field, HashValue, Mark, Money, Note, ScreenHead } from '@/components/parts';
+import { Field, HashValue, Mark, Money, Note, Purpose, ScreenHead } from '@/components/parts';
 import { WRONG_NETWORK, useRole } from '@/components/WalletCell';
 import { ApiError, type Outcome, type PendingApproval, api } from '@/lib/api';
 import { useApprovals, useDataMode, useGatewayConfig, useMandates, useNow } from '@/lib/data';
@@ -34,6 +34,13 @@ export function Approvals() {
   const queue = approvals.data ?? [];
   const [chosen, setChosen] = useState<string | null>(null);
   const [decided, setDecided] = useState<Decided[]>([]);
+  // After "Review" the payment that was picked takes the focus, and after a decision its result does.
+  // Otherwise the focus would be left on a button that is no longer there.
+  const [picked, setPicked] = useState(false);
+  const decidedHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (decided.length > 0) decidedHeading.current?.focus();
+  }, [decided.length]);
   const current = queue.find((item) => item.intentId === chosen) ?? queue[0] ?? null;
   const others = queue.filter((item) => item !== current);
 
@@ -61,9 +68,11 @@ export function Approvals() {
           pending={current}
           position={queue.indexOf(current) + 1}
           total={queue.length}
+          takeFocus={picked && current.intentId === chosen}
           onDecided={(result) => {
             setDecided((list) => [result, ...list]);
             setChosen(null);
+            setPicked(false);
           }}
         />
       )}
@@ -88,13 +97,14 @@ export function Approvals() {
                   </div>
                   <div className="num text-text-3 text-xs">{short(item.payee)}</div>
                 </div>
-                <div className="line-clamp-2 min-w-0 text-sm break-words">{item.purpose}</div>
+                <Purpose text={item.purpose} clamp />
               </div>
               <button
                 type="button"
                 className="quiet-action h-full"
                 onClick={() => {
                   setChosen(item.intentId);
+                  setPicked(true);
                 }}
               >
                 Review <ArrowRight aria-hidden className="size-4" />
@@ -106,7 +116,13 @@ export function Approvals() {
 
       {decided.length > 0 ? (
         <section className="sheet" aria-label="Decided in this session">
-          <h2 className="label bg-ink-2 px-5 py-2">Decided in this session</h2>
+          <h2
+            ref={decidedHeading}
+            tabIndex={-1}
+            className="label bg-ink-2 px-5 py-2 focus:outline-none"
+          >
+            Decided in this session
+          </h2>
           {decided.map(({ pending, outcome, said }) => (
             <div
               key={pending.intentId}
@@ -161,13 +177,20 @@ function Waiting({
   pending,
   position,
   total,
+  takeFocus,
   onDecided,
 }: {
   pending: PendingApproval;
   position: number;
   total: number;
+  /** True when the approver picked this payment from the list below. */
+  takeFocus: boolean;
   onDecided: (result: Decided) => void;
 }) {
+  const section = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (takeFocus) section.current?.focus();
+  }, [takeFocus]);
   const { address, isConnected } = useConnection();
   const config = useGatewayConfig();
   const sign = useSignTypedData();
@@ -255,7 +278,9 @@ function Waiting({
   const symbol = config.data?.token.symbol ?? pending.tokenSymbol;
   return (
     <section
-      className="sheet grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_16rem]"
+      ref={section}
+      tabIndex={-1}
+      className="sheet grid-cols-1 focus:outline-none xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_16rem]"
       aria-label="Waiting for your approval"
     >
       <div className="cell space-y-5 py-5">
@@ -279,7 +304,7 @@ function Waiting({
             <HashValue value={pending.payee} label="payee address" />
           </Field>
           <Field label="For">
-            <div className="text-sm break-words">{pending.purpose}</div>
+            <Purpose text={pending.purpose} />
             {pending.invoiceId ? (
               <div className="num text-text-3 text-xs">Invoice {pending.invoiceId}</div>
             ) : null}

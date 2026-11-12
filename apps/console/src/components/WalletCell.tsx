@@ -1,4 +1,5 @@
 import { ChevronDown } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { useConnect, useConnection, useConnectors, useDisconnect, useSwitchChain } from 'wagmi';
 
 import {
@@ -39,6 +40,9 @@ export function useRole(): {
 export const WRONG_NETWORK =
   'The wallet is on another network. Switch it to Arbitrum Sepolia in the wallet menu at the top right.';
 
+/** The menu opens from its trigger in 200 ms on the brand's curve, as the brand's motion rules say. */
+const MENU = 'min-w-64 rounded-none duration-200 ease-(--ease-brand)';
+
 /** The wallet's place in the top strip: connect, see who is connected and as what, disconnect. */
 export function WalletCell() {
   const { address, chainId, isConnected } = useConnection();
@@ -48,22 +52,34 @@ export function WalletCell() {
   const switchChain = useSwitchChain();
   const role = useRole();
 
+  // Connecting or disconnecting from the menu replaces the button the menu hangs on. The focus goes
+  // to the new button, or it would be left on nothing. A wallet that reconnects by itself when the
+  // page loads does not move the focus.
+  const trigger = useRef<HTMLButtonElement>(null);
+  const fromMenu = useRef(false);
+  useEffect(() => {
+    if (!fromMenu.current) return;
+    fromMenu.current = false;
+    trigger.current?.focus();
+  }, [isConnected]);
+
   // Two separate menus, told apart by their keys. If they were one, the menu that is closing after a
   // wallet was picked would show "Disconnect" for a moment, right where the next click may land.
   if (!isConnected || address === undefined) {
     return (
       <DropdownMenu key="connect">
-        <DropdownMenuTrigger className="quiet-action h-full w-full justify-between">
+        <DropdownMenuTrigger ref={trigger} className="quiet-action h-full w-full justify-between">
           <span>{connect.isPending ? 'Connecting…' : 'Connect wallet'}</span>
           <ChevronDown aria-hidden className="size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-64 rounded-none">
+        <DropdownMenuContent align="end" className={MENU}>
           <DropdownMenuLabel className="label">Sign with</DropdownMenuLabel>
           {connectors.map((connector) => (
             <DropdownMenuItem
               key={connector.uid}
               className="rounded-none"
               onSelect={() => {
+                fromMenu.current = true;
                 connect.mutate({ connector, chainId: chain.id });
               }}
             >
@@ -88,14 +104,17 @@ export function WalletCell() {
       : 'No role in this vault';
   return (
     <DropdownMenu key="connected">
-      <DropdownMenuTrigger className="quiet-action h-full w-full justify-between gap-3">
+      <DropdownMenuTrigger
+        ref={trigger}
+        className="quiet-action h-full w-full justify-between gap-3"
+      >
         <span className="flex min-w-0 flex-col items-start leading-tight">
           <span className="label">{wrongChain ? 'Wrong network' : roleName}</span>
           <span className="num text-foreground text-xs">{short(address)}</span>
         </span>
         <ChevronDown aria-hidden className="size-4 shrink-0" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-64 rounded-none">
+      <DropdownMenuContent align="end" className={MENU}>
         <DropdownMenuLabel className="num text-xs font-normal break-all">
           {address}
         </DropdownMenuLabel>
@@ -113,6 +132,7 @@ export function WalletCell() {
         <DropdownMenuItem
           className="rounded-none"
           onSelect={() => {
+            fromMenu.current = true;
             disconnect.mutate();
           }}
         >

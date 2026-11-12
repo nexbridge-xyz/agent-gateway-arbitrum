@@ -59,7 +59,7 @@ export function LimitRail({
     <div className={cn('w-full', inactive && 'opacity-45')}>
       <div className="num mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs">
         <span>
-          <span className="label mr-2">Paid today</span>
+          <span className="label mr-2">Paid today, UTC</span>
           <span className="text-foreground text-base">{amount(spentToday)}</span>
           <span className="text-text-3 ml-1">{symbol}</span>
         </span>
@@ -95,15 +95,23 @@ export function LimitRail({
               'repeating-linear-gradient(135deg, color-mix(in srgb, var(--console-wait) 55%, transparent) 0 1px, transparent 1px 5px)',
           }}
         />
-        {/* What has been paid today: on its own up to the daily cap, with approvals beyond it. */}
-        <div
-          className="bg-ok absolute top-[17px] h-[5px] transition-[width] duration-200 ease-(--ease-brand)"
-          style={{ width: `${Math.min(spent, daily)}%` }}
-        />
-        {spent > daily ? (
+        {/*
+          What has been paid today: on its own up to the daily cap, with approvals beyond it. Each bar
+          spans its whole stretch and is scaled from the left, so a change does not lay the page out again.
+        */}
+        {daily > 0 ? (
           <div
-            className="bg-wait absolute top-[17px] h-[5px] transition-[width] duration-200 ease-(--ease-brand)"
-            style={{ left: `${daily}%`, width: `${spent - daily}%` }}
+            className="rail-fill bg-ok absolute top-[17px] left-0 h-[5px]"
+            style={{ width: `${daily}%`, transform: `scaleX(${Math.min(spent, daily) / daily})` }}
+          />
+        ) : null}
+        {daily < 100 ? (
+          <div
+            className="rail-fill bg-wait absolute top-[17px] right-0 h-[5px]"
+            style={{
+              left: `${daily}%`,
+              transform: `scaleX(${spent > daily ? (spent - daily) / (100 - daily) : 0})`,
+            }}
           />
         ) : null}
         {/* The payment that is being asked for. */}

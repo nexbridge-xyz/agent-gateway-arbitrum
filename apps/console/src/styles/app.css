@@ -109,8 +109,11 @@
     color: var(--nb-blue-2);
     text-underline-offset: 3px;
   }
-  a:hover {
-    color: var(--nb-ice);
+  /* Hover styles are for a pointer that can hover. A tap on a touch screen would leave them stuck. */
+  @media (hover: hover) and (pointer: fine) {
+    a:hover {
+      color: var(--nb-ice);
+    }
   }
   :focus-visible {
     outline: 2px solid var(--nb-blue);
@@ -181,11 +184,13 @@
       background-color var(--nb-press) var(--nb-ease),
       transform var(--nb-press) var(--nb-ease);
   }
-  .action-cell:hover:not(:disabled) {
-    background: var(--nb-signal-2);
+  @media (hover: hover) and (pointer: fine) {
+    .action-cell:hover:not(:disabled) {
+      background: var(--nb-signal-2);
+    }
   }
   .action-cell:active:not(:disabled) {
-    transform: scale(0.985);
+    transform: scale(0.98);
   }
   /* Not available yet: the cell is ruled out, not greyed out. */
   .action-cell:disabled {
@@ -214,17 +219,34 @@
       background-color var(--nb-press) var(--nb-ease),
       color var(--nb-press) var(--nb-ease);
   }
-  .quiet-action:hover:not(:disabled) {
-    background: var(--nb-surface-2);
-    color: var(--nb-text);
-  }
   .quiet-action:disabled {
     color: var(--nb-text-3);
     cursor: not-allowed;
   }
-  .quiet-action[data-tone='stop']:hover:not(:disabled) {
-    background: var(--console-stop-soft);
-    color: var(--console-stop);
+  @media (hover: hover) and (pointer: fine) {
+    .quiet-action:hover:not(:disabled) {
+      background: var(--nb-surface-2);
+      color: var(--nb-text);
+    }
+    .quiet-action[data-tone='stop']:hover:not(:disabled) {
+      background: var(--console-stop-soft);
+      color: var(--console-stop);
+    }
+  }
+
+  /*
+   * What a mandate has paid, on the limit rail. The bar keeps its full length and is scaled from its
+   * left end, so a change moves on the compositor instead of laying the page out again.
+   */
+  .rail-fill {
+    transform-origin: left center;
+    transition: transform var(--nb-dropdown) var(--nb-ease);
+  }
+
+  /* The dialog's backdrop fades in step with the dialog. */
+  [data-slot='dialog-overlay'] {
+    --tw-duration: var(--nb-modal);
+    --tw-ease: var(--nb-ease);
   }
 
   /* A row that arrives in a list. */
@@ -235,6 +257,11 @@
     from {
       opacity: 0;
       transform: translateY(6px);
+    }
+  }
+  @keyframes arrive-fade {
+    from {
+      opacity: 0;
     }
   }
 
@@ -253,12 +280,31 @@
   }
 }
 
+/*
+ * Reduced motion: gentler, not blank. Fades and colour changes stay, because they say that something
+ * changed. Everything that moves, grows or pulses is taken out.
+ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  .arrive {
+    animation-name: arrive-fade;
+  }
+  .live-dot {
+    animation: none;
+  }
+  .action-cell:active:not(:disabled) {
+    transform: none;
+  }
+  .rail-fill {
+    transition: none;
+  }
+  [data-slot='dialog-content'],
+  [data-slot='dropdown-menu-content'],
+  [data-slot='dropdown-menu-sub-content'] {
+    --tw-enter-scale: 1 !important;
+    --tw-exit-scale: 1 !important;
+    --tw-enter-translate-x: 0 !important;
+    --tw-enter-translate-y: 0 !important;
+    --tw-exit-translate-x: 0 !important;
+    --tw-exit-translate-y: 0 !important;
   }
 }

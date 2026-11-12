@@ -33,6 +33,10 @@ describe('the wallet in the top strip', () => {
   it('offers to connect, and says which role the connected wallet has', async () => {
     await connectWith(sample.config().principal);
     expect(await screen.findByText('Principal')).toBeInTheDocument();
+    // The button the menu hung on is gone. The focus is on the one that took its place.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Principal/ })).toHaveFocus();
+    });
   });
 
   it("knows a mandate's approver", async () => {
@@ -47,7 +51,7 @@ describe('the wallet in the top strip', () => {
     await user.click(connected);
     await user.click(await screen.findByRole('menuitem', { name: 'Disconnect' }));
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Connect wallet/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Connect wallet/ })).toHaveFocus();
     });
   });
 });
