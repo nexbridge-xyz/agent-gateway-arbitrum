@@ -10,6 +10,8 @@ import {
 
 import type { Context } from './context';
 
+type Registration = { name: string; description: string };
+
 /**
  * Registers an agent in the ERC-8004 Identity Registry the way a company would:
  *
@@ -21,12 +23,7 @@ import type { Context } from './context';
 export async function registerAgent(
   context: Context,
   step: string,
-  options: {
-    owner: PrivateKeyAccount;
-    agent: PrivateKeyAccount;
-    name: string;
-    description: string;
-  },
+  options: Registration & { owner: PrivateKeyAccount; agent: PrivateKeyAccount },
 ): Promise<bigint> {
   const { publicClient, info, wallet, confirm } = context;
   const registry = { address: info.identityRegistry, abi: identityRegistryAbi } as const;
@@ -51,16 +48,7 @@ export async function registerAgent(
     await owner.writeContract({
       ...registry,
       functionName: 'setAgentURI',
-      args: [
-        agentId,
-        registrationDataUri({
-          name: options.name,
-          description: options.description,
-          agentId,
-          chainId: info.chainId,
-          identityRegistry: info.identityRegistry,
-        }),
-      ],
+      args: [agentId, registrationUri(context, agentId, options)],
     }),
   );
 
@@ -84,6 +72,47 @@ export async function registerAgent(
   );
 
   return agentId;
+}
+
+function registrationUri(context: Context, agentId: bigint, registration: Registration): string {
+  return registrationDataUri({
+    name: registration.name,
+    description: registration.description,
+    agentId,
+    chainId: context.info.chainId,
+    identityRegistry: context.info.identityRegistry,
+  });
+}
+
+/**
+ * Stores the registration file again if the one onchain says something else, for example after the
+ * agent was renamed. Returns whether a transaction was needed.
+ */
+export async function syncRegistration(
+  context: Context,
+  step: string,
+  options: Registration & { owner: PrivateKeyAccount; agentId: bigint },
+): Promise<boolean> {
+  const { publicClient, info, wallet, confirm } = context;
+  const registry = { address: info.identityRegistry, abi: identityRegistryAbi } as const;
+  const wanted = registrationUri(context, options.agentId, options);
+  const current = await publicClient.readContract({
+    ...registry,
+    functionName: 'tokenURI',
+    args: [options.agentId],
+  });
+  if (current === wanted) return false;
+
+  await confirm(
+    step,
+    `principal updates the registration file of agent ${options.agentId} onchain: "${options.name}"`,
+    await wallet(options.owner).writeContract({
+      ...registry,
+      functionName: 'setAgentURI',
+      args: [options.agentId, wanted],
+    }),
+  );
+  return true;
 }
 
 /** Whether the agent exists, belongs to `owner` and has `agentWallet` as its wallet. */

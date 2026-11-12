@@ -25,14 +25,17 @@
     "keys:generate": "bash scripts/generate-keys.sh",
     "demo": "tsx scripts/demo.ts",
     "gateway": "pnpm --filter @agent-gateway/gateway run start",
+    "merchant": "pnpm --filter @agent-gateway/merchant run start",
     "verify-evidence": "tsx apps/gateway/src/cli/verify-evidence.ts",
     "contracts:test": "pnpm --filter @agent-gateway/contracts run test",
     "contracts:coverage": "pnpm --filter @agent-gateway/contracts run coverage",
     "contracts:deploy:sepolia": "pnpm --filter @agent-gateway/contracts run deploy:sepolia"
   },
   "devDependencies": {
+    "@agent-gateway/agent": "workspace:*",
     "@agent-gateway/contracts": "workspace:*",
     "@agent-gateway/gateway": "workspace:*",
+    "@agent-gateway/merchant": "workspace:*",
     "@eslint/js": "catalog:",
     "@types/node": "catalog:",
     "eslint": "catalog:",

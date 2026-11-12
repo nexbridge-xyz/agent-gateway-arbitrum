@@ -1,6 +1,9 @@
+import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { join, relative } from 'node:path';
 
 import {
   type Account,
@@ -8,13 +11,29 @@ import {
   type Hex,
   type TransactionReceipt,
   createWalletClient,
-  formatEther,
+  erc20Abi,
+  formatUnits,
   http,
+  parseUnits,
 } from 'viem';
-import { type PrivateKeyAccount, privateKeyToAccount } from 'viem/accounts';
+import { type PrivateKeyAccount, generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { arbitrumSepolia } from 'viem/chains';
 
-import { type Runtime, configFromEnv, createRuntime, explorerTx } from '@agent-gateway/gateway';
+import { type Agent, type AgentTools, createAgent, createAgentTools } from '@agent-gateway/agent';
+import {
+  type Runtime,
+  configFromEnv,
+  createApp,
+  createRuntime,
+  explorerTx,
+  repositoryRoot,
+} from '@agent-gateway/gateway';
+import {
+  MERCHANT_NAME,
+  PLANTED_NOTE_SYMBOL,
+  createMerchantApp,
+  plantedNoteText,
+} from '@agent-gateway/merchant';
 
 /** Everything a demo step needs: the role keys, clients for the chain, and a log of what was done. */
 
@@ -32,14 +51,28 @@ const ROLES = [
 
 export type Role = (typeof ROLES)[number];
 
-/** The fictional company and vendors of the demo. No real brands. */
+/**
+ * The fictional company and vendors of the demo. The names are coined for this demo; none is a real
+ * company or brand.
+ */
 export const NAMES = {
-  principal: 'Mizunara Trading',
-  agent: 'Mizunara research and procurement agent',
-  vendorA: 'Tsukimi Data',
-  vendorB: 'Koishi Supply',
+  principal: 'Kirenami Trading',
+  agent: 'Kirenami research and procurement agent',
+  /** Sells market data per call. */
+  merchant: MERCHANT_NAME,
+  /** Sends invoices for supplies. */
+  vendorA: 'Koishi Supply',
+  /** Sends invoices for research reports. */
+  vendorB: 'Nagikumo Research',
   spendWallet: 'Agent Gateway spend wallet',
 } as const;
+
+export type RunOptions = {
+  /** Revoke the current mandate, if it is still active, and create a new one. */
+  fresh: boolean;
+  /** How long a new mandate is valid. */
+  validDays: number;
+};
 
 export type LoggedTransaction = {
   step: string;
@@ -49,6 +82,23 @@ export type LoggedTransaction = {
   blockNumber: string;
   url: string;
 };
+
+/** One decision of the gateway during the run. */
+export type LoggedIntent = {
+  step: string;
+  intentId: Hex;
+  decision: string;
+  status: string;
+  payee: Address;
+  payeeName: string | null;
+  amount: string;
+  reasons: string[];
+  evidenceHash: Hex;
+  evidenceChecks: string;
+};
+
+/** One "gateway compromised" drill: what was tried with the executor key, and how the vault refused. */
+export type LoggedDrill = { name: string; attempt: string; refusal: string; transactionHash: Hex };
 
 /** What the setup step created, kept between runs so later steps can find it. */
 export type DemoState = {
@@ -61,7 +111,22 @@ export type DemoState = {
 
 export type Context = Awaited<ReturnType<typeof createContext>>;
 
-export async function createContext(envFile: string) {
+function listen(server: Server, what: string, port: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.once('listening', resolve);
+    server.once('error', (error: NodeJS.ErrnoException) => {
+      reject(
+        error.code === 'EADDRINUSE'
+          ? new Error(
+              `Port ${port} is in use, so ${what} cannot start. Stop what is using it, or set MERCHANT_PORT and run step 1 again.`,
+            )
+          : error,
+      );
+    });
+  });
+}
+
+export async function createContext(envFile: string, options: RunOptions) {
   if (!existsSync(envFile)) {
     throw new Error(`No settings file at ${envFile}. Run: pnpm keys:generate`);
   }
@@ -80,16 +145,59 @@ export async function createContext(envFile: string) {
 
   const runtime: Runtime = await createRuntime(configFromEnv());
   const { publicClient, config } = runtime;
+  if (runtime.purchases === null) {
+    throw new Error(`SPEND_WALLET_PRIVATE_KEY is missing in ${envFile}. Run: pnpm keys:generate`);
+  }
   const info = await runtime.chain.info();
   const transport = http(config.rpcUrl);
   const wallet = (account: Account) =>
     createWalletClient({ account, chain: arbitrumSepolia, transport });
 
+  const merchantPort = Number(process.env.MERCHANT_PORT || 8788);
+  /** Where the demo merchant listens. The principal's vendor registry names this address. */
+  const merchantUrl = `http://127.0.0.1:${merchantPort}`;
+
   const transactions: LoggedTransaction[] = [];
+  const intents: LoggedIntent[] = [];
+  const drills: LoggedDrill[] = [];
   const statePath = join(config.dataDir, 'demo-state.json');
 
   const log = (line = '') => {
     console.log(line);
+  };
+
+  const units = (value: string) => parseUnits(value, info.tokenDecimals);
+  /** An amount as people write money: at least two decimals. */
+  const money = (value: bigint) => {
+    const [whole, fraction = ''] = formatUnits(value, info.tokenDecimals).split('.');
+    return `${whole}.${fraction.padEnd(2, '0')} ${info.tokenSymbol}`;
+  };
+  const balanceOf = (owner: Address) =>
+    publicClient.readContract({
+      address: info.token,
+      abi: erc20Abi,
+      functionName: 'balanceOf',
+      args: [owner],
+    });
+
+  /** A path as the reader of a log wants it: inside the repository if it is there. */
+  const shown = (path: string) => {
+    const inside = relative(repositoryRoot, path);
+    return inside.startsWith('..') ? path : inside;
+  };
+
+  const record = (step: string, label: string, receipt: TransactionReceipt) => {
+    const url = explorerTx(receipt.transactionHash);
+    transactions.push({
+      step,
+      label,
+      transactionHash: receipt.transactionHash,
+      status: receipt.status,
+      blockNumber: receipt.blockNumber.toString(),
+      url,
+    });
+    log(`  ${receipt.status === 'success' ? 'ok      ' : 'REVERTED'} ${label}`);
+    log(`           ${url}`);
   };
 
   /** Waits for a transaction and prints its explorer link. A revert is an error unless it is expected. */
@@ -103,21 +211,31 @@ export async function createContext(envFile: string) {
       hash: transactionHash,
       timeout: 120_000,
     });
-    const url = explorerTx(transactionHash);
-    transactions.push({
-      step,
-      label,
-      transactionHash,
-      status: receipt.status,
-      blockNumber: receipt.blockNumber.toString(),
-      url,
-    });
-    log(`  ${receipt.status === 'success' ? 'ok      ' : 'REVERTED'} ${label}`);
-    log(`           ${url}`);
+    record(step, label, receipt);
     if (receipt.status !== expect) {
       throw new Error(`"${label}" was expected to end as ${expect} but ended as ${receipt.status}`);
     }
     return receipt;
+  };
+
+  /** Prints the explorer link of a transaction somebody else sent: the gateway or the merchant. */
+  const logTransaction = async (step: string, label: string, transactionHash: Hex) => {
+    record(step, label, await publicClient.getTransactionReceipt({ hash: transactionHash }));
+  };
+
+  /**
+   * On a local fork no block is produced until somebody sends a transaction, so the chain's clock
+   * stands still and signed requests look as if they came from the future. Ask the node for a block.
+   * A live network keeps its own time and does not offer this method.
+   */
+  const tick = async () => {
+    const block = await publicClient.getBlock({ blockTag: 'latest' });
+    if (Date.now() / 1000 - Number(block.timestamp) < 60) return;
+    try {
+      await publicClient.request({ method: 'evm_mine' } as never);
+    } catch {
+      // A live network: nothing to do.
+    }
   };
 
   const readState = async (): Promise<DemoState> => {
@@ -142,20 +260,109 @@ export async function createContext(envFile: string) {
     await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
   };
 
-  const ethBalance = async (address: Address) =>
-    formatEther(await publicClient.getBalance({ address }));
+  // --- The services of the demo: the gateway, the merchant and the agent ---------------------------
+
+  const servers: Server[] = [];
+  let running: Promise<{ gatewayUrl: string; noteAddress: Address }> | null = null;
+
+  /** Starts the gateway and the demo merchant on localhost, once. */
+  const services = () => {
+    running ??= (async () => {
+      const gatewayServer = createApp({
+        gateway: runtime.gateway,
+        chain: runtime.chain,
+        ledger: runtime.ledger,
+        explorerTx,
+      }).listen(0, '127.0.0.1');
+      servers.push(gatewayServer);
+      await listen(gatewayServer, 'the gateway', 0);
+
+      // The address in the planted note belongs to nobody: its key is thrown away here.
+      const noteAddress = privateKeyToAccount(generatePrivateKey()).address;
+      const merchantServer = createMerchantApp({
+        account: accounts.MERCHANT,
+        rpcUrl: config.rpcUrl,
+        secretKey: randomBytes(32).toString('hex'),
+        plantedNote: { symbol: PLANTED_NOTE_SYMBOL, text: plantedNoteText(noteAddress) },
+      }).listen(merchantPort, '127.0.0.1');
+      servers.push(merchantServer);
+      await listen(merchantServer, 'the demo merchant', merchantPort);
+
+      return {
+        gatewayUrl: `http://127.0.0.1:${(gatewayServer.address() as AddressInfo).port}`,
+        noteAddress,
+      };
+    })();
+    return running;
+  };
+
+  let working: Promise<{ agent: Agent; tools: AgentTools }> | null = null;
+
+  /** The demo agent: Claude if ANTHROPIC_API_KEY is set, the scripted agent if not. */
+  const agent = () => {
+    working ??= (async () => {
+      const state = await readState();
+      if (state.agentId === null) throw new Error('No agent yet. Run step 1 first.');
+      const { gatewayUrl } = await services();
+      const tools = createAgentTools({
+        account: accounts.AGENT,
+        agentId: BigInt(state.agentId),
+        domain: { chainId: info.chainId, vault: info.vault },
+        gatewayUrl,
+        merchantUrl,
+        token: { symbol: info.tokenSymbol, decimals: info.tokenDecimals },
+      });
+      const created = await createAgent({
+        tools,
+        firm: NAMES.principal,
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+        model: process.env.AGENT_MODEL,
+      });
+      return { agent: created, tools };
+    })();
+    return working;
+  };
+
+  /** The agent that ran, if any step needed one. */
+  const agentLabel = async () => (working === null ? null : (await working).agent.label);
+
+  const stop = async () => {
+    await Promise.all(
+      servers.map(
+        (server) =>
+          new Promise<void>((resolve) => {
+            server.close(() => resolve());
+            server.closeAllConnections();
+          }),
+      ),
+    );
+  };
 
   return {
+    options,
+    names: NAMES,
     accounts,
     runtime,
     publicClient,
     info,
     wallet,
+    merchantUrl,
     confirm,
+    logTransaction,
     log,
+    shown,
+    units,
+    money,
+    balanceOf,
+    tick,
     transactions,
+    intents,
+    drills,
     readState,
     writeState,
-    ethBalance,
+    services,
+    agent,
+    agentLabel,
+    stop,
   };
 }
