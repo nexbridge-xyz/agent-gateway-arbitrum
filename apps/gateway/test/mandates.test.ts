@@ -187,10 +187,12 @@ describe('gateway: an agent with a vendor mandate and a spend wallet mandate', (
   });
 
   it('cannot fund the spend wallet as if it were a vendor', async () => {
-    // A direct payment to the spend wallet: it is on the small mandate only, so the small caps apply.
+    // A direct payment to the spend wallet. It is on the small mandate only, so the small caps would
+    // apply; and the gateway refuses to fund its own wallet without a purchase, whatever the amount.
     const outcome = await submit({ payee: h.world.spendWallet, amount: (2n * USDC).toString() });
     expect(outcome.decision).toBe('refused');
-    expect(outcome.reasons[0]).toContain('hard ceiling of 1 USDC');
+    expect(outcome.reasons.join(' ')).toContain("one of this gateway's own wallets");
+    expect(outcome.reasons.join(' ')).toContain('hard ceiling of 1 USDC');
     expect(h.world.payments).toHaveLength(0);
   });
 

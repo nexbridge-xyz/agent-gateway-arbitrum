@@ -97,7 +97,9 @@ stay in the vault, and only the principal can withdraw them.
 Before the spend wallet signs, the gateway checks the merchant's payment challenge: the token, the exact
 amount, the registered merchant as the only recipient, and a plain one-payer authorization. The resource
 must be on the API address the principal registered for that merchant, and redirects are not followed. The
-spend wallet is funded for one call at a time, so it holds no balance to lose between calls.
+spend wallet is funded for one call at a time, with the price of that call, and only for a purchase: a plain
+payment request that names the spend wallet is refused. So between calls it holds nothing but what a failed
+purchase left behind (see below).
 
 ### The console, or a web page elsewhere, is used against the gateway
 

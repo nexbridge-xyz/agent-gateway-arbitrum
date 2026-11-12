@@ -390,6 +390,20 @@ export class Gateway {
   ): PolicyResult {
     const vendor = payees.vendor(request.payee);
     const claimedSource = request.context.payeeSource;
+    // The vault funds the spend wallet for a purchase, with the price of one call. As the payee of a
+    // plain payment it would be funded with no call at all, and the money would wait in a wallet whose
+    // key this gateway holds. The gateway's own wallets are therefore on its denylist.
+    const spendWallet = this.purchases?.spendWallet ?? null;
+    const ownWallet =
+      request.resource === null &&
+      (isAddressEqual(request.payee, this.options.executor.address) ||
+        (spendWallet !== null && isAddressEqual(request.payee, spendWallet)));
+    const denied = ownWallet
+      ? {
+          reason:
+            "it is one of this gateway's own wallets, which the vault funds only for a purchase",
+        }
+      : payees.denial(request.payee);
     return evaluate({
       now: snapshot.blockTimestamp,
       gatewayExecutor: this.options.executor.address,
@@ -404,7 +418,7 @@ export class Gateway {
       agent: snapshot.agent,
       mandate: snapshot.mandate,
       vault: snapshot.vault,
-      payee: { vendor, denied: payees.denial(request.payee) },
+      payee: { vendor, denied },
       token: { symbol: info.tokenSymbol, decimals: info.tokenDecimals },
       purchase:
         request.resource === null
