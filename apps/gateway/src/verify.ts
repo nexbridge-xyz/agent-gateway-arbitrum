@@ -67,6 +67,8 @@ export type VerifierChain = {
     succeeded: boolean;
     transfers: { from: Address; to: Address; value: bigint }[];
   }>;
+  /** What the token contract says of itself, or null if it cannot be read. */
+  token(token: Address): Promise<{ symbol: string; decimals: number } | null>;
 };
 
 export type VerifyOptions = {
@@ -289,6 +291,19 @@ export async function verifyEvidence(
         same(settings.identityRegistry, record.chain.identityRegistry),
       'Vault settings onchain match the record',
       `principal ${settings.principal}`,
+    );
+
+    // The amount a reader sees is the recorded amount written with the recorded symbol and decimals.
+    // Both are the gateway's words, so they are compared with the token's own.
+    const token = await chain.token(record.chain.token);
+    add(
+      token !== null &&
+        token.symbol === record.what.tokenSymbol &&
+        token.decimals === record.what.tokenDecimals,
+      'Token symbol and decimals in the record are the token contract’s',
+      token === null
+        ? 'the token contract could not be read'
+        : `the token says ${token.symbol} with ${token.decimals} decimals`,
     );
 
     const wallet = await chain.agentWallet(
@@ -539,6 +554,19 @@ export function createVerifierChain(client: PublicClient): VerifierChain {
         }),
       );
       return { found: true, succeeded: receipt.status === 'success', transfers };
+    },
+
+    async token(token) {
+      try {
+        const contract = { address: token, abi: erc20Abi } as const;
+        const [symbol, decimals] = await Promise.all([
+          client.readContract({ ...contract, functionName: 'symbol' }),
+          client.readContract({ ...contract, functionName: 'decimals' }),
+        ]);
+        return { symbol, decimals };
+      } catch {
+        return null;
+      }
     },
   };
 }

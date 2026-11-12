@@ -92,6 +92,10 @@ function chainOf(file: EvidenceFile, changes: Partial<VerifierChain> = {}): Veri
         ],
       });
     },
+    token: async () => {
+      const { tokenSymbol, tokenDecimals } = await info;
+      return { symbol: tokenSymbol, decimals: tokenDecimals };
+    },
     ...changes,
   };
 }

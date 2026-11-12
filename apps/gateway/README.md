@@ -256,8 +256,9 @@ file or several, prints PASS or FAIL for each check, and exits with 0 only if al
   put behind a new payment;
 - an approval, if there is one, is signed by the mandate's approver for this payee, amount and evidence
   hash; a decline is signed by the approver for this request;
-- onchain: the vault's settings, the agent wallet in the ERC-8004 registry, the transaction, and a vault
-  event with this evidence hash and the same mandate, agent, payee and amount;
+- onchain: the vault's settings, the token's symbol and decimals (the amount you read is written with
+  them), the agent wallet in the ERC-8004 registry, the transaction, and a vault event with this evidence
+  hash and the same mandate, agent, payee and amount;
 - for a purchase: the vault's event pays the spend wallet, and the merchant's settlement transaction moves
   the same amount from the spend wallet to the merchant;
 - the ledger's hash chain is intact and records the decision, the approval and the payment.
