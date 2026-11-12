@@ -104,7 +104,11 @@ const resultSchema = z.discriminatedUnion('status', [
     signature,
     declinedAt: isoTime,
   }),
-  z.strictObject({ status: z.literal('executing') }),
+  z.strictObject({
+    status: z.literal('executing'),
+    transactionHash: hash.optional(),
+    unconfirmed: text.optional(),
+  }),
   z.strictObject({
     status: z.literal('paid'),
     transactionHash: hash,

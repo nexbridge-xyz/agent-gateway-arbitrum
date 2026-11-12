@@ -187,7 +187,7 @@ export async function verifyEvidence(
     const expected =
       record.why.decision === 'auto'
         ? ['paid', 'failed', 'executing']
-        : ['paid', 'failed', 'pending_approval', 'declined'];
+        : ['paid', 'failed', 'pending_approval', 'declined', 'executing'];
     add(
       expected.includes(result.status),
       'Result fits the decision',

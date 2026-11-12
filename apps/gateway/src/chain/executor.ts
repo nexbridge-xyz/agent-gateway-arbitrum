@@ -44,13 +44,27 @@ export interface PaymentExecutor {
   payWithinMandate(request: MandatePaymentRequest): Promise<PaymentReceipt>;
   /** A payment outside the mandate. The vault checks the approver's signature and the hard ceiling. */
   payWithApproval(request: ApprovedPaymentRequest): Promise<PaymentReceipt>;
+  /**
+   * Looks again at a transaction that was sent and could not be confirmed. Returns its receipt if it
+   * paid, null if its outcome is still unknown, and throws a PaymentError if it is known to have failed.
+   */
+  lookAgain(
+    transactionHash: Hex,
+    event: PaymentReceipt['event'],
+    evidenceHash: Hex,
+  ): Promise<PaymentReceipt | null>;
 }
 
-/** A payment that did not go through. `transactionHash` is set when a transaction was sent. */
+/**
+ * A payment that did not go through, or whose outcome is not known. `transactionHash` is set when a
+ * transaction was sent. `unconfirmed` is true when it was sent and its receipt could not be read: the
+ * vault may have paid, or may still pay, and nobody here knows.
+ */
 export class PaymentError extends Error {
   constructor(
     message: string,
     readonly transactionHash: Hex | null,
+    readonly unconfirmed = false,
   ) {
     super(message);
     this.name = 'PaymentError';
@@ -78,16 +92,13 @@ export function createPaymentExecutor(
 ): PaymentExecutor {
   const account = walletClient.account;
 
-  /** Simulates, sends and confirms one vault call, then looks for its event with this evidence hash. */
-  const confirm = async (
-    transactionHash: Hex,
+  /** What a mined transaction did: its receipt as a payment, or a PaymentError that says why not. */
+  const read = (
+    receipt: Awaited<ReturnType<typeof publicClient.getTransactionReceipt>>,
     event: PaymentReceipt['event'],
     evidenceHash: Hex,
-  ) => {
-    const receipt = await publicClient.waitForTransactionReceipt({
-      hash: transactionHash,
-      timeout: 120_000,
-    });
+  ): PaymentReceipt => {
+    const transactionHash = receipt.transactionHash;
     if (receipt.status !== 'success') {
       throw new PaymentError('the transaction was mined but reverted', transactionHash);
     }
@@ -105,24 +116,51 @@ export function createPaymentExecutor(
     return { transactionHash, blockNumber: receipt.blockNumber, event };
   };
 
-  /** Runs `send`, which simulates and submits, and turns any failure into one PaymentError. */
+  /**
+   * Runs `send`, which simulates and submits, and waits for the receipt. A failure before the
+   * transaction left is a payment that was not made. A failure after it left is something else: the
+   * transaction may be mined all the same, so it is reported as unconfirmed, never as failed.
+   */
   const pay = async (
     event: PaymentReceipt['event'],
     evidenceHash: Hex,
     send: () => Promise<Hex>,
   ): Promise<PaymentReceipt> => {
-    let transactionHash: Hex | null = null;
+    let transactionHash: Hex;
     try {
       transactionHash = await send();
-      return await confirm(transactionHash, event, evidenceHash);
     } catch (error) {
-      if (error instanceof PaymentError) throw error;
-      throw new PaymentError(describeContractError(error), transactionHash);
+      throw new PaymentError(describeContractError(error), null);
     }
+    let receipt;
+    try {
+      receipt = await publicClient.waitForTransactionReceipt({
+        hash: transactionHash,
+        timeout: 120_000,
+      });
+    } catch (error) {
+      throw new PaymentError(
+        `the transaction was sent, but its outcome could not be read (${describeContractError(error)}). The vault may have paid`,
+        transactionHash,
+        true,
+      );
+    }
+    return read(receipt, event, evidenceHash);
   };
 
   return {
     address: account.address,
+
+    async lookAgain(transactionHash, event, evidenceHash) {
+      let receipt;
+      try {
+        receipt = await publicClient.getTransactionReceipt({ hash: transactionHash });
+      } catch {
+        // Not mined, or the endpoint cannot say. Still unknown.
+        return null;
+      }
+      return read(receipt, event, evidenceHash);
+    },
 
     payWithinMandate: ({ mandateId, payee, amount, evidenceHash }) =>
       pay('MandatePayment', evidenceHash, async () => {

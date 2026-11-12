@@ -223,6 +223,11 @@ export class FakeWorld implements ChainReader, PaymentExecutor {
     return signer === this.approver ? 'confirmed' : 'not-confirmed';
   }
 
+  /** The fake vault confirms at once, so there is never a transaction to look at again. */
+  lookAgain(): Promise<PaymentReceipt | null> {
+    return Promise.resolve(null);
+  }
+
   private refuse(error: string): Promise<never> {
     return Promise.reject(new PaymentError(`the vault refused: ${error}`, null));
   }

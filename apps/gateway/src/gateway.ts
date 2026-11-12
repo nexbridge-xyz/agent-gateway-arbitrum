@@ -264,6 +264,8 @@ export class Gateway {
     // agent: only the record of a request the agent's wallet signed, or of these very bytes, is final.
     const known = await evidence.get(id);
     if (known !== null && (isFinal(known) || sameSignature(known, signed))) {
+      // A payment that was sent and never confirmed: look at its transaction again before answering.
+      await this.settle(known);
       return outcomeOf(known);
     }
 
@@ -461,6 +463,27 @@ export class Gateway {
         error instanceof PaymentError
           ? error
           : new PaymentError(error instanceof Error ? error.message : 'unknown error', null);
+      if (failure.unconfirmed && failure.transactionHash !== null) {
+        // The transaction left this machine and its receipt could not be read. That is not a failed
+        // payment: the vault may have paid, or may still. Say so, and say nothing more than is known.
+        file.result = {
+          status: 'executing',
+          transactionHash: failure.transactionHash,
+          unconfirmed: failure.message,
+        };
+        await ledger.append(
+          'PAYMENT_UNCONFIRMED',
+          `payment of ${money} to ${payeeLabel} was sent and could not be confirmed: ${failure.message}`,
+          {
+            intentId: record.intentId,
+            evidenceHash: file.evidenceHash,
+            transactionHash: failure.transactionHash,
+            error: failure.message,
+          },
+          this.now(),
+        );
+        return false;
+      }
       const failedAt = this.now();
       file.result = {
         status: 'failed',
@@ -481,6 +504,73 @@ export class Gateway {
       );
       return false;
     }
+  }
+
+  /**
+   * Looks again at a payment that was sent and could not be confirmed, and writes down what became of
+   * it. If the answer is still unknown the file is left as it is.
+   */
+  private async settle(file: EvidenceFile): Promise<void> {
+    const { executor, ledger, evidence } = this.options;
+    const { record, result } = file;
+    if (result.status !== 'executing' || result.transactionHash === undefined) return;
+    const event = file.approval === null ? 'MandatePayment' : 'ApprovedPayment';
+
+    try {
+      const receipt = await executor.lookAgain(result.transactionHash, event, file.evidenceHash);
+      if (receipt === null) return;
+      const executedAt = this.now();
+      file.result = {
+        status: 'paid',
+        transactionHash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber.toString(),
+        event: receipt.event,
+        executedAt: executedAt.toISOString(),
+        // For a purchase the vault funded the spend wallet, and the call at the merchant was never made.
+        ...(record.purchase
+          ? {
+              purchase: {
+                status: 'failed' as const,
+                error: 'the top-up was confirmed late, and the call was not made',
+              },
+            }
+          : {}),
+      };
+      await ledger.append(
+        'PAYMENT_EXECUTED',
+        `payment for intent ${record.intentId} was confirmed after all`,
+        {
+          intentId: record.intentId,
+          evidenceHash: file.evidenceHash,
+          transactionHash: receipt.transactionHash,
+          blockNumber: receipt.blockNumber.toString(),
+          event: receipt.event,
+        },
+        executedAt,
+      );
+    } catch (error) {
+      if (!(error instanceof PaymentError)) return;
+      const failedAt = this.now();
+      file.result = {
+        status: 'failed',
+        error: error.message,
+        transactionHash: error.transactionHash,
+        failedAt: failedAt.toISOString(),
+      };
+      await ledger.append(
+        'PAYMENT_FAILED',
+        `payment for intent ${record.intentId} failed: ${error.message}`,
+        {
+          intentId: record.intentId,
+          evidenceHash: file.evidenceHash,
+          error: error.message,
+          transactionHash: error.transactionHash,
+        },
+        failedAt,
+      );
+    }
+    file.updatedAt = this.now().toISOString();
+    await evidence.save(file);
   }
 
   /** After the vault topped up the spend wallet: pays the merchant's challenge and returns the data. */
@@ -543,6 +633,8 @@ export class Gateway {
   private async waiting(id: Hex): Promise<EvidenceFile> {
     const file = await this.options.evidence.get(id);
     if (file === null) throw new RequestError(404, 'No such intent');
+    // An approved payment that was sent and never confirmed: see what became of it first.
+    await this.settle(file);
     if (file.result.status !== 'pending_approval') {
       throw new RequestError(
         409,
@@ -754,8 +846,17 @@ export function outcomeOf(file: EvidenceFile): IntentOutcome {
     status: result.status,
     evidenceHash: file.evidenceHash,
     transactionHash:
-      result.status === 'paid' || result.status === 'failed' ? result.transactionHash : null,
-    error: result.status === 'failed' ? result.error : null,
+      result.status === 'paid' || result.status === 'failed'
+        ? result.transactionHash
+        : result.status === 'executing'
+          ? (result.transactionHash ?? null)
+          : null,
+    error:
+      result.status === 'failed'
+        ? result.error
+        : result.status === 'executing'
+          ? (result.unconfirmed ?? null)
+          : null,
     purchase: result.status === 'paid' ? (result.purchase ?? null) : null,
   };
 }

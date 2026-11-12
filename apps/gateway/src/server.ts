@@ -130,7 +130,11 @@ export function createApp(options: AppOptions): Express {
     const settlement = paid?.purchase?.status === 'settled' ? paid.purchase : null;
     const source = record.request.intent.context.payeeSource;
     const transactionHash =
-      result.status === 'paid' || result.status === 'failed' ? result.transactionHash : null;
+      result.status === 'paid' || result.status === 'failed'
+        ? result.transactionHash
+        : result.status === 'executing'
+          ? (result.transactionHash ?? null)
+          : null;
     return {
       intentId: record.intentId,
       decidedAt: record.decidedAt,
@@ -161,7 +165,12 @@ export function createApp(options: AppOptions): Express {
               settlementUrl: link(settlement?.settlementTransactionHash ?? null),
             },
       approvedBy: file.approval?.approver ?? null,
-      error: result.status === 'failed' ? result.error : null,
+      error:
+        result.status === 'failed'
+          ? result.error
+          : result.status === 'executing'
+            ? (result.unconfirmed ?? null)
+            : null,
     };
   };
 

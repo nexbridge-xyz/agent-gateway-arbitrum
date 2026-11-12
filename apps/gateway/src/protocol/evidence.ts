@@ -111,8 +111,11 @@ export type EvidenceResult =
   | { status: 'pending_approval' }
   /** The approver said no. The signature is over the intent id and the evidence hash. */
   | { status: 'declined'; approver: Address; signature: Hex; declinedAt: string }
-  /** Decided to pay; the transaction has not been confirmed yet. */
-  | { status: 'executing' }
+  /**
+   * Decided to pay; the transaction has not been confirmed yet. If a transaction was sent and its
+   * outcome could not be read, it is named here with what went wrong: the vault may have paid.
+   */
+  | { status: 'executing'; transactionHash?: Hex; unconfirmed?: string }
   | {
       status: 'paid';
       transactionHash: Hex;
