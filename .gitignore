@@ -23,6 +23,9 @@ apps/contracts/broadcast/**/*.lock
 # Gateway runtime data: ledger, evidence files, payee lists, demo state
 apps/gateway/data/
 
+# Local agent settings and skills
+.claude/
+
 # Editors and OS
 .DS_Store
 .idea/
