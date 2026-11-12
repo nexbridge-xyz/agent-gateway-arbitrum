@@ -10,6 +10,7 @@ import { repositoryRoot } from '@agent-gateway/gateway';
 
 import type {
   ApprovalOutcome,
+  DemoState,
   LoggedDrill,
   LoggedIntent,
   LoggedMandate,
@@ -144,6 +145,36 @@ const capsInWords = (kind: MandateKind) => {
   return `${cap(caps.perPaymentCap)} USDC per payment, ${cap(caps.dailyCap)} per UTC day, hard ceiling ${cap(caps.hardCeiling)}`;
 };
 
+// Step 1, said exactly. The vault may already hold the demo's funds, and an agent is registered once:
+// a later run finds it in the registry and registers nothing. The labels are the runner's own.
+const stepOne = run.transactions.filter((transaction) => transaction.step === '1');
+const fundedInRun = stepOne.some((transaction) =>
+  transaction.label.startsWith('principal deposits'),
+);
+const registeredInRun = stepOne.find((transaction) =>
+  transaction.label.startsWith('principal registers the agent'),
+);
+
+/** The transaction of an earlier run that registered this agent, if the runner's state file has it. */
+async function earlierRegistration(): Promise<string | null> {
+  try {
+    const state = JSON.parse(
+      await readFile(join(from, 'demo-state.json'), 'utf8'),
+    ) as Partial<DemoState>;
+    const hash = state.agentId === run.agentId ? state.registrationTx : null;
+    return typeof hash === 'string' && /^0x[0-9a-fA-F]{64}$/.test(hash) ? hash : null;
+  } catch {
+    return null;
+  }
+}
+const registeredBefore = registeredInRun === undefined ? await earlierRegistration() : null;
+const registrationSentence =
+  registeredInRun !== undefined
+    ? `It was registered in step 1 of this run (${tx(registeredInRun.transactionHash)}).`
+    : registeredBefore === null
+      ? 'It was registered before this run.'
+      : `It was registered before this run (${tx(registeredBefore)}).`;
+
 /** Step 5, said exactly: who sent the request that the gateway refused. */
 const noteSentence = (note: PlantedNoteOutcome) =>
   note.agentActedOnNote
@@ -248,9 +279,9 @@ ${transactionRows.join('\n')}
 
 ## The agent and its two mandates
 
-The agent is ERC-8004 agent ${run.agentId} in the Identity Registry on Arbitrum Sepolia. It holds two mandates
-in the vault. The spend wallet has a small one of its own and is not on the vendor mandate's list, so the
-vault itself limits what can reach it.
+The agent is ERC-8004 agent ${run.agentId} in the Identity Registry on Arbitrum Sepolia.
+${registrationSentence} It holds two mandates in the vault. The spend wallet has a small one of its own and
+is not on the vendor mandate's list, so the vault itself limits what can reach it.
 
 | Mandate | For | Limits | Text the principal approved |
 | ------- | --- | ------ | --------------------------- |
@@ -343,6 +374,9 @@ const END = '<!-- demo-run:end -->';
 const link = (text: string, transaction: LoggedTransaction | undefined) =>
   transaction === undefined ? null : `[${text}](${txUrl(transaction.transactionHash)})`;
 const links = (items: (string | null)[]) => items.filter((item) => item !== null).join(', ');
+/** "a", "a and b", "a, b and c". */
+const inWords = (items: string[]) =>
+  items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`;
 
 /** The seven steps as one table. Null if the run did not go through all of them. */
 function demoTable(): string | null {
@@ -368,11 +402,25 @@ function demoTable(): string | null {
     (drill) => `[\`${errorName(drill.refusal)}\`](${txUrl(drill.transactionHash)})`,
   );
 
+  const setUp = [
+    ...(fundedInRun ? ['funds the vault'] : []),
+    ...(registeredInRun === undefined
+      ? []
+      : ['registers the agent in the ERC-8004 Identity Registry']),
+    `creates ${registeredInRun === undefined ? "the agent's" : 'its'} two mandates: one for vendor invoices (${capsInWords('vendors')}) and a small one that only funds the gateway's spend wallet (${capsInWords('spend wallet')})`,
+  ];
   const rows: [string, string, string][] = [
     [
       '1',
-      `The principal funds the vault, registers the agent in the ERC-8004 Identity Registry and creates its two mandates: one for vendor invoices (${capsInWords('vendors')}) and a small one that only funds the gateway's spend wallet (${capsInWords('spend wallet')}).`,
-      links([created('vendors'), created('spend wallet')]),
+      `The principal ${inWords(setUp)}.${registeredInRun === undefined ? ' The agent was registered in the ERC-8004 Identity Registry before this run.' : ''}`,
+      links([
+        link('agent registered', registeredInRun),
+        registeredBefore === null
+          ? null
+          : `[agent registered, earlier](${txUrl(registeredBefore)})`,
+        created('vendors'),
+        created('spend wallet'),
+      ]),
     ],
     [
       '2',

@@ -29,9 +29,9 @@ Mandates 1 and 2 came from earlier runs of this demo, when a single mandate list
 
 ## The agent and its two mandates
 
-The agent is ERC-8004 agent 354 in the Identity Registry on Arbitrum Sepolia. It holds two mandates
-in the vault. The spend wallet has a small one of its own and is not on the vendor mandate's list, so the
-vault itself limits what can reach it.
+The agent is ERC-8004 agent 354 in the Identity Registry on Arbitrum Sepolia.
+It was registered before this run ([`0xc5bb229f…354f07e4`](https://sepolia.arbiscan.io/tx/0xc5bb229fa23bb579d29ff41975b0b103e551abc2c1999f3a9f2b94e8354f07e4)). It holds two mandates in the vault. The spend wallet has a small one of its own and
+is not on the vendor mandate's list, so the vault itself limits what can reach it.
 
 | Mandate | For | Limits | Text the principal approved |
 | ------- | --- | ------ | --------------------------- |

@@ -1,4 +1,4 @@
-import { type Address, parseEventLogs } from 'viem';
+import { type Address, type Hex, parseEventLogs } from 'viem';
 import type { PrivateKeyAccount } from 'viem/accounts';
 
 import {
@@ -24,7 +24,7 @@ export async function registerAgent(
   context: Context,
   step: string,
   options: Registration & { owner: PrivateKeyAccount; agent: PrivateKeyAccount },
-): Promise<bigint> {
+): Promise<{ agentId: bigint; transactionHash: Hex }> {
   const { publicClient, info, wallet, confirm } = context;
   const registry = { address: info.identityRegistry, abi: identityRegistryAbi } as const;
   const owner = wallet(options.owner);
@@ -71,7 +71,7 @@ export async function registerAgent(
     }),
   );
 
-  return agentId;
+  return { agentId, transactionHash: registered.transactionHash };
 }
 
 function registrationUri(context: Context, agentId: bigint, registration: Registration): string {

@@ -353,15 +353,17 @@ export async function setup(context: Context): Promise<void> {
     agentId === null ||
     !(await agentIsReady(context, agentId, accounts.PRINCIPAL.address, accounts.AGENT.address))
   ) {
-    agentId = await registerAgent(context, '1', {
+    const registered = await registerAgent(context, '1', {
       owner: accounts.PRINCIPAL,
       agent: accounts.AGENT,
       name: NAMES.agent,
       description: AGENT_DESCRIPTION,
     });
+    agentId = registered.agentId;
     state = {
       ...state,
       agentId: agentId.toString(),
+      registrationTx: registered.transactionHash,
       mandateId: null,
       termsHash: null,
       spendMandateId: null,

@@ -164,6 +164,8 @@ export type DemoState = {
   chainId: number;
   vault: Address;
   agentId: string | null;
+  /** The transaction that registered the agent. Null in a state file from before this was kept. */
+  registrationTx: Hex | null;
   /** The vendor mandate. */
   mandateId: string | null;
   termsHash: Hex | null;
@@ -328,6 +330,7 @@ export async function createContext(envFile: string, options: RunOptions) {
       chainId: info.chainId,
       vault: info.vault,
       agentId: null,
+      registrationTx: null,
       mandateId: null,
       termsHash: null,
       spendMandateId: null,
