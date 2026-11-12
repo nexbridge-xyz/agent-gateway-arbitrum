@@ -663,31 +663,16 @@ export class Gateway {
       this.options.loadPayees(),
     ]);
     const mandate = snapshot.mandate;
-    const problems: string[] = [];
     if (mandate === null || mandate.id.toString() !== record.who.mandateId) {
-      problems.push('The mandate this request was decided under no longer exists for this agent');
-    } else {
-      const recheck = this.evaluate(info, snapshot, payees, {
-        payee: record.what.payee,
-        amount,
-        expiresAt: record.request.intent.expiresAt,
-        signer: record.request.signer,
-        context: record.request.intent.context,
-        resource: null,
-        requestAlreadyAccepted: true,
-      });
-      if (recheck.decision === 'refused') problems.push(...recheck.reasons);
-    }
-    if (mandate === null || problems.length > 0) {
-      await ledger.append(
-        'APPROVAL_NOT_EXECUTED',
-        `approval for intent ${id} was not carried out: ${problems.join('; ')}`,
-        { intentId: id, evidenceHash: file.evidenceHash, reasons: problems },
-        this.now(),
-      );
-      throw new RequestError(409, 'The payment can no longer be made', problems);
+      // No mandate, so no approver to check a signature against. Nothing is written for a caller who
+      // has not been shown to be the approver.
+      throw new RequestError(409, 'The payment can no longer be made', [
+        'The mandate this request was decided under no longer exists for this agent',
+      ]);
     }
 
+    // Who is asking comes first. Until the signature is known to be the approver's this call is
+    // anybody's, and anybody must not be able to write to the ledger.
     if (deadline < BigInt(snapshot.blockTimestamp))
       throw new RequestError(400, 'The approval has expired');
     const vault = { chainId: info.chainId, address: info.vault };
@@ -720,6 +705,27 @@ export class Gateway {
           `The signature is not the approver's signature for this payment and approval number ${mandate.approvalNonce}`,
         );
       }
+    }
+
+    // The approver has signed. Now see whether the payment can still be made.
+    const recheck = this.evaluate(info, snapshot, payees, {
+      payee: record.what.payee,
+      amount,
+      expiresAt: record.request.intent.expiresAt,
+      signer: record.request.signer,
+      context: record.request.intent.context,
+      resource: null,
+      requestAlreadyAccepted: true,
+    });
+    if (recheck.decision === 'refused') {
+      const problems = recheck.reasons;
+      await ledger.append(
+        'APPROVAL_NOT_EXECUTED',
+        `approval for intent ${id} was not carried out: ${problems.join('; ')}`,
+        { intentId: id, evidenceHash: file.evidenceHash, reasons: problems },
+        this.now(),
+      );
+      throw new RequestError(409, 'The payment can no longer be made', problems);
     }
 
     const receivedAt = this.now();
