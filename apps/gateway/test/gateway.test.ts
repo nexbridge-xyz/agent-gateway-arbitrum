@@ -43,6 +43,7 @@ describe('gateway: a payment inside the mandate', () => {
         payee: h.world.vendorA,
         amount: 1_500_000n,
         evidenceHash: outcome.evidenceHash,
+        event: 'MandatePayment',
       },
     ]);
     expect(h.world.spentToday).toBe(1_500_000n);
@@ -79,7 +80,7 @@ describe('gateway: a payment inside the mandate', () => {
     });
     expect(record.what).toMatchObject({
       payee: h.world.vendorA,
-      payeeName: 'Tsukimi Data',
+      payeeName: 'Koishi Supply',
       amount: '1500000',
       tokenSymbol: 'USDC',
       tokenDecimals: 6,
@@ -114,7 +115,7 @@ describe('gateway: a payment inside the mandate', () => {
       transactionHash: outcome.transactionHash,
     });
     expect(h.ledger.entries[0]?.summary).toContain('1.5 USDC');
-    expect(h.ledger.entries[0]?.summary).toContain('Tsukimi Data');
+    expect(h.ledger.entries[0]?.summary).toContain('Koishi Supply');
     expect(h.ledger.verify().ok).toBe(true);
   });
 

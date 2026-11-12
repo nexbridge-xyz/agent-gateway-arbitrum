@@ -24,6 +24,7 @@ function mandate(overrides: Partial<MandateFacts> = {}): MandateFacts {
     perPaymentCap: 2n * USDC,
     dailyCap: 8n * USDC,
     hardCeiling: 20n * USDC,
+    approvalNonce: 0n,
     payeeAllowed: true,
     spentToday: 0n,
     ...overrides,
@@ -55,7 +56,7 @@ function input(overrides: Overrides = {}): PolicyInput {
     agent: { registered: true, wallet: agentWallet, active: true, ...overrides.agent },
     mandate: overrides.mandate === undefined ? mandate() : overrides.mandate,
     vault: { paused: false, balance: 10n * USDC, ...overrides.vault },
-    payee: { vendor: { name: 'Tsukimi Data' }, denied: null, ...overrides.payee },
+    payee: { vendor: { name: 'Koishi Supply' }, denied: null, ...overrides.payee },
     token: { symbol: 'USDC', decimals: 6 },
   };
 }
@@ -379,7 +380,7 @@ describe('policy: consistency', () => {
               input({
                 request: { amount },
                 mandate: base === null ? null : { ...base, spentToday },
-                payee: { vendor: vendorKnown ? { name: 'Tsukimi Data' } : null },
+                payee: { vendor: vendorKnown ? { name: 'Koishi Supply' } : null },
                 vault: { balance: 100n * USDC },
               }),
             );

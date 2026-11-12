@@ -27,7 +27,9 @@ export type MandateFacts = {
   perPaymentCap: bigint;
   dailyCap: bigint;
   hardCeiling: bigint;
-  /** Whether the payee is on this mandate's allowlist. */
+  /** The nonce the approver's next signature must carry. */
+  approvalNonce: bigint;
+  /** Whether the address the vault would pay is on this mandate's allowlist. */
   payeeAllowed: boolean;
   /** Total the mandate has paid out in the current UTC day, approved payments included. */
   spentToday: bigint;
@@ -65,6 +67,25 @@ export type PolicyInput = {
     denied: { reason: string } | null;
   };
   token: { symbol: string; decimals: number };
+  /**
+   * Set when the request is a per-call purchase from a merchant's API. The vault then pays the
+   * gateway's spend wallet, and the spend wallet pays the merchant.
+   */
+  purchase?: {
+    /** Whether this gateway has a spend wallet to buy with. */
+    spendWalletReady: boolean;
+    /** Origin of the resource the agent asked for, or null if it is not a valid http(s) URL. */
+    resourceOrigin: string | null;
+    /** The API origin the principal registered for this merchant, if any. */
+    merchantOrigin: string | null;
+    /** The most the gateway pays for one call. */
+    callCap: bigint;
+  } | null;
+  /**
+   * True when a waiting request is checked again at approval time. It was current when it arrived;
+   * the approval carries its own deadline.
+   */
+  requestAlreadyAccepted?: boolean;
 };
 
 export type PolicyResult = {
@@ -101,14 +122,17 @@ export function evaluate(input: PolicyInput): PolicyResult {
   // --- Who is asking -------------------------------------------------------------------------------
 
   const secondsLeft = request.expiresAt - input.now;
+  const accepted = input.requestAlreadyAccepted === true;
   add(
     'request_current',
     'hard',
-    secondsLeft >= 0 && secondsLeft <= MAX_REQUEST_LIFETIME_SECONDS,
+    accepted || (secondsLeft >= 0 && secondsLeft <= MAX_REQUEST_LIFETIME_SECONDS),
     'Request is current',
-    secondsLeft < 0
-      ? `expired ${-secondsLeft} seconds ago`
-      : `expires in ${secondsLeft} seconds; at most ${MAX_REQUEST_LIFETIME_SECONDS} are accepted`,
+    accepted
+      ? 'was current when it arrived'
+      : secondsLeft < 0
+        ? `expired ${-secondsLeft} seconds ago`
+        : `expires in ${secondsLeft} seconds; at most ${MAX_REQUEST_LIFETIME_SECONDS} are accepted`,
     secondsLeft < 0 ? 'The request has expired' : 'The request is valid for too long',
   );
 
@@ -235,22 +259,58 @@ export function evaluate(input: PolicyInput): PolicyResult {
     'The vault does not hold enough funds for this payment',
   );
 
+  const purchase = input.purchase ?? null;
+  if (purchase !== null) {
+    add(
+      'purchase_spend_wallet',
+      'hard',
+      purchase.spendWalletReady,
+      'Gateway has a spend wallet for per-call purchases',
+      purchase.spendWalletReady ? 'configured' : 'not configured',
+      'This gateway has no spend wallet, so it cannot buy per call',
+    );
+    add(
+      'purchase_origin_registered',
+      'hard',
+      purchase.resourceOrigin !== null && purchase.resourceOrigin === purchase.merchantOrigin,
+      "Resource is on the merchant's registered API",
+      `asked for ${purchase.resourceOrigin ?? 'something that is not a web address'}; registered: ${purchase.merchantOrigin ?? 'none'}`,
+      'The resource is not on the API address the principal registered for this merchant',
+    );
+    add(
+      'purchase_within_call_cap',
+      'hard',
+      request.amount <= purchase.callCap,
+      "Price is within the gateway's per-call cap",
+      `${money(request.amount)} vs cap ${money(purchase.callCap)}`,
+      `The price is above the per-call cap of ${money(purchase.callCap)}`,
+    );
+  }
+
+  // A per-call purchase is paid at once or not at all: there is nobody to wait for an approval while an
+  // API call is open. So for a purchase, the checks that would send a payment to the approver refuse it.
+  const softKind: CheckKind = purchase === null ? 'soft' : 'hard';
+
   add(
     'payee_on_allowlist',
-    'soft',
+    softKind,
     !mandateUsable ? 'skipped' : mandate.payeeAllowed,
-    "Payee is on the mandate's allowlist",
+    purchase === null
+      ? "Payee is on the mandate's allowlist"
+      : "Gateway's spend wallet is on the mandate's allowlist",
     !mandateUsable
       ? 'no usable mandate'
       : mandate.payeeAllowed
         ? 'on the allowlist'
         : 'not on the allowlist',
-    "The payee is in the vendor registry but not yet on this mandate's allowlist",
+    purchase === null
+      ? "The payee is in the vendor registry but not yet on this mandate's allowlist"
+      : "The gateway's spend wallet is not on this mandate's allowlist",
   );
 
   add(
     'within_per_payment_cap',
-    'soft',
+    softKind,
     !mandateUsable ? 'skipped' : request.amount <= mandate.perPaymentCap,
     'Amount is within the per-payment cap',
     !mandateUsable
@@ -261,7 +321,7 @@ export function evaluate(input: PolicyInput): PolicyResult {
 
   add(
     'within_daily_cap',
-    'soft',
+    softKind,
     !mandateUsable ? 'skipped' : dayTotal <= mandate.dailyCap,
     'Day total stays within the daily cap',
     !mandateUsable

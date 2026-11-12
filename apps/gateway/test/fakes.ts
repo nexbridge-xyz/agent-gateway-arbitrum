@@ -2,31 +2,48 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { type Address, type Hex, getAddress, keccak256 } from 'viem';
+import { type Address, type Hex, getAddress, keccak256, stringToHex } from 'viem';
 
 import {
+  type ApprovedPaymentRequest,
   type MandatePaymentRequest,
   PaymentError,
   type PaymentExecutor,
   type PaymentReceipt,
 } from '../src/chain/executor';
+import {
+  type Purchase,
+  type PurchaseClient,
+  PurchaseError,
+  type PurchaseRequest,
+} from '../src/chain/purchases';
 import type { ChainInfo, ChainReader, Snapshot } from '../src/chain/reader';
 import { Gateway } from '../src/gateway';
+import { recoverApprovalSigner } from '../src/protocol/approval';
+import type { Json } from '../src/protocol/json';
 import { EvidenceStore } from '../src/store/evidenceStore';
 import { Ledger } from '../src/store/ledger';
 import { PayeeDirectory, type PayeesFile } from '../src/store/payees';
 import { NOW, USDC, VAULT, newAccount, newAddress } from './helpers';
 
+export const MERCHANT_ORIGIN = 'https://data.tsukimi.example';
+
 /**
  * An in-memory stand-in for Arbitrum: the ERC-8004 registry, the vault with one mandate, and the
- * vault's own rules for payWithinMandate. It lets the gateway be tested without a chain.
+ * vault's own rules for payWithinMandate and payWithApproval. It lets the gateway be tested without
+ * a chain.
  */
 export class FakeWorld implements ChainReader, PaymentExecutor {
-  readonly address = newAddress(); // the gateway's executor
+  /** The gateway's executor key. Tests use it to show that it cannot approve its own payments. */
+  readonly executorAccount = newAccount();
+  readonly address = this.executorAccount.address;
   readonly principal = newAddress();
-  readonly approver = newAddress();
+  readonly approverAccount = newAccount();
+  readonly approver = this.approverAccount.address;
   readonly agent = newAccount();
   readonly agentId = 354n;
+  readonly spendWallet = newAddress();
+  readonly merchant = newAddress();
   readonly vendorA = newAddress();
   readonly vendorB = newAddress();
   readonly unlistedVendor = newAddress();
@@ -34,8 +51,9 @@ export class FakeWorld implements ChainReader, PaymentExecutor {
   time = NOW;
   blockNumber = 1_000n;
   paused = false;
-  balance = 10n * USDC;
+  balance = 30n * USDC;
   spentToday = 0n;
+  approvalNonce = 0n;
 
   agents = new Map<bigint, { wallet: Address | null; active: boolean | null }>([
     [this.agentId, { wallet: this.agent.address, active: true }],
@@ -60,11 +78,13 @@ export class FakeWorld implements ChainReader, PaymentExecutor {
     perPaymentCap: 2n * USDC,
     dailyCap: 8n * USDC,
     hardCeiling: 20n * USDC,
-    payees: new Set([this.vendorA, this.vendorB]),
+    payees: new Set([this.spendWallet, this.vendorA, this.vendorB]),
   };
 
   readonly usedEvidence = new Set<Hex>();
-  readonly payments: MandatePaymentRequest[] = [];
+  /** The approval nonce each approved payment used, by evidence hash. */
+  readonly approvalNonces = new Map<Hex, bigint>();
+  readonly payments: (MandatePaymentRequest & { event: PaymentReceipt['event'] })[] = [];
   snapshots = 0;
 
   /** Called between the gateway's decision and its payment, to simulate the world changing. */
@@ -112,6 +132,7 @@ export class FakeWorld implements ChainReader, PaymentExecutor {
               perPaymentCap: mandate.perPaymentCap,
               dailyCap: mandate.dailyCap,
               hardCeiling: mandate.hardCeiling,
+              approvalNonce: this.approvalNonce,
               payeeAllowed: mandate.payees.has(payee),
               spentToday: this.spentToday,
             },
@@ -119,34 +140,114 @@ export class FakeWorld implements ChainReader, PaymentExecutor {
     });
   }
 
-  /** The vault's rules, restated: this is what MandateVault.payWithinMandate enforces onchain. */
-  payWithinMandate(request: MandatePaymentRequest): Promise<PaymentReceipt> {
-    this.beforePayment?.();
-    const refuse = (error: string) =>
-      Promise.reject(new PaymentError(`the vault refused: ${error}`, null));
-    const mandate = this.mandate;
+  approvalState(): Promise<{ nonce: bigint; blockTimestamp: number }> {
+    return Promise.resolve({ nonce: this.approvalNonce, blockTimestamp: this.time });
+  }
 
-    if (this.paused) return refuse('EnforcedPause()');
-    if (mandate === null || mandate.id !== request.mandateId) return refuse('NotExecutor()');
-    if (mandate.revoked) return refuse(`MandateIsRevoked(${mandate.id})`);
-    if (this.time > mandate.validUntil) return refuse(`MandateExpired(${mandate.id})`);
-    if (!mandate.payees.has(request.payee))
-      return refuse(`PayeeNotAllowed(${mandate.id}, ${request.payee})`);
-    if (request.amount === 0n) return refuse('ZeroAmount()');
-    if (request.amount > mandate.perPaymentCap) return refuse('PerPaymentCapExceeded()');
-    if (this.spentToday + request.amount > mandate.dailyCap) return refuse('DailyCapExceeded()');
-    if (this.usedEvidence.has(request.evidenceHash)) return refuse('EvidenceAlreadyUsed()');
-    if (request.amount > this.balance) return refuse('ERC20InsufficientBalance()');
+  private refuse(error: string): Promise<never> {
+    return Promise.reject(new PaymentError(`the vault refused: ${error}`, null));
+  }
 
+  private settle(
+    request: MandatePaymentRequest,
+    event: PaymentReceipt['event'],
+  ): Promise<PaymentReceipt> {
     this.spentToday += request.amount;
     this.balance -= request.amount;
     this.usedEvidence.add(request.evidenceHash);
-    this.payments.push(request);
+    this.payments.push({ ...request, event });
     this.blockNumber += 1n;
     return Promise.resolve({
       transactionHash: keccak256(request.evidenceHash),
       blockNumber: this.blockNumber,
-      event: 'MandatePayment',
+      event,
+    });
+  }
+
+  /** The vault's rules, restated: this is what MandateVault.payWithinMandate enforces onchain. */
+  payWithinMandate(request: MandatePaymentRequest): Promise<PaymentReceipt> {
+    this.beforePayment?.();
+    const mandate = this.mandate;
+
+    if (this.paused) return this.refuse('EnforcedPause()');
+    if (mandate === null || mandate.id !== request.mandateId) return this.refuse('NotExecutor()');
+    if (mandate.revoked) return this.refuse(`MandateIsRevoked(${mandate.id})`);
+    if (this.time > mandate.validUntil) return this.refuse(`MandateExpired(${mandate.id})`);
+    if (!mandate.payees.has(request.payee))
+      return this.refuse(`PayeeNotAllowed(${mandate.id}, ${request.payee})`);
+    if (request.amount === 0n) return this.refuse('ZeroAmount()');
+    if (request.amount > mandate.perPaymentCap) return this.refuse('PerPaymentCapExceeded()');
+    if (this.spentToday + request.amount > mandate.dailyCap)
+      return this.refuse('DailyCapExceeded()');
+    if (this.usedEvidence.has(request.evidenceHash)) return this.refuse('EvidenceAlreadyUsed()');
+    if (request.amount > this.balance) return this.refuse('ERC20InsufficientBalance()');
+
+    return this.settle(request, 'MandatePayment');
+  }
+
+  /** And what MandateVault.payWithApproval enforces: the approver's signature and the hard ceiling. */
+  async payWithApproval(request: ApprovedPaymentRequest): Promise<PaymentReceipt> {
+    this.beforePayment?.();
+    const mandate = this.mandate;
+
+    if (this.paused) return this.refuse('EnforcedPause()');
+    if (mandate === null || mandate.id !== request.mandateId) return this.refuse('NotExecutor()');
+    if (mandate.revoked) return this.refuse(`MandateIsRevoked(${mandate.id})`);
+    if (this.time > mandate.validUntil) return this.refuse(`MandateExpired(${mandate.id})`);
+    if (request.amount === 0n) return this.refuse('ZeroAmount()');
+    if (BigInt(this.time) > request.deadline) return this.refuse('ApprovalExpired()');
+    if (this.spentToday + request.amount > mandate.hardCeiling)
+      return this.refuse('HardCeilingExceeded()');
+
+    const signer = await recoverApprovalSigner(
+      { chainId: 421_614, address: VAULT },
+      {
+        mandateId: request.mandateId,
+        payee: request.payee,
+        amount: request.amount,
+        evidenceHash: request.evidenceHash,
+        nonce: this.approvalNonce,
+        deadline: request.deadline,
+      },
+      request.signature,
+    );
+    if (signer !== this.approver) return this.refuse('InvalidApproval()');
+    if (this.usedEvidence.has(request.evidenceHash)) return this.refuse('EvidenceAlreadyUsed()');
+    if (request.amount > this.balance) return this.refuse('ERC20InsufficientBalance()');
+
+    this.approvalNonces.set(request.evidenceHash, this.approvalNonce);
+    this.approvalNonce += 1n;
+    return this.settle(request, 'ApprovedPayment');
+  }
+}
+
+/** A stand-in for the merchant's paid API and the spend wallet that pays it. */
+export class FakePurchases implements PurchaseClient {
+  readonly calls: PurchaseRequest[] = [];
+  /** The token transfer each settlement made, by transaction hash. */
+  readonly settlements = new Map<Hex, { from: Address; to: Address; value: bigint }>();
+  /** What the merchant returns. */
+  body: Json = { symbol: 'TSK-LOGI20', price: 1234.5, vendor_note: null };
+  /** Set to make the purchase fail after the vault has topped up the spend wallet. */
+  failWith: string | null = null;
+
+  constructor(readonly spendWallet: Address) {}
+
+  buy(request: PurchaseRequest): Promise<Purchase> {
+    this.calls.push(request);
+    if (this.failWith !== null) return Promise.reject(new PurchaseError(this.failWith));
+    const text = JSON.stringify(this.body);
+    const settlementTransactionHash = keccak256(stringToHex(`settlement ${this.calls.length}`));
+    this.settlements.set(settlementTransactionHash, {
+      from: this.spendWallet,
+      to: request.merchant,
+      value: request.amount,
+    });
+    return Promise.resolve({
+      settlementTransactionHash,
+      settledAt: '2026-11-13T03:00:05.000Z',
+      body: this.body,
+      responseHash: keccak256(stringToHex(text)),
     });
   }
 }
@@ -154,14 +255,17 @@ export class FakeWorld implements ChainReader, PaymentExecutor {
 export type Harness = Awaited<ReturnType<typeof createHarness>>;
 
 /** A gateway wired to a FakeWorld, with its ledger and evidence in a temporary directory. */
-export async function createHarness() {
+export async function createHarness(options: { spendWallet?: boolean } = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'agw-gateway-'));
   const world = new FakeWorld();
+  const purchases = options.spendWallet === false ? null : new FakePurchases(world.spendWallet);
   const payees: PayeesFile = {
     vendors: [
-      { name: 'Tsukimi Data', address: world.vendorA },
-      { name: 'Koishi Supply', address: world.vendorB },
+      { name: 'Koishi Supply', address: world.vendorA },
+      { name: 'Nagikumo Research', address: world.vendorB },
       { name: 'Hatsuka Research', address: world.unlistedVendor },
+      { name: 'Agent Gateway spend wallet', address: world.spendWallet },
+      { name: 'Tsukimi Data', address: world.merchant, origin: MERCHANT_ORIGIN },
     ],
     denylist: [],
   };
@@ -174,11 +278,14 @@ export async function createHarness() {
     ledger,
     evidence,
     loadPayees: () => Promise.resolve(new PayeeDirectory(payees)),
+    purchases,
+    purchaseCallCap: 500_000n,
     now: () => new Date((clock += 1000)),
   });
   return {
     dir,
     world,
+    purchases,
     payees,
     ledger,
     evidence,

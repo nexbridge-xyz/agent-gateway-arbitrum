@@ -33,7 +33,10 @@ export type Snapshot = {
 
 export interface ChainReader {
   info(): Promise<ChainInfo>;
+  /** `payee` is the address the vault would pay; the allowlist is checked for it. */
   snapshot(query: { agentId: bigint; payee: Address; executor: Address }): Promise<Snapshot>;
+  /** The nonce the next approval for this mandate must carry, and the current block time. */
+  approvalState(mandateId: bigint): Promise<{ nonce: bigint; blockTimestamp: number }>;
 }
 
 /** How many of the newest mandates are searched for the agent's mandate. */
@@ -152,6 +155,7 @@ export function createChainReader(client: PublicClient, vault: Address): ChainRe
         perPaymentCap: chosen.mandate.perPaymentCap,
         dailyCap: chosen.mandate.dailyCap,
         hardCeiling: chosen.mandate.hardCeiling,
+        approvalNonce: chosen.mandate.approvalNonce,
         payeeAllowed,
         spentToday,
       };
@@ -166,5 +170,17 @@ export function createChainReader(client: PublicClient, vault: Address): ChainRe
     };
   };
 
-  return { info, snapshot };
+  const approvalState: ChainReader['approvalState'] = async (mandateId) => {
+    const block = await client.getBlock({ blockTag: 'latest' });
+    const mandate = await client.readContract({
+      address: vault,
+      abi: mandateVaultAbi,
+      functionName: 'getMandate',
+      args: [mandateId],
+      blockNumber: block.number,
+    });
+    return { nonce: mandate.approvalNonce, blockTimestamp: Number(block.timestamp) };
+  };
+
+  return { info, snapshot, approvalState };
 }

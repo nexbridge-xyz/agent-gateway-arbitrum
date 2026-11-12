@@ -8,6 +8,7 @@ import {
   createWalletClient,
   getAddress,
   http,
+  parseUnits,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arbitrumSepolia } from 'viem/chains';
@@ -16,6 +17,7 @@ import { z } from 'zod';
 import deployment from '@agent-gateway/contracts/deployments/arbitrum-sepolia.json' with { type: 'json' };
 
 import { createPaymentExecutor } from './chain/executor';
+import { createPurchaseClient } from './chain/purchases';
 import { createChainReader } from './chain/reader';
 import { Gateway } from './gateway';
 import { EvidenceStore } from './store/evidenceStore';
@@ -24,28 +26,36 @@ import { PayeeDirectory } from './store/payees';
 
 /** Settings come from the environment. Secrets are read here and nowhere else, and are never logged. */
 
+const blankAsMissing = (value: unknown) => (value === '' ? undefined : value);
 const optional = <T extends z.ZodType>(schema: T) =>
-  z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
+  z.preprocess(blankAsMissing, schema.optional());
+const privateKey = z.string().regex(/^0x[0-9a-fA-F]{64}$/, 'must be a 32-byte hex private key');
 
 const envSchema = z.object({
   ARBITRUM_SEPOLIA_RPC_URL: z.preprocess(
-    (value) => (value === '' ? undefined : value),
+    blankAsMissing,
     z.url().default('https://sepolia-rollup.arbitrum.io/rpc'),
   ),
-  EXECUTOR_PRIVATE_KEY: z
-    .string()
-    .regex(/^0x[0-9a-fA-F]{64}$/, 'must be a 32-byte hex private key'),
+  EXECUTOR_PRIVATE_KEY: privateKey,
+  SPEND_WALLET_PRIVATE_KEY: optional(privateKey),
   MANDATE_VAULT_ADDRESS: optional(z.string().regex(/^0x[0-9a-fA-F]{40}$/)),
   GATEWAY_PORT: z.preprocess(
-    (value) => (value === '' ? undefined : value),
+    blankAsMissing,
     z.coerce.number().int().min(1).max(65_535).default(8787),
   ),
   GATEWAY_DATA_DIR: optional(z.string().min(1)),
+  GATEWAY_PURCHASE_CALL_CAP: optional(
+    z.string().regex(/^[0-9]+(\.[0-9]+)?$/, 'must be an amount such as 0.5'),
+  ),
 });
 
 export type GatewayConfig = {
   rpcUrl: string;
   executorKey: Hex;
+  /** The low-value wallet that pays per-call API charges. Without it the gateway refuses purchases. */
+  spendWalletKey: Hex | null;
+  /** The most the gateway pays for one API call, in whole tokens. */
+  purchaseCallCap: string;
   vault: Address;
   port: number;
   dataDir: string;
@@ -70,6 +80,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): GatewayConf
   return {
     rpcUrl: parsed.data.ARBITRUM_SEPOLIA_RPC_URL,
     executorKey: parsed.data.EXECUTOR_PRIVATE_KEY as Hex,
+    spendWalletKey: (parsed.data.SPEND_WALLET_PRIVATE_KEY as Hex | undefined) ?? null,
+    purchaseCallCap: parsed.data.GATEWAY_PURCHASE_CALL_CAP ?? '0.5',
     vault: getAddress(
       parsed.data.MANDATE_VAULT_ADDRESS ?? deployment.contracts.MandateVault.address,
     ),
@@ -105,13 +117,31 @@ export async function createRuntime(config: GatewayConfig) {
   const evidence = new EvidenceStore(join(config.dataDir, 'evidence'));
   const payeesPath = join(config.dataDir, 'payees.json');
 
+  const info = await chain.info();
+  const purchases =
+    config.spendWalletKey === null
+      ? null
+      : createPurchaseClient(privateKeyToAccount(config.spendWalletKey), { rpcUrl: config.rpcUrl });
+
   const gateway = new Gateway({
     chain,
     executor,
     ledger,
     evidence,
     loadPayees: () => PayeeDirectory.load(payeesPath),
+    purchases,
+    purchaseCallCap: parseUnits(config.purchaseCallCap, info.tokenDecimals),
   });
 
-  return { config, publicClient, chain, executor, ledger, evidence, gateway, payeesPath };
+  return {
+    config,
+    publicClient,
+    chain,
+    executor,
+    purchases,
+    ledger,
+    evidence,
+    gateway,
+    payeesPath,
+  };
 }

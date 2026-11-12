@@ -1,8 +1,17 @@
-import { type Hex, formatUnits } from 'viem';
+import { type Address, type Hex, formatUnits, isAddressEqual } from 'viem';
+import { z } from 'zod';
 
-import { type PaymentExecutor, PaymentError } from './chain/executor';
-import type { ChainReader } from './chain/reader';
-import { evaluate } from './policy/evaluate';
+import { type PaymentExecutor, PaymentError, type PaymentReceipt } from './chain/executor';
+import { type PurchaseClient, PurchaseError } from './chain/purchases';
+import type { ChainInfo, ChainReader, Snapshot } from './chain/reader';
+import { RequestError } from './errors';
+import { type PolicyResult, evaluate } from './policy/evaluate';
+import {
+  approvalTypedData,
+  declineTypedData,
+  recoverApprovalSigner,
+  recoverDeclineSigner,
+} from './protocol/approval';
 import {
   type Decision,
   EVIDENCE_FORMAT,
@@ -10,6 +19,7 @@ import {
   type EvidenceFile,
   type EvidenceRecord,
   type EvidenceResult,
+  type PurchaseOutcome,
   evidenceHash,
 } from './protocol/evidence';
 import {
@@ -18,6 +28,7 @@ import {
   recoverIntentSigner,
   signedIntentSchema,
 } from './protocol/intent';
+import type { Json } from './protocol/json';
 import type { EvidenceStore } from './store/evidenceStore';
 import type { Ledger } from './store/ledger';
 import type { PayeeDirectory } from './store/payees';
@@ -31,6 +42,47 @@ export type IntentOutcome = {
   evidenceHash: Hex;
   transactionHash: Hex | null;
   error: string | null;
+  /** For a per-call purchase: what happened at the merchant. */
+  purchase: PurchaseOutcome | null;
+  /** For a per-call purchase that settled: what the merchant returned. Not stored by the gateway. */
+  data?: Json;
+};
+
+/** One payment waiting for the approver, with the exact message to sign. */
+export type PendingApproval = {
+  intentId: Hex;
+  evidenceHash: Hex;
+  decidedAt: string;
+  agentId: string;
+  mandateId: string;
+  approver: Address;
+  payee: Address;
+  payeeName: string | null;
+  amount: string;
+  tokenSymbol: string;
+  tokenDecimals: number;
+  purpose: string;
+  invoiceId: string;
+  reasons: string[];
+  /** EIP-712 typed data for the approver's wallet. Numbers are decimal strings. */
+  approval: {
+    domain: { name: string; version: string; chainId: number; verifyingContract: Address };
+    primaryType: 'PaymentApproval';
+    message: {
+      mandateId: string;
+      payee: Address;
+      amount: string;
+      evidenceHash: Hex;
+      nonce: string;
+      deadline: string;
+    };
+  };
+  /** EIP-712 typed data for saying no. */
+  decline: {
+    domain: { name: string; version: string; chainId: number; verifyingContract: Address };
+    primaryType: 'ApprovalDecline';
+    message: { intentId: Hex; evidenceHash: Hex };
+  };
 };
 
 export type GatewayOptions = {
@@ -40,41 +92,146 @@ export type GatewayOptions = {
   evidence: EvidenceStore;
   /** Reads the principal's vendor registry and denylist. Called for every decision. */
   loadPayees: () => Promise<PayeeDirectory>;
+  /** Buys per call with the spend wallet. Null if this gateway has no spend wallet. */
+  purchases?: PurchaseClient | null;
+  /** The most the gateway pays for one API call, in the token's smallest unit. */
+  purchaseCallCap?: bigint;
   now?: () => Date;
 };
 
 const MAX_SOURCE_LENGTH = 200;
+const APPROVAL_WINDOW_SECONDS = 600n;
+const DEFAULT_CALL_CAP = 500_000n; // 0.50 USDC
+
+const signatureField = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{130}$/, 'must be a 65-byte signature in hex');
+const approvalSchema = z.strictObject({
+  signature: signatureField,
+  /** Last second (Unix time) at which the vault accepts this approval. */
+  deadline: z
+    .string()
+    .regex(/^[1-9][0-9]{0,15}$/)
+    .transform((value) => BigInt(value)),
+});
+const declineSchema = z.strictObject({ signature: signatureField });
 
 /**
  * The gateway: takes a signed payment intent, checks who sent it, decides by policy, writes the
- * evidence record, and pays through the vault when the decision is "auto".
+ * evidence record, and pays through the vault when the decision is "auto". A payment that needs
+ * approval waits until the mandate's approver signs for it.
  */
 export class Gateway {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly now: () => Date;
+  private readonly purchases: PurchaseClient | null;
+  private readonly callCap: bigint;
 
   constructor(private readonly options: GatewayOptions) {
     this.now = options.now ?? (() => new Date());
+    this.purchases = options.purchases ?? null;
+    this.callCap = options.purchaseCallCap ?? DEFAULT_CALL_CAP;
   }
 
   get executorAddress() {
     return this.options.executor.address;
   }
 
-  /**
-   * Decides one intent. Throws a ZodError when the body is not a well-formed signed intent.
-   * Decisions run one at a time, so each one sees the spending of the one before it.
-   */
-  async submit(body: unknown): Promise<IntentOutcome> {
-    const signed = signedIntentSchema.parse(body);
-    const run = this.queue.then(() => this.decide(signed));
+  get spendWalletAddress(): Address | null {
+    return this.purchases?.spendWallet ?? null;
+  }
+
+  /** Everything that changes state runs one at a time, so each step sees the spending before it. */
+  private inTurn<T>(work: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(work);
     this.queue = run.catch(() => undefined);
     return run;
+  }
+
+  /** Decides one intent. Throws a ZodError when the body is not a well-formed signed intent. */
+  async submit(body: unknown): Promise<IntentOutcome> {
+    const signed = signedIntentSchema.parse(body);
+    return this.inTurn(() => this.decide(signed));
+  }
+
+  /** The approver's signature for a waiting payment. Pays it through the vault. */
+  async approve(id: Hex, body: unknown): Promise<IntentOutcome> {
+    const { signature, deadline } = approvalSchema.parse(body);
+    return this.inTurn(() => this.payApproved(id, signature as Hex, deadline));
+  }
+
+  /** The approver's signed refusal of a waiting payment. */
+  async decline(id: Hex, body: unknown): Promise<IntentOutcome> {
+    const { signature } = declineSchema.parse(body);
+    return this.inTurn(() => this.recordDecline(id, signature as Hex));
   }
 
   async evidenceFor(id: Hex): Promise<EvidenceFile | null> {
     return this.options.evidence.get(id);
   }
+
+  /** Payments waiting for an approver, oldest first, each with the message to sign. */
+  async pendingApprovals(): Promise<PendingApproval[]> {
+    const { chain, evidence } = this.options;
+    const info = await chain.info();
+    const pending: PendingApproval[] = [];
+
+    for (const id of await evidence.list()) {
+      const file = await evidence.get(id);
+      if (file === null || file.result.status !== 'pending_approval') continue;
+      const { record } = file;
+      if (record.who.mandateId === null || record.who.approver === null) continue;
+
+      const state = await chain.approvalState(BigInt(record.who.mandateId));
+      const vault = { chainId: info.chainId, address: info.vault };
+      const typed = approvalTypedData(vault, {
+        mandateId: BigInt(record.who.mandateId),
+        payee: record.what.payee,
+        amount: BigInt(record.what.amount),
+        evidenceHash: file.evidenceHash,
+        nonce: state.nonce,
+        deadline: BigInt(state.blockTimestamp) + APPROVAL_WINDOW_SECONDS,
+      });
+      const declineTyped = declineTypedData(vault, record.intentId, file.evidenceHash);
+
+      pending.push({
+        intentId: record.intentId,
+        evidenceHash: file.evidenceHash,
+        decidedAt: record.decidedAt,
+        agentId: record.who.agentId,
+        mandateId: record.who.mandateId,
+        approver: record.who.approver,
+        payee: record.what.payee,
+        payeeName: record.what.payeeName,
+        amount: record.what.amount,
+        tokenSymbol: record.what.tokenSymbol,
+        tokenDecimals: record.what.tokenDecimals,
+        purpose: record.what.purpose,
+        invoiceId: record.what.invoiceId,
+        reasons: record.why.reasons,
+        approval: {
+          domain: typed.domain,
+          primaryType: typed.primaryType,
+          message: {
+            mandateId: typed.message.mandateId.toString(),
+            payee: typed.message.payee,
+            amount: typed.message.amount.toString(),
+            evidenceHash: typed.message.evidenceHash,
+            nonce: typed.message.nonce.toString(),
+            deadline: typed.message.deadline.toString(),
+          },
+        },
+        decline: {
+          domain: declineTyped.domain,
+          primaryType: declineTyped.primaryType,
+          message: declineTyped.message,
+        },
+      });
+    }
+    return pending.sort((a, b) => a.decidedAt.localeCompare(b.decidedAt));
+  }
+
+  // --- Deciding ----------------------------------------------------------------------------------------
 
   private async decide(signed: SignedIntent): Promise<IntentOutcome> {
     const { chain, executor, ledger, evidence } = this.options;
@@ -88,34 +245,29 @@ export class Gateway {
     if (known !== null) return outcomeOf(known);
 
     const amount = BigInt(intent.amount);
+    const resource = purchaseResource(intent.context);
+    const spendWallet = this.purchases?.spendWallet ?? null;
+    // For a purchase the vault pays the spend wallet, which then pays the merchant.
+    const onchainPayee = resource !== null && spendWallet !== null ? spendWallet : intent.payee;
+
     const [snapshot, signer, payees] = await Promise.all([
       chain.snapshot({
         agentId: BigInt(intent.agentId),
-        payee: intent.payee,
+        payee: onchainPayee,
         executor: executor.address,
       }),
       recoverIntentSigner(domain, signed),
       this.options.loadPayees(),
     ]);
     const vendor = payees.vendor(intent.payee);
-    const claimedSource = intent.context.payeeSource;
-
-    const policy = evaluate({
-      now: snapshot.blockTimestamp,
-      gatewayExecutor: executor.address,
-      request: {
-        payee: intent.payee,
-        amount,
-        expiresAt: intent.expiresAt,
-        signer,
-        payeeSource:
-          typeof claimedSource === 'string' ? claimedSource.slice(0, MAX_SOURCE_LENGTH) : null,
-      },
-      agent: snapshot.agent,
-      mandate: snapshot.mandate,
-      vault: snapshot.vault,
-      payee: { vendor, denied: payees.denial(intent.payee) },
-      token: { symbol: info.tokenSymbol, decimals: info.tokenDecimals },
+    const policy = this.evaluate(info, snapshot, payees, {
+      payee: intent.payee,
+      amount,
+      expiresAt: intent.expiresAt,
+      signer,
+      context: intent.context,
+      resource,
+      requestAlreadyAccepted: false,
     });
 
     const decidedAt = this.now().toISOString();
@@ -149,6 +301,7 @@ export class Gateway {
         invoiceId: intent.invoiceId,
       },
       request: { intent, signature: signed.signature as Hex, signer },
+      purchase: resource === null ? null : { protocol: 'mpp', resource, spendWallet },
       why: { decision: policy.decision, reasons: policy.reasons, checks: policy.checks },
     };
     const hash = evidenceHash(record);
@@ -167,7 +320,7 @@ export class Gateway {
     await evidence.save(file);
     await ledger.append(
       'INTENT_DECIDED',
-      `${policy.decision}: agent ${intent.agentId} asks to pay ${money} to ${payeeLabel}`,
+      `${policy.decision}: agent ${intent.agentId} asks to ${resource === null ? 'pay' : 'buy for'} ${money} ${resource === null ? 'to' : 'from'} ${payeeLabel}`,
       {
         intentId: id,
         evidenceHash: hash,
@@ -181,63 +334,357 @@ export class Gateway {
       this.now(),
     );
 
+    let data: Json | undefined;
     if (policy.decision === 'auto' && snapshot.mandate !== null) {
-      try {
-        const receipt = await executor.payWithinMandate({
-          mandateId: snapshot.mandate.id,
-          payee: intent.payee,
-          amount,
-          evidenceHash: hash,
-        });
-        const executedAt = this.now();
-        file.result = {
-          status: 'paid',
-          transactionHash: receipt.transactionHash,
-          blockNumber: receipt.blockNumber.toString(),
-          event: receipt.event,
-          executedAt: executedAt.toISOString(),
-        };
-        await ledger.append(
-          'PAYMENT_EXECUTED',
-          `paid ${money} to ${payeeLabel} under mandate ${snapshot.mandate.id}`,
-          {
-            intentId: id,
-            evidenceHash: hash,
-            transactionHash: receipt.transactionHash,
-            blockNumber: receipt.blockNumber.toString(),
-            event: receipt.event,
-          },
-          executedAt,
-        );
-      } catch (error) {
-        const failure =
-          error instanceof PaymentError
-            ? error
-            : new PaymentError(error instanceof Error ? error.message : 'unknown error', null);
-        const failedAt = this.now();
-        file.result = {
-          status: 'failed',
-          error: failure.message,
-          transactionHash: failure.transactionHash,
-          failedAt: failedAt.toISOString(),
-        };
-        await ledger.append(
-          'PAYMENT_FAILED',
-          `payment of ${money} to ${payeeLabel} failed: ${failure.message}`,
-          {
-            intentId: id,
-            evidenceHash: hash,
-            error: failure.message,
-            transactionHash: failure.transactionHash,
-          },
-          failedAt,
-        );
-      }
+      const mandateId = snapshot.mandate.id;
+      const paid = await this.pay(file, `under mandate ${mandateId}`, () =>
+        executor.payWithinMandate({ mandateId, payee: onchainPayee, amount, evidenceHash: hash }),
+      );
+      if (paid && resource !== null) data = await this.buy(file, info, resource);
       file.updatedAt = this.now().toISOString();
       await evidence.save(file);
     }
 
+    return { ...outcomeOf(file), ...(data === undefined ? {} : { data }) };
+  }
+
+  /** Runs the policy on a snapshot. Used for the first decision and again at approval time. */
+  private evaluate(
+    info: ChainInfo,
+    snapshot: Snapshot,
+    payees: PayeeDirectory,
+    request: {
+      payee: Address;
+      amount: bigint;
+      expiresAt: number;
+      signer: Address | null;
+      context: SignedIntent['intent']['context'];
+      resource: string | null;
+      requestAlreadyAccepted: boolean;
+    },
+  ): PolicyResult {
+    const vendor = payees.vendor(request.payee);
+    const claimedSource = request.context.payeeSource;
+    return evaluate({
+      now: snapshot.blockTimestamp,
+      gatewayExecutor: this.options.executor.address,
+      request: {
+        payee: request.payee,
+        amount: request.amount,
+        expiresAt: request.expiresAt,
+        signer: request.signer,
+        payeeSource:
+          typeof claimedSource === 'string' ? claimedSource.slice(0, MAX_SOURCE_LENGTH) : null,
+      },
+      agent: snapshot.agent,
+      mandate: snapshot.mandate,
+      vault: snapshot.vault,
+      payee: { vendor, denied: payees.denial(request.payee) },
+      token: { symbol: info.tokenSymbol, decimals: info.tokenDecimals },
+      purchase:
+        request.resource === null
+          ? null
+          : {
+              spendWalletReady: this.purchases !== null,
+              resourceOrigin: originOf(request.resource),
+              merchantOrigin: vendor?.origin ?? null,
+              callCap: this.callCap,
+            },
+      requestAlreadyAccepted: request.requestAlreadyAccepted,
+    });
+  }
+
+  // --- Paying ------------------------------------------------------------------------------------------
+
+  /** Sends one vault payment and writes its outcome into the evidence file and the ledger. */
+  private async pay(
+    file: EvidenceFile,
+    how: string,
+    send: () => Promise<PaymentReceipt>,
+  ): Promise<boolean> {
+    const { ledger } = this.options;
+    const { record } = file;
+    const money = `${formatUnits(BigInt(record.what.amount), record.what.tokenDecimals)} ${record.what.tokenSymbol}`;
+    const payeeLabel =
+      record.what.payeeName === null
+        ? record.what.payee
+        : `${record.what.payeeName} (${record.what.payee})`;
+
+    try {
+      const receipt = await send();
+      const executedAt = this.now();
+      file.result = {
+        status: 'paid',
+        transactionHash: receipt.transactionHash,
+        blockNumber: receipt.blockNumber.toString(),
+        event: receipt.event,
+        executedAt: executedAt.toISOString(),
+      };
+      await ledger.append(
+        'PAYMENT_EXECUTED',
+        `paid ${money} ${record.purchase ? 'to the spend wallet for a purchase from' : 'to'} ${payeeLabel} ${how}`,
+        {
+          intentId: record.intentId,
+          evidenceHash: file.evidenceHash,
+          transactionHash: receipt.transactionHash,
+          blockNumber: receipt.blockNumber.toString(),
+          event: receipt.event,
+        },
+        executedAt,
+      );
+      return true;
+    } catch (error) {
+      const failure =
+        error instanceof PaymentError
+          ? error
+          : new PaymentError(error instanceof Error ? error.message : 'unknown error', null);
+      const failedAt = this.now();
+      file.result = {
+        status: 'failed',
+        error: failure.message,
+        transactionHash: failure.transactionHash,
+        failedAt: failedAt.toISOString(),
+      };
+      await ledger.append(
+        'PAYMENT_FAILED',
+        `payment of ${money} to ${payeeLabel} failed: ${failure.message}`,
+        {
+          intentId: record.intentId,
+          evidenceHash: file.evidenceHash,
+          error: failure.message,
+          transactionHash: failure.transactionHash,
+        },
+        failedAt,
+      );
+      return false;
+    }
+  }
+
+  /** After the vault topped up the spend wallet: pays the merchant's challenge and returns the data. */
+  private async buy(
+    file: EvidenceFile,
+    info: ChainInfo,
+    resource: string,
+  ): Promise<Json | undefined> {
+    const { ledger } = this.options;
+    const { record, result } = file;
+    if (this.purchases === null || result.status !== 'paid') return undefined;
+    const money = `${formatUnits(BigInt(record.what.amount), record.what.tokenDecimals)} ${record.what.tokenSymbol}`;
+
+    try {
+      const purchase = await this.purchases.buy({
+        resource,
+        merchant: record.what.payee,
+        amount: BigInt(record.what.amount),
+        token: info.token,
+        chainId: info.chainId,
+      });
+      result.purchase = {
+        status: 'settled',
+        settlementTransactionHash: purchase.settlementTransactionHash,
+        settledAt: purchase.settledAt,
+        responseHash: purchase.responseHash,
+      };
+      await ledger.append(
+        'PURCHASE_SETTLED',
+        `spend wallet paid ${money} to ${record.what.payeeName ?? record.what.payee} for ${resource}`,
+        {
+          intentId: record.intentId,
+          evidenceHash: file.evidenceHash,
+          settlementTransactionHash: purchase.settlementTransactionHash,
+          responseHash: purchase.responseHash,
+        },
+        this.now(),
+      );
+      return purchase.body;
+    } catch (error) {
+      const message =
+        error instanceof PurchaseError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'unknown error';
+      result.purchase = { status: 'failed', error: message };
+      await ledger.append(
+        'PURCHASE_FAILED',
+        `purchase from ${record.what.payeeName ?? record.what.payee} failed after the top-up: ${message}`,
+        { intentId: record.intentId, evidenceHash: file.evidenceHash, error: message },
+        this.now(),
+      );
+      return undefined;
+    }
+  }
+
+  // --- Approvals ---------------------------------------------------------------------------------------
+
+  private async waiting(id: Hex): Promise<EvidenceFile> {
+    const file = await this.options.evidence.get(id);
+    if (file === null) throw new RequestError(404, 'No such intent');
+    if (file.result.status !== 'pending_approval') {
+      throw new RequestError(
+        409,
+        `This request is not waiting for approval: it is ${file.result.status}`,
+      );
+    }
+    return file;
+  }
+
+  private async payApproved(id: Hex, signature: Hex, deadline: bigint): Promise<IntentOutcome> {
+    const { chain, executor, ledger, evidence } = this.options;
+    const file = await this.waiting(id);
+    const { record } = file;
+    const info = await chain.info();
+    const amount = BigInt(record.what.amount);
+
+    // Look at the chain again: the world may have changed since the request arrived.
+    const [snapshot, payees] = await Promise.all([
+      chain.snapshot({
+        agentId: BigInt(record.who.agentId),
+        payee: record.what.payee,
+        executor: executor.address,
+      }),
+      this.options.loadPayees(),
+    ]);
+    const mandate = snapshot.mandate;
+    const problems: string[] = [];
+    if (mandate === null || mandate.id.toString() !== record.who.mandateId) {
+      problems.push(
+        'The mandate this request was decided under is no longer the one the agent has',
+      );
+    } else {
+      const recheck = this.evaluate(info, snapshot, payees, {
+        payee: record.what.payee,
+        amount,
+        expiresAt: record.request.intent.expiresAt,
+        signer: record.request.signer,
+        context: record.request.intent.context,
+        resource: null,
+        requestAlreadyAccepted: true,
+      });
+      if (recheck.decision === 'refused') problems.push(...recheck.reasons);
+    }
+    if (mandate === null || problems.length > 0) {
+      await ledger.append(
+        'APPROVAL_NOT_EXECUTED',
+        `approval for intent ${id} was not carried out: ${problems.join('; ')}`,
+        { intentId: id, evidenceHash: file.evidenceHash, reasons: problems },
+        this.now(),
+      );
+      throw new RequestError(409, 'The payment can no longer be made', problems);
+    }
+
+    if (deadline < BigInt(snapshot.blockTimestamp))
+      throw new RequestError(400, 'The approval has expired');
+    const signer = await recoverApprovalSigner(
+      { chainId: info.chainId, address: info.vault },
+      {
+        mandateId: mandate.id,
+        payee: record.what.payee,
+        amount,
+        evidenceHash: file.evidenceHash,
+        nonce: mandate.approvalNonce,
+        deadline,
+      },
+      signature,
+    );
+    if (signer === null || !isAddressEqual(signer, mandate.approver)) {
+      throw new RequestError(
+        400,
+        `The signature is not the approver's signature for this payment and approval number ${mandate.approvalNonce}`,
+      );
+    }
+
+    const receivedAt = this.now();
+    file.approval = {
+      approver: mandate.approver,
+      nonce: mandate.approvalNonce.toString(),
+      deadline: deadline.toString(),
+      signature,
+      receivedAt: receivedAt.toISOString(),
+    };
+    await ledger.append(
+      'APPROVAL_RECEIVED',
+      `approver ${mandate.approver} approved intent ${id}`,
+      {
+        intentId: id,
+        evidenceHash: file.evidenceHash,
+        approver: mandate.approver,
+        nonce: mandate.approvalNonce.toString(),
+      },
+      receivedAt,
+    );
+    await evidence.save(file);
+
+    await this.pay(file, `with the approver's signature, mandate ${mandate.id}`, () =>
+      executor.payWithApproval({
+        mandateId: mandate.id,
+        payee: record.what.payee,
+        amount,
+        evidenceHash: file.evidenceHash,
+        deadline,
+        signature,
+      }),
+    );
+    file.updatedAt = this.now().toISOString();
+    await evidence.save(file);
     return outcomeOf(file);
+  }
+
+  private async recordDecline(id: Hex, signature: Hex): Promise<IntentOutcome> {
+    const { chain, ledger, evidence } = this.options;
+    const file = await this.waiting(id);
+    const { record } = file;
+    const info = await chain.info();
+
+    const signer = await recoverDeclineSigner(
+      { chainId: info.chainId, address: info.vault },
+      id,
+      file.evidenceHash,
+      signature,
+    );
+    if (
+      signer === null ||
+      record.who.approver === null ||
+      !isAddressEqual(signer, record.who.approver)
+    ) {
+      throw new RequestError(
+        400,
+        "The signature is not the approver's signature for declining this request",
+      );
+    }
+
+    const declinedAt = this.now();
+    file.result = {
+      status: 'declined',
+      approver: record.who.approver,
+      signature,
+      declinedAt: declinedAt.toISOString(),
+    };
+    file.updatedAt = declinedAt.toISOString();
+    await ledger.append(
+      'APPROVAL_DECLINED',
+      `approver ${record.who.approver} declined intent ${id}`,
+      { intentId: id, evidenceHash: file.evidenceHash, approver: record.who.approver },
+      declinedAt,
+    );
+    await evidence.save(file);
+    return outcomeOf(file);
+  }
+}
+
+/** The resource of a per-call purchase, from `context.mpp.resource`, or null for a direct payment. */
+function purchaseResource(context: SignedIntent['intent']['context']): string | null {
+  const mpp = context.mpp;
+  if (typeof mpp !== 'object' || mpp === null || Array.isArray(mpp)) return null;
+  return typeof mpp.resource === 'string' ? mpp.resource : null;
+}
+
+function originOf(resource: string): string | null {
+  try {
+    const url = new URL(resource);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.origin : null;
+  } catch {
+    return null;
   }
 }
 
@@ -258,5 +705,6 @@ export function outcomeOf(file: EvidenceFile): IntentOutcome {
     transactionHash:
       result.status === 'paid' || result.status === 'failed' ? result.transactionHash : null,
     error: result.status === 'failed' ? result.error : null,
+    purchase: result.status === 'paid' ? (result.purchase ?? null) : null,
   };
 }

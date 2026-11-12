@@ -24,6 +24,9 @@ async function main(): Promise<void> {
     console.log(`  chain     Arbitrum Sepolia (${info.chainId})`);
     console.log(`  vault     ${info.vault}`);
     console.log(`  executor  ${runtime.executor.address}`);
+    console.log(
+      `  spend     ${runtime.purchases?.spendWallet ?? 'none: per-call purchases are refused'}`,
+    );
     console.log(`  ledger    ${runtime.ledger.entries.length} entries`);
   });
 }

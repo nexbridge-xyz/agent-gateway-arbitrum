@@ -35,7 +35,7 @@ function record(): EvidenceRecord {
     },
     what: {
       payee: intent.payee,
-      payeeName: 'Tsukimi Data',
+      payeeName: 'Koishi Supply',
       amount: intent.amount,
       tokenSymbol: 'USDC',
       tokenDecimals: 6,

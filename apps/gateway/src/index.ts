@@ -11,3 +11,5 @@ export * from './store/evidenceStore';
 export * from './store/ledger';
 export * from './store/payees';
 export * from './verify';
+export * from './chain/purchases';
+export * from './errors';
