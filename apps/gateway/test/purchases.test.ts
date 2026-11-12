@@ -1,7 +1,11 @@
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+
 import { getAddress } from 'viem';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { challengeProblem } from '../src/chain/purchases';
+import { PurchaseError, challengeProblem, createPurchaseClient } from '../src/chain/purchases';
 import { evidenceHash } from '../src/protocol/evidence';
 import { signIntent } from '../src/protocol/intent';
 import { type Harness, MERCHANT_ORIGIN, createHarness } from './fakes';
@@ -115,13 +119,13 @@ describe('purchases: buying one API call', () => {
   });
 
   it('says so when the merchant fails after the top-up', async () => {
-    h.purchases!.failWith = 'the merchant answered 503 after payment';
+    h.purchases!.failWith = 'the merchant answered 503 to the signed payment';
     const outcome = await h.gateway.submit(await purchase());
 
     expect(outcome.status).toBe('paid');
     expect(outcome.purchase).toEqual({
       status: 'failed',
-      error: 'the merchant answered 503 after payment',
+      error: 'the merchant answered 503 to the signed payment',
     });
     expect(outcome.data).toBeUndefined();
     expect(h.ledger.entries.map((entry) => entry.kind)).toEqual([
@@ -259,5 +263,92 @@ describe('purchases: the merchant challenge is checked before the spend wallet s
     const challenge = honest();
     change(challenge);
     expect(challengeProblem(challenge, expected)).toMatch(reason);
+  });
+});
+
+describe('purchases: the spend wallet client against a server that misbehaves', () => {
+  const token = getAddress('0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d');
+  const spendWallet = privateKeyToAccount(generatePrivateKey());
+  // An RPC address nothing listens on: none of these cases may get as far as the chain.
+  const purchases = createPurchaseClient(spendWallet, { rpcUrl: 'http://127.0.0.1:9' });
+
+  async function serve(handler: Parameters<typeof createServer>[1]) {
+    const server = createServer(handler);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    return {
+      url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
+      close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    };
+  }
+
+  const request = (resource: string) => ({
+    resource,
+    merchant: newAddress(),
+    amount: 100_000n,
+    token,
+    chainId: 421_614,
+  });
+
+  it('does not follow a redirect', async () => {
+    let visited = false;
+    const target = await serve((_request, response) => {
+      visited = true;
+      response.end('{}');
+    });
+    const merchant = await serve((_request, response) => {
+      response.writeHead(302, { location: `${target.url}/elsewhere` }).end();
+    });
+    try {
+      await expect(purchases.buy(request(`${merchant.url}/v1/quotes/TSK-LOGI20`))).rejects.toThrow(
+        PurchaseError,
+      );
+      expect(visited).toBe(false);
+    } finally {
+      await merchant.close();
+      await target.close();
+    }
+  });
+
+  it('treats data handed over without a payment as a failed purchase', async () => {
+    const merchant = await serve((_request, response) => {
+      response.writeHead(200, { 'content-type': 'application/json' }).end('{"level":1}');
+    });
+    try {
+      await expect(purchases.buy(request(`${merchant.url}/v1/quotes/TSK-LOGI20`))).rejects.toThrow(
+        'the merchant asked for no payment',
+      );
+    } finally {
+      await merchant.close();
+    }
+  });
+
+  it('reports an error status without signing anything', async () => {
+    const merchant = await serve((_request, response) => {
+      response.writeHead(503).end();
+    });
+    try {
+      await expect(purchases.buy(request(`${merchant.url}/v1/quotes/TSK-LOGI20`))).rejects.toThrow(
+        'the merchant answered 503 and asked for no payment',
+      );
+    } finally {
+      await merchant.close();
+    }
+  });
+
+  it('rejects a payment challenge it cannot read', async () => {
+    const merchant = await serve((_request, response) => {
+      response
+        .writeHead(402, {
+          'www-authenticate': 'Payment id="x", method="arbitrum", intent="charge", request="!!"',
+        })
+        .end();
+    });
+    try {
+      await expect(purchases.buy(request(`${merchant.url}/v1/quotes/TSK-LOGI20`))).rejects.toThrow(
+        PurchaseError,
+      );
+    } finally {
+      await merchant.close();
+    }
   });
 });

@@ -587,7 +587,7 @@ describe('verify-evidence: per-call purchases', () => {
   });
 
   it('verifies a purchase that failed at the merchant, and shows that it did', async () => {
-    h.purchases!.failWith = 'the merchant answered 503 after payment';
+    h.purchases!.failWith = 'the merchant answered 503 to the signed payment';
     const file = await bought();
     const report = await verifyEvidence(file, { chain: chainOf(file), ledger: h.ledger.entries });
     expect(failedLabels(report)).toEqual([]);

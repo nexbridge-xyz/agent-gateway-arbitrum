@@ -99,6 +99,7 @@ export function createPurchaseClient(
     spendWallet: account.address,
 
     async buy({ resource, merchant, amount, token, chainId }) {
+      let signed = false;
       const mppx = Mppx.create({
         // Never replace the global fetch: only this one request is allowed to pay.
         polyfill: false,
@@ -109,6 +110,7 @@ export function createPurchaseClient(
           const problem = challengeProblem(challenge, { merchant, amount, token, chainId });
           if (problem !== null)
             throw new PurchaseError(`the merchant's payment challenge was rejected: ${problem}`);
+          signed = true;
           return createCredential();
         },
       });
@@ -122,12 +124,19 @@ export function createPurchaseClient(
         });
       } catch (error) {
         if (error instanceof PurchaseError) throw error;
+        // Messages from the payment library can span lines; keep the record to one.
+        const message =
+          error instanceof Error ? error.message.replace(/\s+/g, ' ').trim() : 'unknown error';
+        throw new PurchaseError(`the purchase request failed: ${message}`);
+      }
+      if (!response.ok) {
         throw new PurchaseError(
-          `the purchase request failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+          signed
+            ? `the merchant answered ${response.status} to the signed payment`
+            : `the merchant answered ${response.status} and asked for no payment`,
         );
       }
-      if (!response.ok)
-        throw new PurchaseError(`the merchant answered ${response.status} after payment`);
+      if (!signed) throw new PurchaseError('the merchant asked for no payment');
 
       const encoded = response.headers.get('payment-receipt');
       if (encoded === null) throw new PurchaseError('the merchant sent no payment receipt');
