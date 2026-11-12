@@ -9,15 +9,15 @@ import { explorerTx, repositoryRoot } from '../runtime';
 import { type LedgerEntry, parseLedger } from '../store/ledger';
 import { type VerifyReport, createVerifierChain, verifyEvidence } from '../verify';
 
-const USAGE = `Check an Agent Gateway evidence file.
+const USAGE = `Check Agent Gateway evidence files.
 
-  pnpm verify-evidence <file> [--offline] [--rpc <url>] [--ledger <file>]
+  pnpm verify-evidence <file>... [--offline] [--rpc <url>] [--ledger <file>]
 
-  --offline        check the file against itself only; do not contact the chain
+  --offline        check each file against itself only; do not contact the chain
   --rpc <url>      RPC endpoint (default: ARBITRUM_SEPOLIA_RPC_URL, or the public Arbitrum Sepolia endpoint)
   --ledger <file>  the gateway's ledger (default: ledger.jsonl next to the evidence folder, if it exists)
 
-Exit code 0 when every check passes, 1 when one fails, 2 when the file cannot be read.`;
+Exit code 0 when every check of every file passes, 1 when one fails, 2 when a file cannot be read.`;
 
 /**
  * An evidence file comes from somebody else. Before any of its text is printed, control and
@@ -98,6 +98,8 @@ function print(report: VerifyReport, extra: string[]): void {
   console.log('  part of the record that nobody can rewrite.');
 }
 
+type Options = { offline: boolean; rpc?: string | undefined; ledger?: string | undefined };
+
 async function main(): Promise<number> {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -108,15 +110,30 @@ async function main(): Promise<number> {
       help: { type: 'boolean', short: 'h', default: false },
     },
   });
-  if (values.help || positionals.length !== 1) {
+  if (values.help || positionals.length === 0) {
     console.log(USAGE);
     return values.help ? 0 : 2;
   }
 
   // pnpm runs scripts from the package folder; paths are meant relative to where the user stood.
   const base = process.env.INIT_CWD ?? process.cwd();
-  const path = resolve(base, positionals[0] as string);
+  let worst = 0;
+  let verified = 0;
+  for (const [index, name] of positionals.entries()) {
+    if (index > 0) console.log('');
+    const code = await checkFile(resolve(base, name), base, values);
+    if (code === 0) verified += 1;
+    worst = Math.max(worst, code);
+  }
+  if (positionals.length > 1) {
+    console.log('');
+    console.log(`${verified} of ${positionals.length} files verified`);
+  }
+  return worst;
+}
 
+/** Checks one file and prints its report. Returns the exit code that file alone would give. */
+async function checkFile(path: string, base: string, values: Options): Promise<number> {
   let input: unknown;
   try {
     input = JSON.parse(await readFile(path, 'utf8'));

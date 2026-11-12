@@ -102,10 +102,7 @@ jobs:
 
       # No keys and no network: every recorded evidence file must still agree with itself.
       - name: Recorded evidence verifies
-        run: |
-          for file in docs/sepolia-run/evidence/*.json; do
-            pnpm verify-evidence "$file" --offline
-          done
+        run: pnpm verify-evidence docs/sepolia-run/evidence/*.json --offline
 
       - name: Install Foundry (for the fork below)
         uses: foundry-rs/foundry-toolchain@v1

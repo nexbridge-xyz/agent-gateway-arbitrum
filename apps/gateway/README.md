@@ -239,10 +239,10 @@ hash, so an approval is tied to one record.
 ## Check an evidence file
 
 ```bash
-pnpm verify-evidence <file> [--offline] [--rpc <url>] [--ledger <file>]
+pnpm verify-evidence <file>... [--offline] [--rpc <url>] [--ledger <file>]
 ```
 
-It prints PASS or FAIL for each check and exits with 0 only if all pass:
+It takes one file or several, prints PASS or FAIL for each check, and exits with 0 only if all pass:
 
 - the evidence hash is the hash of the record, and the intent id is the hash of the signed request;
 - the request signature recovers the recorded signer, and the record says what the agent signed;
@@ -261,7 +261,7 @@ text is printed with control characters escaped.
 Try it on the run recorded in [`docs/sepolia-run`](../../docs/sepolia-run/README.md). No keys are needed:
 
 ```bash
-for file in docs/sepolia-run/evidence/*.json; do pnpm verify-evidence "$file"; done
+pnpm verify-evidence docs/sepolia-run/evidence/*.json
 ```
 
 What it cannot show: that the gateway recorded every request it received, or that the ledger was not
