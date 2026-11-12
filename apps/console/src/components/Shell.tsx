@@ -5,6 +5,7 @@ import { WalletCell } from '@/components/WalletCell';
 import {
   DATA_MODES,
   type DataMode,
+  MADE_UP_DATA,
   setDataMode,
   useApprovals,
   useDataMode,
@@ -22,11 +23,22 @@ const TITLES: Record<Screen, string> = {
   ledger: 'Ledger',
 };
 
-const MODE_NAMES: Record<DataMode, string> = { live: 'Live', worst: 'Worst', empty: 'Empty' };
+const MODE_NAMES: Record<DataMode, string> = {
+  live: 'Live',
+  worst: 'Worst',
+  one: 'One',
+  empty: 'Empty',
+};
 const MODE_HINTS: Record<DataMode, string> = {
   live: 'The gateway and the chain',
   worst: 'Made-up worst-case data: a thousand rows, awkward names, huge amounts',
+  one: 'Made-up data with exactly one of everything',
   empty: 'The screens with nothing in them',
+};
+const MODE_BANNERS: Record<Exclude<DataMode, 'live'>, string> = {
+  worst: 'Showing made-up worst-case data, not the gateway. Nothing here is on a chain.',
+  one: 'Showing made-up data with one of everything, not the gateway. Nothing here is on a chain.',
+  empty: 'Showing the screens with no data, not the gateway.',
 };
 
 /** The frame every screen sits in: the rail on the left, the strip of context on top. */
@@ -39,6 +51,17 @@ export function Shell({ screen, children }: { screen: Screen; children: ReactNod
 
   return (
     <div className="sheet min-h-screen grid-cols-1 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
+      {/* For the keyboard: the first stop on the page jumps over the rail and the top strip. */}
+      <a
+        href={href(screen)}
+        className="bg-ice text-ink sr-only z-50 px-4 py-2 text-sm font-medium no-underline focus:not-sr-only focus:absolute focus:top-2 focus:left-2"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('content')?.focus();
+        }}
+      >
+        Skip to the content
+      </a>
       <aside className="flex flex-col lg:min-h-screen">
         <div className="cell border-b py-5">
           <div className="text-[1.0625rem] leading-tight font-semibold tracking-tight">
@@ -79,30 +102,33 @@ export function Shell({ screen, children }: { screen: Screen; children: ReactNod
         </nav>
 
         <div className="mt-auto hidden border-t lg:block">
-          <div className="cell">
-            <div className="label mb-2">Data shown</div>
-            <div role="group" aria-label="Data shown" className="sheet grid-cols-3 border">
-              {DATA_MODES.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  aria-pressed={mode === name}
-                  title={MODE_HINTS[name]}
-                  onClick={() => {
-                    setDataMode(name);
-                  }}
-                  className={cn(
-                    'h-8 cursor-pointer border-0 px-1 text-[0.6875rem] transition-colors duration-[120ms]',
-                    mode === name
-                      ? 'bg-surface-3 text-foreground'
-                      : 'text-text-3 hover:text-foreground bg-transparent',
-                  )}
-                >
-                  {MODE_NAMES[name]}
-                </button>
-              ))}
+          {/* A tool for building the console. A production build has no made-up data and no switch. */}
+          {MADE_UP_DATA ? (
+            <div className="cell">
+              <div className="label mb-2">Data shown</div>
+              <div role="group" aria-label="Data shown" className="sheet grid-cols-4 border">
+                {DATA_MODES.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    aria-pressed={mode === name}
+                    title={MODE_HINTS[name]}
+                    onClick={() => {
+                      setDataMode(name);
+                    }}
+                    className={cn(
+                      'h-8 cursor-pointer border-0 px-1 text-[0.6875rem] transition-colors duration-[120ms]',
+                      mode === name
+                        ? 'bg-surface-3 text-foreground'
+                        : 'text-text-3 hover:text-foreground bg-transparent',
+                    )}
+                  >
+                    {MODE_NAMES[name]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
           <p className="cell text-text-3 border-t text-xs">
             Testnet demo. Fictional company and vendor names.
           </p>
@@ -149,12 +175,10 @@ export function Shell({ screen, children }: { screen: Screen; children: ReactNod
           </div>
         </div>
 
-        <main className="min-w-0">
+        <main id="content" tabIndex={-1} className="min-w-0 focus:outline-none">
           {mode !== 'live' ? (
             <p className="bg-wait-soft text-wait border-b px-5 py-2 text-xs" role="status">
-              {mode === 'worst'
-                ? 'Showing made-up worst-case data, not the gateway. Nothing here is on a chain.'
-                : 'Showing the screens with no data, not the gateway.'}
+              {MODE_BANNERS[mode]}
             </p>
           ) : null}
           {children}

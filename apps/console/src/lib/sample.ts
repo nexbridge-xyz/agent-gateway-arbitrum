@@ -9,6 +9,7 @@ import type {
   PendingApproval,
   Verification,
 } from './api';
+import { MADE_UP_NOW } from './clock';
 import type { Mandate } from './vault';
 
 /**
@@ -29,7 +30,7 @@ const hex = (seed: number, bytes: number): Hex => {
 const address = (seed: number) => hex(seed, 20);
 
 const VAULT = address(1);
-const NOW = Date.parse('2026-11-12T03:40:00Z');
+const NOW = MADE_UP_NOW;
 const NOW_SECONDS = Math.floor(NOW / 1000);
 
 const NAMES: (string | null)[] = [
@@ -37,12 +38,16 @@ const NAMES: (string | null)[] = [
   'Nagikumo Research',
   'Tsukimi Data',
   'K',
-  'Hoshizora Logistics and Warehousing Holdings, Tokyo Bay Distribution Centre No. 14 (East Wing)',
+  // 78 characters: the vendor registry allows 80.
+  'Hoshizora Logistics and Warehousing Holdings, Tokyo Bay Distribution Centre 14',
   '月見データ株式会社',
   'Ünïcødé Ströme GmbH & Co. KG',
   'محل البيانات',
   'Emoji Vendor 🧾📦',
   null,
+  // Twenty-five full-width characters without a space, and full-width Latin letters and digits.
+  'みなと信託フィナンシャル・ホールディングス株式会社',
+  'ＡＢＣ銀行　第２営業部',
 ];
 const PURPOSES = [
   'Invoice KS-2026-1107: packing materials, November',
@@ -52,7 +57,16 @@ const PURPOSES = [
   'Q',
   'Invoice 2026-11-000000000000000000000417: consolidated shipment of packing materials, pallets, labels and protective film for the December orders, including the delayed items from October and the replacement of the damaged cartons that were returned in week 44',
   '請求書 2026-11-12: 市場データ利用料',
+  // Text that must be shown as it is, never run or formatted.
+  '<script>alert(1)</script> &amp; **bold** <b>not bold</b>',
+  'Line one\nLine two, after a line break in a one-line field',
+  // One space: the shortest purpose the gateway accepts.
+  ' ',
+  // 280 characters: the longest purpose the gateway accepts.
+  `${'Invoice AB-2026-0001 for the annual maintenance contract of the cold-storage units. '.repeat(3)}Ends here: ${'x'.repeat(280 - 84 * 3 - 11)}`,
 ];
+// The largest amount and agent id the gateway accepts: 2^256 - 1.
+const UINT256_MAX = (2n ** 256n - 1n).toString();
 const AMOUNTS = [
   '100000',
   '1500000',
@@ -61,6 +75,7 @@ const AMOUNTS = [
   '1',
   '12345678901234',
   '999999999999999999',
+  UINT256_MAX,
 ];
 const SHAPES: Pick<IntentSummary, 'decision' | 'status'>[] = [
   { decision: 'auto', status: 'paid' },
@@ -90,7 +105,7 @@ function intent(index: number): IntentSummary {
     intentId: hex(index + 100, 32),
     decidedAt: new Date(NOW - index * 47_000).toISOString(),
     updatedAt: new Date(NOW - index * 47_000 + 4000).toISOString(),
-    agentId: index % 7 === 0 ? '99999999999999999999' : '354',
+    agentId: index % 7 === 0 ? UINT256_MAX : '354',
     mandateId: shape.decision === 'refused' && index % 2 === 0 ? null : String(3 + (index % 2)),
     payee: address(index % 23),
     payeeName: NAMES[index % NAMES.length] ?? null,
@@ -120,7 +135,12 @@ function intent(index: number): IntentSummary {
       : null,
     approvedBy: shape.decision === 'needs_approval' && paid ? address(77) : null,
     error:
-      shape.status === 'failed' ? 'the vault refused: DailyCapExceeded(8100000, 8000000)' : null,
+      shape.status !== 'failed'
+        ? null
+        : index % 16 === 6
+          ? 'the vault refused: DailyCapExceeded(8100000, 8000000)'
+          : // What a network failure looks like when it is passed on as it came.
+            'HTTP request failed.\n\nURL: https://sepolia-rollup.arbitrum.io/rpc\nRequest body: {"method":"eth_sendRawTransaction","params":["0x02f8b383066eee80830f4240830f4240830249f094…"]}\n\nDetails: fetch failed\nVersion: viem@2.57.15',
   };
 }
 
@@ -222,6 +242,14 @@ export const sample = {
   approvals: (): PendingApproval[] => [pending(0, 540), pending(1, 45), pending(2, -30)],
 
   mandates: (): Mandate[] => [
+    // Nothing runs on its own: both caps are zero, so every payment needs the approver. Forty payees,
+    // and an end date as far away as the vault can store (2^64 - 1 seconds).
+    mandate(10n, {
+      perPaymentCap: 0n,
+      dailyCap: 0n,
+      payees: Array.from({ length: 40 }, (_, index) => address(index)),
+      validUntil: Number(2n ** 64n - 1n),
+    }),
     // Today's spending is past the daily cap: the rest was approved by a person.
     mandate(9n, { spentToday: 13_700_000n }),
     mandate(8n, {
@@ -256,6 +284,30 @@ export const sample = {
     })),
     denylist: [{ address: address(22), reason: 'bank details changed, under review' }],
   }),
+
+  /** Exactly one of everything, to check words such as "1 payee" and "1 entry". */
+  one: {
+    // The fifth request was paid with an approval and has the longest vendor name.
+    intents: (): IntentSummary[] => INTENTS.slice(4, 5),
+    approvals: (): PendingApproval[] => [pending(0, 540)],
+    mandates: (): Mandate[] => [mandate(9n, { payees: [address(0)], spentToday: 1n })],
+    payees: (): Payees => ({ vendors: [{ name: 'K', address: address(0) }], denylist: [] }),
+    ledger: (): Ledger => ({
+      check: { ok: true, count: 1, head: hex(4000, 32) },
+      head: hex(4000, 32),
+      entries: [
+        {
+          seq: 1,
+          ts: new Date(NOW - 31_000).toISOString(),
+          kind: 'INTENT_DECIDED',
+          summary: `auto: agent 354 asks to pay 1.5 USDC to Koishi Supply (${address(0)})`,
+          data: { intentId: hex(104, 32) },
+          prev: `0x${'0'.repeat(64)}`,
+          hash: hex(4000, 32),
+        },
+      ],
+    }),
+  },
 
   ledger: (): Ledger => ({
     // A ledger that was edited: the chain of hashes breaks at entry 3.
