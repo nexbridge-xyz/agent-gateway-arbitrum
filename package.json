@@ -20,7 +20,8 @@
   "scripts": {
     "build": "pnpm -r --if-present run build",
     "test": "pnpm -r --if-present run test",
-    "lint": "pnpm -r --if-present run lint && eslint . && tsc --noEmit && prettier --check .",
+    "lint": "pnpm -r --if-present run lint && pnpm run lint:eslint && tsc --noEmit && prettier --check .",
+    "lint:eslint": "eslint . --ignore-pattern 'apps/console/**' && eslint apps/console",
     "format": "pnpm -r --if-present run format && prettier --write .",
     "keys:generate": "bash scripts/generate-keys.sh",
     "demo": "tsx scripts/demo.ts",

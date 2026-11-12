@@ -79,8 +79,13 @@ jobs:
       - name: Format
         run: pnpm exec prettier --check .
 
+      # In two runs, the console apart, and with a stated heap. Linting with type information builds
+      # a TypeScript program for each package: all of them in one process, on Node's default heap for
+      # this runner, ran out of memory.
       - name: Lint
-        run: pnpm exec eslint .
+        env:
+          NODE_OPTIONS: --max-old-space-size=3072
+        run: pnpm run lint:eslint
 
       - name: Typecheck
         run: |
