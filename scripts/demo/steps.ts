@@ -169,6 +169,12 @@ async function createMandate(context: Context, step: string, agentId: bigint): P
     termsHash,
   });
   log(`           mandate ${mandateId}, terms hash ${termsHash}`);
+  context.mandates.push({
+    step,
+    mandateId: mandateId.toString(),
+    termsHash,
+    validUntil: new Date(Number(validUntil) * 1000).toISOString(),
+  });
   return mandateId;
 }
 

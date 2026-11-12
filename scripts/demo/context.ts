@@ -100,6 +100,9 @@ export type LoggedIntent = {
 /** One "gateway compromised" drill: what was tried with the executor key, and how the vault refused. */
 export type LoggedDrill = { name: string; attempt: string; refusal: string; transactionHash: Hex };
 
+/** A mandate created during the run, with the hash of its plain-text terms. */
+export type LoggedMandate = { step: string; mandateId: string; termsHash: Hex; validUntil: string };
+
 /** What the setup step created, kept between runs so later steps can find it. */
 export type DemoState = {
   chainId: number;
@@ -160,6 +163,7 @@ export async function createContext(envFile: string, options: RunOptions) {
   const transactions: LoggedTransaction[] = [];
   const intents: LoggedIntent[] = [];
   const drills: LoggedDrill[] = [];
+  const mandates: LoggedMandate[] = [];
   const statePath = join(config.dataDir, 'demo-state.json');
 
   const log = (line = '') => {
@@ -358,6 +362,7 @@ export async function createContext(envFile: string, options: RunOptions) {
     transactions,
     intents,
     drills,
+    mandates,
     readState,
     writeState,
     services,

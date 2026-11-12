@@ -139,6 +139,7 @@ try {
         addresses: Object.fromEntries(
           Object.entries(accounts).map(([role, account]) => [role, account.address]),
         ),
+        mandates: context.mandates,
         transactions,
         intents,
         drills,

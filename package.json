@@ -24,6 +24,7 @@
     "format": "pnpm -r --if-present run format && prettier --write .",
     "keys:generate": "bash scripts/generate-keys.sh",
     "demo": "tsx scripts/demo.ts",
+    "demo:record": "tsx scripts/record-run.ts",
     "gateway": "pnpm --filter @agent-gateway/gateway run start",
     "merchant": "pnpm --filter @agent-gateway/merchant run start",
     "verify-evidence": "tsx apps/gateway/src/cli/verify-evidence.ts",
