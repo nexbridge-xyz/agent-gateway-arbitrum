@@ -1,13 +1,13 @@
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { GATEWAY_ENV_NAMES, loadFromEnvFile } from './env';
 import { appOptions, configFromEnv, createRuntime, repositoryRoot } from './runtime';
 import { createApp } from './server';
 
 // Start the gateway: `pnpm gateway`. Settings come from the repository's .env.
 async function main(): Promise<void> {
-  const envFile = join(repositoryRoot, '.env');
-  if (existsSync(envFile)) process.loadEnvFile(envFile);
+  // The gateway's own settings only: the same file holds the principal's and the approver's keys.
+  loadFromEnvFile(join(repositoryRoot, '.env'), GATEWAY_ENV_NAMES);
 
   const config = configFromEnv();
   const runtime = await createRuntime(config);

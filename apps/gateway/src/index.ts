@@ -3,6 +3,7 @@ export * from './chain/executor';
 export * from './chain/mandates';
 export * from './chain/reader';
 export * from './chain/registrationFile';
+export * from './env';
 export * from './gateway';
 export * from './policy/evaluate';
 export * from './protocol';

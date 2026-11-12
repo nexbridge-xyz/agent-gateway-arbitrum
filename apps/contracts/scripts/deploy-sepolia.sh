@@ -20,15 +20,17 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "Missing .env at the repository root. Run: pnpm keys:generate" >&2
   exit 1
 fi
-set -a
+# The file holds the key of every role. Only what forge and cast need is exported to them: the
+# deployer's key, and no other.
 # shellcheck disable=SC1090
 . "$ENV_FILE"
-set +a
 
 : "${ARBITRUM_SEPOLIA_RPC_URL:=https://sepolia-rollup.arbitrum.io/rpc}"
 : "${USDC_ADDRESS:=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d}"
 : "${IDENTITY_REGISTRY_ADDRESS:=0x8004A818BFB912233c491871b3d84c89A494BD9e}"
 export ARBITRUM_SEPOLIA_RPC_URL USDC_ADDRESS IDENTITY_REGISTRY_ADDRESS
+export DEPLOYER_PRIVATE_KEY="${DEPLOYER_PRIVATE_KEY:-}" PRINCIPAL_ADDRESS="${PRINCIPAL_ADDRESS:-}"
+export ETHERSCAN_API_KEY="${ETHERSCAN_API_KEY:-}"
 
 actual_chain="$(cast chain-id --rpc-url "$ARBITRUM_SEPOLIA_RPC_URL")"
 if [ "$actual_chain" != "$CHAIN_ID" ]; then

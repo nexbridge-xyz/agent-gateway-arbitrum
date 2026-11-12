@@ -7,6 +7,7 @@ import { type Address, createPublicClient, formatUnits, getAddress, http, isAddr
 
 import deployment from '@agent-gateway/contracts/deployments/arbitrum-sepolia.json' with { type: 'json' };
 
+import { loadFromEnvFile } from '../env';
 import { explorerTx, repositoryRoot } from '../runtime';
 import { type LedgerEntry, parseLedger } from '../store/ledger';
 import { type VerifyReport, createVerifierChain, verifyEvidence } from '../verify';
@@ -207,13 +208,9 @@ async function checkFile(
 
   let chain = null;
   if (!values.offline) {
-    const envFile = join(repositoryRoot, '.env');
-    if (
-      values.rpc === undefined &&
-      process.env.ARBITRUM_SEPOLIA_RPC_URL === undefined &&
-      existsSync(envFile)
-    ) {
-      process.loadEnvFile(envFile);
+    // Checking evidence needs no key. Only the RPC address is taken from the file that holds them.
+    if (values.rpc === undefined) {
+      loadFromEnvFile(join(repositoryRoot, '.env'), ['ARBITRUM_SEPOLIA_RPC_URL']);
     }
     const rpc =
       values.rpc ??

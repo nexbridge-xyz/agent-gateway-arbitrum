@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto';
-import { existsSync } from 'node:fs';
 
 import { createPublicClient, formatEther, http } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
@@ -12,6 +11,7 @@ import {
   createMerchantApp,
   plantedNoteText,
 } from './app';
+import { MERCHANT_ENV_NAMES, loadFromEnvFile } from './env';
 
 // Starts the demo merchant on localhost. Settings come from the environment, or from the
 // repository's .env file. The private key is read here and never logged.
@@ -37,8 +37,8 @@ const envSchema = z.object({
 });
 
 async function main(): Promise<void> {
-  const envFile = new URL('../../../.env', import.meta.url).pathname;
-  if (existsSync(envFile)) process.loadEnvFile(envFile);
+  // The merchant's own settings only: the same file holds every other role's key.
+  loadFromEnvFile(new URL('../../../.env', import.meta.url).pathname, MERCHANT_ENV_NAMES);
 
   if (process.env.MERCHANT_PRIVATE_KEY === undefined || process.env.MERCHANT_PRIVATE_KEY === '') {
     throw new Error(
