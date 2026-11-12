@@ -13,7 +13,7 @@ import {
   stringToHex,
 } from 'viem';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { connect } from 'wagmi/actions';
+import { connect, switchChain } from 'wagmi/actions';
 
 import { mandateVaultAbi } from '@agent-gateway/contracts/abi';
 import { MandateTermsStore, createApp, verifyEvidence } from '@agent-gateway/gateway';
@@ -24,7 +24,7 @@ import type { Mandate } from '@/lib/vault';
 
 import { type FakeMandate, type Harness, createHarness } from '../../gateway/test/fakes';
 import { DOMAIN, NOW, USDC, VAULT, makeIntent } from '../../gateway/test/helpers';
-import { bridge, fakeNode, show, testConfig } from './helpers';
+import { OTHER_CHAIN, bridge, fakeNode, show, testConfig } from './helpers';
 
 // The console against the gateway's real code. The gateway runs in this process on its test chain, the
 // console talks to it over HTTP as it does in a browser, and a stand-in node plays the wallet's part:
@@ -306,6 +306,24 @@ describe('approvals', () => {
     const waiting = await screen.findByRole('region', { name: 'Waiting for your approval' });
     expect(within(waiting).getByRole('status')).toHaveTextContent(
       "The connected wallet is not this mandate's approver",
+    );
+    expect(within(waiting).getByRole('button', { name: /Sign approval/ })).toBeDisabled();
+    expect(within(waiting).getByRole('button', { name: 'Decline' })).toBeDisabled();
+  });
+
+  it("asks to switch network when the approver's wallet is on another one", async () => {
+    await waitingPayment();
+    const view = await open('#/approvals', [h.world.approver]);
+    const waiting = await screen.findByRole('region', { name: 'Waiting for your approval' });
+    await waitFor(() => {
+      expect(within(waiting).getByRole('button', { name: /Sign approval/ })).toBeEnabled();
+    });
+
+    await act(async () => {
+      await switchChain(view.config, { chainId: OTHER_CHAIN.id });
+    });
+    expect(within(waiting).getByRole('status')).toHaveTextContent(
+      'The wallet is on another network',
     );
     expect(within(waiting).getByRole('button', { name: /Sign approval/ })).toBeDisabled();
     expect(within(waiting).getByRole('button', { name: 'Decline' })).toBeDisabled();

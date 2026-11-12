@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useRole } from '@/components/WalletCell';
+import { WRONG_NETWORK, useRole } from '@/components/WalletCell';
 import { type GatewayConfig, api } from '@/lib/api';
 import {
   useDataMode,
@@ -58,7 +58,9 @@ export function Mandates() {
       ? 'This is made-up data. Creating and revoking are switched off.'
       : !role.principal
         ? `Connect the principal's wallet${config.data ? `, ${short(config.data.principal)},` : ''} to create or revoke a mandate.`
-        : null;
+        : role.wrongNetwork
+          ? WRONG_NETWORK
+          : null;
 
   return (
     <div className="sheet content-start">

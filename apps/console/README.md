@@ -137,12 +137,13 @@ treats them as smart accounts (see "Wallets" above). Clear the code on the fork 
 pnpm --filter @agent-gateway/console test
 ```
 
-47 tests, without a network and without a browser:
+48 tests, without a network and without a browser:
 
 - **Against the gateway's real code.** The gateway runs in the test process on its in-memory stand-in for
   the chain, the console talks to it over HTTP, and a stand-in node plays the wallet. This pins down that
   the approval the console asks a wallet to sign is the one the gateway and the vault accept, that a decline
-  is recorded and pays nothing, that a wallet which is not the approver cannot sign, and that a new mandate
+  is recorded and pays nothing, that a wallet which is not the approver or is on another network cannot
+  sign, and that a new mandate
   goes to the vault with the limits from the form and the hash of the text that was stored.
 - **Under strain.** Every screen on the worst-case data and on no data.
 - **The parts.** Amounts and yen figures in whole-number arithmetic, times in UTC, the limit rail, the

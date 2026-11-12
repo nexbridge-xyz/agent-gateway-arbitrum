@@ -4,7 +4,7 @@ import type { ReactElement } from 'react';
 import type { Address } from 'viem';
 import { vi } from 'vitest';
 import { type Config, WagmiProvider, createConfig, http } from 'wagmi';
-import { arbitrumSepolia } from 'wagmi/chains';
+import { arbitrum, arbitrumSepolia } from 'wagmi/chains';
 import { mock } from 'wagmi/connectors';
 
 import type { wagmiConfig } from '@/lib/wallet';
@@ -12,6 +12,8 @@ import type { wagmiConfig } from '@/lib/wallet';
 /** Where the test's stand-in for an RPC node is addressed. Nothing listens there: `bridge` answers. */
 export const RPC_URL = 'http://rpc.test/';
 const chain = { ...arbitrumSepolia, rpcUrls: { default: { http: [RPC_URL] } } } as const;
+/** A network the vault is not on. */
+export const OTHER_CHAIN = { ...arbitrum, rpcUrls: { default: { http: [RPC_URL] } } } as const;
 
 /**
  * A wallet setup for a test. Each address becomes a wallet the page can connect; the wallet passes
@@ -19,9 +21,10 @@ const chain = { ...arbitrumSepolia, rpcUrls: { default: { http: [RPC_URL] } } } 
  */
 export function testConfig(accounts: Address[] = []): Config {
   return createConfig({
-    chains: [chain],
+    // The second chain is there so that a test can put a wallet on the wrong network.
+    chains: [chain, OTHER_CHAIN],
     connectors: accounts.map((account) => mock({ accounts: [account] })),
-    transports: { [chain.id]: http() },
+    transports: { [chain.id]: http(), [OTHER_CHAIN.id]: http(RPC_URL) },
   });
 }
 

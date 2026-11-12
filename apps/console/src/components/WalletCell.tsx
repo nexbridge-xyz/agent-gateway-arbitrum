@@ -14,8 +14,14 @@ import { short } from '@/lib/format';
 import { chain } from '@/lib/wallet';
 
 /** What the connected wallet can do here: it is the vault's principal, a mandate's approver, or neither. */
-export function useRole(): { address: string | null; principal: boolean; approver: boolean } {
-  const { address } = useConnection();
+export function useRole(): {
+  address: string | null;
+  principal: boolean;
+  approver: boolean;
+  /** Connected, but to another network than the vault's. */
+  wrongNetwork: boolean;
+} {
+  const { address, chainId } = useConnection();
   const config = useGatewayConfig();
   const mandates = useMandates();
   const lower = address?.toLowerCase() ?? null;
@@ -25,8 +31,13 @@ export function useRole(): { address: string | null; principal: boolean; approve
     approver:
       lower !== null &&
       (mandates.data ?? []).some((mandate) => mandate.approver.toLowerCase() === lower),
+    wrongNetwork: lower !== null && chainId !== undefined && chainId !== chain.id,
   };
 }
+
+/** What a screen says when the wallet has to change network before it can sign or send. */
+export const WRONG_NETWORK =
+  'The wallet is on another network. Switch it to Arbitrum Sepolia in the wallet menu at the top right.';
 
 /** The wallet's place in the top strip: connect, see who is connected and as what, disconnect. */
 export function WalletCell() {

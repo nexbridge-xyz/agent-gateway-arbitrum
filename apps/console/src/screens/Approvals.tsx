@@ -7,6 +7,7 @@ import { APPROVAL_DECLINE_TYPES, PAYMENT_APPROVAL_TYPES } from '@agent-gateway/g
 
 import { LimitRail } from '@/components/LimitRail';
 import { Field, HashValue, Mark, Money, Note, ScreenHead } from '@/components/parts';
+import { WRONG_NETWORK, useRole } from '@/components/WalletCell';
 import { ApiError, type Outcome, type PendingApproval, api } from '@/lib/api';
 import { useApprovals, useDataMode, useGatewayConfig, useMandates, useNow } from '@/lib/data';
 import { clock, money, short, until } from '@/lib/format';
@@ -175,6 +176,7 @@ function Waiting({
   const now = useNow();
   const mandates = useMandates();
   const mandate = (mandates.data ?? []).find((item) => item.id.toString() === pending.mandateId);
+  const { wrongNetwork } = useRole();
   const [busy, setBusy] = useState<Busy>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -189,9 +191,11 @@ function Waiting({
         ? "Connect the approver's wallet to sign."
         : !isApprover
           ? `The connected wallet is not this mandate's approver, ${short(pending.approver)}.`
-          : expired
-            ? 'This signing window has passed. A new one opens in a moment.'
-            : null;
+          : wrongNetwork
+            ? WRONG_NETWORK
+            : expired
+              ? 'This signing window has passed. A new one opens in a moment.'
+              : null;
 
   const refresh = async () => {
     await Promise.all(
