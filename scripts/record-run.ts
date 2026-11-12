@@ -436,23 +436,64 @@ pnpm verify-evidence docs/sepolia-run/evidence/${approved.intentId}.json
   }`;
 }
 
+const GAS_START = '<!-- demo-gas:start -->';
+const GAS_END = '<!-- demo-gas:end -->';
+
+/** Gas and fees of the run, for the README. Null for a run log without them, or without the two payments. */
+function gasParagraph(): string | null {
+  const payment = tagged('3', 'paid')[0];
+  const settlement = tagged('2', 'purchase-settled')[0];
+  if (payment?.gasUsed === undefined || settlement?.gasUsed === undefined) return null;
+  let fees = 0n;
+  for (const transaction of run.transactions) {
+    if (transaction.feeWei === undefined) return null;
+    fees += BigInt(transaction.feeWei);
+  }
+  const thousands = (gas: string) =>
+    (Math.round(Number(gas) / 1000) * 1000).toLocaleString('en-US');
+  // Six decimals of ETH are enough for testnet fees and keep the figure readable.
+  const eth = Number(formatUnits(fees, 18)).toFixed(6);
+  return `In the recorded run a payment through the vault used about ${thousands(payment.gasUsed)} gas, and the merchant's
+settlement of a per-call purchase about ${thousands(settlement.gasUsed)}. All ${run.transactions.length} transactions together paid ${eth} ETH in
+fees on Arbitrum Sepolia. Testnet fees are not mainnet fees, but the gas is the same.`;
+}
+
+/** Replaces what stands between two markers. Returns null if the markers are not there. */
+function between(text: string, start: string, end: string, content: string): string | null {
+  const from = text.indexOf(start);
+  const to = text.indexOf(end);
+  if (from === -1 || to === -1 || to < from) return null;
+  return `${text.slice(0, from + start.length)}\n\n${content}\n\n${text.slice(to)}`;
+}
+
 if (values.readme !== '') {
   const table = demoTable();
-  const readme = await readFile(values.readme, 'utf8');
-  const start = readme.indexOf(START);
-  const end = readme.indexOf(END);
+  let readme = await readFile(values.readme, 'utf8');
   if (table === null) {
     console.log('The run did not go through steps 1 to 7, so the README was left as it is.');
-  } else if (start === -1 || end === -1 || end < start) {
-    console.log(`No ${START} … ${END} block in ${values.readme}, so it was left as it is.`);
   } else {
-    const next = `${readme.slice(0, start + START.length)}\n\n${table}\n\n${readme.slice(end)}`;
-    const options = await prettier.resolveConfig(values.readme);
-    await writeFile(
-      values.readme,
-      await prettier.format(next, { ...options, filepath: values.readme }),
-      'utf8',
-    );
-    console.log(`Rewrote the demo table in ${values.readme}`);
+    const withTable = between(readme, START, END, table);
+    if (withTable === null) {
+      console.log(`No ${START} … ${END} block in ${values.readme}, so it was left as it is.`);
+    } else {
+      readme = withTable;
+      console.log(`Rewrote the demo table in ${values.readme}`);
+
+      const gas = gasParagraph();
+      const withGas = gas === null ? null : between(readme, GAS_START, GAS_END, gas);
+      if (withGas === null) {
+        console.log('The gas figures in the README were left as they are.');
+      } else {
+        readme = withGas;
+        console.log(`Rewrote the gas figures in ${values.readme}`);
+      }
+
+      const options = await prettier.resolveConfig(values.readme);
+      await writeFile(
+        values.readme,
+        await prettier.format(readme, { ...options, filepath: values.readme }),
+        'utf8',
+      );
+    }
   }
 }

@@ -98,6 +98,9 @@ export type LoggedTransaction = {
   blockNumber: string;
   url: string;
   tag?: TransactionTag;
+  /** Gas the transaction used, and the fee it paid in wei. Absent in run logs written before 0.1.0. */
+  gasUsed?: string;
+  feeWei?: string;
 };
 
 /** One decision of the gateway during the run. */
@@ -269,6 +272,8 @@ export async function createContext(envFile: string, options: RunOptions) {
       blockNumber: receipt.blockNumber.toString(),
       url,
       ...(tag === undefined ? {} : { tag }),
+      gasUsed: receipt.gasUsed.toString(),
+      feeWei: (receipt.gasUsed * receipt.effectiveGasPrice).toString(),
     });
     log(`  ${receipt.status === 'success' ? 'ok      ' : 'REVERTED'} ${label}`);
     log(`           ${url}`);
