@@ -7,7 +7,6 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { WagmiProvider } from 'wagmi';
 
-import { TooltipProvider } from '@/components/ui/tooltip';
 import { wagmiConfig } from '@/lib/wallet';
 
 import { App } from './App';
@@ -23,9 +22,7 @@ createRoot(root).render(
   <StrictMode>
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <App />
-        </TooltipProvider>
+        <App />
       </QueryClientProvider>
     </WagmiProvider>
   </StrictMode>,

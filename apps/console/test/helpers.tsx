@@ -7,7 +7,6 @@ import { type Config, WagmiProvider, createConfig, http } from 'wagmi';
 import { arbitrumSepolia } from 'wagmi/chains';
 import { mock } from 'wagmi/connectors';
 
-import { TooltipProvider } from '@/components/ui/tooltip';
 import type { wagmiConfig } from '@/lib/wallet';
 
 /** Where the test's stand-in for an RPC node is addressed. Nothing listens there: `bridge` answers. */
@@ -33,9 +32,7 @@ export function show(ui: ReactElement, config: Config = testConfig()) {
     // The app registers its own wallet setup as the one type of setup. A test's setup differs only in
     // which wallets it offers.
     <WagmiProvider config={config as unknown as typeof wagmiConfig} reconnectOnMount={false}>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>{ui}</TooltipProvider>
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
     </WagmiProvider>,
   );
   return { config, queryClient, ...view };
