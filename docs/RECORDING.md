@@ -81,7 +81,7 @@ What a good pass looks like:
 - The console shows **Paid, approved** with a transaction link, and the link opens a real
   `payWithApproval` transaction on Arbiscan.
 - The terminal prints `approver signs the approval in the console`, then
-  `evidence VERIFIED: 22 of 22 checks passed`.
+  `evidence VERIFIED: 24 of 24 checks passed`.
 - The wallet asked for one signature and no transaction, and made no smart-account offer.
 
 If the console says something else:
