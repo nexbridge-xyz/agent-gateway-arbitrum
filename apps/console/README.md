@@ -188,7 +188,7 @@ cast rpc anvil_setCode "$APPROVER" 0x --rpc-url http://127.0.0.1:8546
 pnpm --filter @agent-gateway/console test
 ```
 
-71 tests, without a network and without a browser:
+72 tests, without a network and without a browser:
 
 - **Against the gateway's real code.** The gateway runs in the test process on its in-memory stand-in for
   the chain, the console talks to it over HTTP, and a stand-in node plays the wallet. This pins down that

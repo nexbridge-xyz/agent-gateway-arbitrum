@@ -307,7 +307,7 @@ Settings come from the repository's `.env`:
 pnpm --filter @agent-gateway/gateway test
 ```
 
-273 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
+288 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
 tamper checks, every policy rule and its boundaries, the gateway and its HTTP API against an in-memory
 stand-in for the chain, approvals and declines (wrong signer, the executor's own signature, a changed
 amount, an expired deadline, a used approval number, a mandate revoked while the request waited, an
@@ -325,9 +325,9 @@ anvil --fork-url https://sepolia-rollup.arbitrum.io/rpc --port 8546
 MPP_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway test
 ```
 
-Three more tests, in `test/review`, run the gateway on the same fork against a vault that somebody else
-deployed, and check that its evidence is not taken for evidence of this vault. They need the built
-contracts:
+Four more tests, in `test/review`, use the same fork. Three run the gateway against a vault that somebody
+else deployed, and check that its evidence is not taken for evidence of this vault. One reads the mandates
+of the deployed vault as the store of mandate texts does. The first three need the built contracts:
 
 ```bash
 pnpm --filter @agent-gateway/contracts run build
