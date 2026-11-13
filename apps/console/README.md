@@ -222,12 +222,13 @@ Five things were checked in a real browser on a local fork, as described above:
   announces itself as current wallets do and passes signing on to the fork's node. The approval was signed
   through it, and the wallet was asked for one typed message and no transaction.
 
-On Arbitrum Sepolia itself, a real browser wallet has signed in the built console once: on 12 November 2026
-the approval of the demo's step 4 was signed in MetaMask with the approver's key and
+On Arbitrum Sepolia itself, a real browser wallet has signed in the built console. On 12 November 2026 the
+approval of the demo's step 4 was signed in MetaMask with the approver's key and
 [paid by the vault](https://sepolia.arbiscan.io/tx/0x6f9d1361603ec1e4d6694ac3e285a7b774321dceb91ed6a67262d7cb8a9964e5).
-That was the console before the fixes of 13 November 2026, which added checks in front of the wallet. On
-the code as it is now, the whole demo has passed on a local fork with the stand-in wallet; a real wallet
-has not signed in it yet.
+That was the console before the fixes of 13 November 2026, which added checks in front of the wallet. The
+[recorded run](../../docs/sepolia-run/README.md) of 13 November 2026 was made with the console as it is
+now: its approval was signed in the console with a browser wallet and
+[paid by the vault](https://sepolia.arbiscan.io/tx/0x96ed2f5fb5e17afaae2f723777527649b1245b8c1e7732552aed928723285868).
 
 ## Limits
 

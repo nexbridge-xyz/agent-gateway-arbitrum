@@ -42,24 +42,24 @@ The approver needs no ETH. Signing costs no gas: the gateway sends the payment.
 Try the one step that needs the wallet before the day of recording. The tests and the rehearsals on a
 local fork use a stand-in for the wallet, and cannot show the wallet's own windows.
 
-This pass was last made on 12 November 2026, with MetaMask and the approver's key imported into it. The
-approval was signed in the built console and
-[paid through `payWithApproval`](https://sepolia.arbiscan.io/tx/0x6f9d1361603ec1e4d6694ac3e285a7b774321dceb91ed6a67262d7cb8a9964e5).
+This pass was first made on 12 November 2026, with MetaMask and the approver's key imported into it:
+[the payment](https://sepolia.arbiscan.io/tx/0x6f9d1361603ec1e4d6694ac3e285a7b774321dceb91ed6a67262d7cb8a9964e5).
+The recorded run of 13 November 2026 was signed in the built console too, on the code with the security
+review's fixes:
+[its step 4](https://sepolia.arbiscan.io/tx/0x96ed2f5fb5e17afaae2f723777527649b1245b8c1e7732552aed928723285868).
 
-Make it again if the wallet, the browser, the approver's key or the console's code has changed since then.
-The code has: the fixes of the security review went in on 13 November, and the console now checks more
-before it hands a request to the wallet. A rehearsal with a stand-in wallet has passed on that code. A real
-wallet has not signed in it yet, so make this pass once more before recording.
+Make the pass again before a new recording if the wallet, the browser, the approver's key or the console's
+code has changed since then.
 
-Before a second pass, bring the 6 USDC of the first one back from the vendor. The principal needs them to
-fill the vault again:
+A pass leaves its 6 USDC with the vendor. If the principal then lacks the test USDC to fill the vault, the
+demo stops and says so. This brings the vendors' test USDC back:
 
 ```bash
 pnpm demo --steps recycle
 ```
 
-A second pass keeps the two mandates of the first one, so its approval is the mandate's second, and the
-terminal calls it `approval number 1`.
+A pass keeps the agent's two mandates while they are active. Its approval then carries the mandate's next
+approval number, which the terminal prints.
 
 In one terminal, build the console and serve it on <http://127.0.0.1:5173>:
 
@@ -240,7 +240,7 @@ Save each file under its name in `docs/console`, and update the table in
 ## 6. Afterwards
 
 - **The video.** The script and the shot list are in [`docs/video/SCRIPT.md`](video/SCRIPT.md). When the
-  video is online, put its link into the README: replace "to be added with the final recorded run" in the
+  video is online, put its link into the README: replace "to be added" in the
   line that starts with "Video, 2 minutes".
 - **A pull request** with the recorded run, the pictures and the link, as for every change.
 - **The tag.** `v0.1.0` is pushed after that pull request is merged: set the date in

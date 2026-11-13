@@ -92,8 +92,7 @@ Do not edit these by hand:
 | `apps/console/src/components/ui/`                                        | The shadcn CLI. Restyle through class names where they are used.                 |
 
 `pnpm demo:record` takes the gas figures from the run log, which holds the gas and the fee of every
-transaction. A log without them leaves the figures as they are. The run of 2026-11-12 has such a log: its
-figures were entered by hand, and they agree with the receipts of its transactions.
+transaction. A log without them leaves the figures as they are.
 
 ## Changing the contract
 

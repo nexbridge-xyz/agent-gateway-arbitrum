@@ -54,6 +54,13 @@ Line 5 says "One signature in a wallet". That is true for a run made with `pnpm 
 without it, say "One signature from the approver, and it's paid", and show the terminal instead of the
 wallet.
 
+### Checked against the recorded run
+
+The run recorded on 13 November 2026 says `"by": "console"` under `approval` and
+`"agentActedOnNote": false` under `plantedNote` in [`demo-run.json`](../sepolia-run/demo-run.json), and step
+6 has three reverted transactions. So lines 5, 6 and 7 of the table are the ones to say, and
+[`captions.srt`](captions.srt) holds the same lines. Neither alternative is needed.
+
 ## Shot list
 
 Shots 3 to 7 are screen recordings of the console at 1440 by 900 during the run, made with
