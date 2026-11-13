@@ -187,7 +187,7 @@ cast rpc anvil_setCode "$APPROVER" 0x --rpc-url http://127.0.0.1:8546
 pnpm --filter @agent-gateway/console test
 ```
 
-70 tests, without a network and without a browser:
+71 tests, without a network and without a browser:
 
 - **Against the gateway's real code.** The gateway runs in the test process on its in-memory stand-in for
   the chain, the console talks to it over HTTP, and a stand-in node plays the wallet. This pins down that
@@ -202,9 +202,10 @@ pnpm --filter @agent-gateway/console test
 - **The parts.** Amounts and yen figures in whole-number arithmetic, times in UTC, the limit rail, the
   wallet menu, the address-bar routes, and that made-up data cannot be chosen in a production build.
 - **A gateway that lies.** The tests in `test/review` come from the security review before publication.
-  In them the gateway names another vault, token or principal than the chain does, or hands the wallet a
-  message that is not the payment on the page, and the console must send and sign nothing. Each of them
-  failed until its finding was fixed.
+  In them the gateway names another vault, token or principal than the chain does, hands the wallet a
+  message that is not the payment on the page, or serves a mandate text that does not hash to the value in
+  the vault. The console must send and sign nothing, and show no such text. Each of them failed until its
+  finding was fixed.
 
 Five things were checked in a real browser on a local fork, as described above:
 
