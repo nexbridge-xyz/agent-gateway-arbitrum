@@ -5,6 +5,8 @@ The demo path, run with `pnpm demo` on 2026-11-13 (UTC) against the deployed
 The agent was the **Claude agent (claude-sonnet-5-5)**. The files in this folder are kept exactly as the run wrote them.
 All company and vendor names are fictional. This is a testnet demo.
 
+Mandates 1 to 6 come from earlier runs and from the live passes of step 4; all six are revoked.
+
 19 transactions: 16 succeeded and 3 reverted. The reverts are the point of step 6.
 
 | Step | What happened | Result | Transaction |
