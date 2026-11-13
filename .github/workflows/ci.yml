@@ -164,6 +164,11 @@ jobs:
           tar -xzf gitleaks.tar.gz -C "$RUNNER_TEMP/gitleaks" gitleaks
           rm gitleaks.tar.gz
 
+      # The rules first, on made-up secrets: a key in each shape it takes here must be found, and each
+      # public value that looks like one must be passed over.
+      - name: The rules find what they are for
+        run: GITLEAKS="$RUNNER_TEMP/gitleaks/gitleaks" bash scripts/check-secret-scan.sh
+
       # Every commit on every branch that was fetched, with the rules in .gitleaks.toml.
       - name: Scan the full history
         run: '"$RUNNER_TEMP/gitleaks/gitleaks" git --config .gitleaks.toml --redact --no-banner .'

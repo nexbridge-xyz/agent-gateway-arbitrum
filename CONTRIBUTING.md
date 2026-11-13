@@ -44,7 +44,8 @@ CI runs the same checks on every pull request and on every push to `main`, and a
 - every evidence file in `docs/sepolia-run`, checked against itself;
 - `pnpm audit --prod`: an advisory for a dependency that runs fails the build, unless
   `pnpm-workspace.yaml` lists it under `auditConfig` with the reason;
-- a secret scan of the full history with gitleaks.
+- a secret scan of the full history with gitleaks, after a test of its rules on made-up secrets
+  (`bash scripts/check-secret-scan.sh`, which needs gitleaks).
 
 Two more suites need a fork of Arbitrum Sepolia and so a network. CI skips them with a warning when the
 public endpoint does not answer. When it answers, a failing test fails the build:
@@ -65,7 +66,9 @@ MPP_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway test
 ## Rules of the house
 
 - **No secrets, ever.** Keys live only in `.env`, which git ignores. Do not paste a key into an issue, a
-  commit, a test or a log. Tests create throwaway keys at run time.
+  commit, a test or a log. Tests create throwaway keys at run time. A private key looks like a hash, so
+  the secret scan reports every 32-byte hex value outside the places where hashes belong. If it reports
+  a public value of yours, add it to the list in `.gitleaks.toml` with the reason.
 - **Testnet only.** The gateway refuses to start on any chain but Arbitrum Sepolia.
 - **Say only what can be checked.** A claim in the docs points to a transaction, a test or a source. Say
   what is onchain and what is only in the gateway's files. No "first", no "only", no claims of audits.

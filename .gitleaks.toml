@@ -1,10 +1,66 @@
-# Secret scanning rules: gitleaks defaults, plus the public addresses that look like keys to it.
+# Secret scanning rules: the gitleaks defaults, four rules for what a key looks like in this project, and
+# the public values that look like keys to them. scripts/check-secret-scan.sh tests these rules.
 title = "agent-gateway-arbitrum"
 
 [extend]
 useDefault = true
 
+# The defaults want a name and an assignment, as in `EXECUTOR_PRIVATE_KEY=0x…`. A key in a command has neither.
+[[rules]]
+id = "private-key-flag"
+description = "A private key handed to a command with --private-key"
+regex = '''(?i)--private-key(?:\s+|=)["']?((?:0x)?[0-9a-f]{64})(?:[^0-9a-f]|$)'''
+secretGroup = 1
+keywords = ["--private-key"]
+
+# A private key is 32 bytes of hex, and so is a hash. So this rule reports every such value, and the
+# places where hashes belong are listed below it. A new hash anywhere else has to be put on that list,
+# which is the moment somebody looks at it.
+[[rules]]
+id = "hex-32-bytes"
+description = "A 32-byte hex value outside the places where hashes belong. A private key looks like this."
+regex = '''(?i)(?:^|[^0-9a-fx]|[^0-9a-f]0x|^0x)([0-9a-f]{64})(?:[^0-9a-f]|$)'''
+secretGroup = 1
+
+  [[rules.allowlists]]
+  description = "The recorded run, Foundry's broadcast logs and the deployment record hold transaction, block and evidence hashes."
+  paths = ['''^docs/sepolia-run/''', '''^apps/contracts/broadcast/''', '''^apps/contracts/deployments/''']
+
+  [[rules.allowlists]]
+  description = "A link to a transaction on Arbiscan, an evidence file or a mandate text named after its hash, and a checksum."
+  regexTarget = "line"
+  regexes = [
+    '''(?i)arbiscan\.io/tx/0x[0-9a-f]{64}''',
+    '''(?i)(?:evidence|mandates)/0x[0-9a-f]{64}\.(?:json|txt)''',
+    '''(?i)sha256\w*["']?\s*[:=]\s*["']?[0-9a-f]{64}''',
+  ]
+
+  [[rules.allowlists]]
+  description = "A word that is mostly padding, such as a number, a selector or an address in 32 bytes. A key has no sixteen zeros in a row."
+  regexes = ['''0{16}''']
+
+  [[rules.allowlists]]
+  description = "Public constants: the order of the secp256k1 curve."
+  regexes = ['''(?i)^fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141$''']
+
+# A phrase is recognised by its shape: 12 to 24 short lowercase words and nothing else on the line, or
+# after a word that names it.
+[[rules]]
+id = "recovery-phrase"
+description = "A recovery phrase of 12 to 24 words"
+regex = '''(?im)(?:^[ \t]*["'`]?|(?:mnemonic|phrase|seed)\w*["']?[ \t]*[:= \t][ \t]*["'`]?)((?:[a-z]{3,8}[ \t]+){11,23}[a-z]{3,8})["'`]?[ \t,;]*$'''
+secretGroup = 1
+
+[[rules]]
+id = "rpc-url-with-key"
+description = "The address of an RPC endpoint with an API key in it"
+regex = '''(?i)https?://[a-z0-9.-]*(?:alchemy\.com/v2/|alchemyapi\.io/v2/|infura\.io/v3/|quiknode\.pro/|ankr\.com/[a-z_]+/|blastapi\.io/|getblock\.io/|chainstack\.com/|tenderly\.co/|drpc\.org/\S*dkey=)([a-z0-9_-]{16,})'''
+secretGroup = 1
+keywords = ["alchemy", "infura", "quiknode", "ankr", "blastapi", "getblock", "chainstack", "tenderly", "drpc"]
+
 [[allowlists]]
-description = "A `token` field that holds a 20-byte address is a token contract, such as USDC. Keys are 32 bytes."
-regexTarget = "match"
-regexes = ['''(?i)token['"]?\s*[:=]\s*['"]0x[0-9a-f]{40}['"]''']
+description = "Circle's USDC on Arbitrum Sepolia and on Arbitrum One. Public token contracts, which the default rules take for API keys in a `token` field."
+regexes = [
+  '''(?i)^0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d$''',
+  '''(?i)^0xaf88d065e77c8cc2239327c5edb3a432268e5831$''',
+]
