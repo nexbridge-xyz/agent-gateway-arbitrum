@@ -1,6 +1,6 @@
 {
   "name": "@agent-gateway/console",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Web console for mandates, the live payment feed, approvals, evidence and the ledger (React, wagmi, viem).",
   "license": "MIT",

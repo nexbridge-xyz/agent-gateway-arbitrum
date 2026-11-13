@@ -3,7 +3,7 @@
 What each version holds. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 versions follow [Semantic Versioning](https://semver.org).
 
-## 0.1.0 (not tagged yet)
+## [0.1.0] - 2026-11-14
 
 The first version: the whole demo path on Arbitrum Sepolia, from a mandate to a refused payment, with a
 console and a recorded run. Testnet only, not audited.
@@ -83,3 +83,5 @@ console and a recorded run. Testnet only, not audited.
 ### Known limits
 
 See "Known limitations of the deployed contract" and "Not production-ready" in [`SECURITY.md`](SECURITY.md).
+
+[0.1.0]: https://github.com/nexbridge-xyz/agent-gateway-arbitrum/releases/tag/v0.1.0

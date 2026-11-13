@@ -1,6 +1,6 @@
 {
   "name": "@agent-gateway/merchant",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Demo market-data API that charges per call in USDC on Arbitrum Sepolia, over the Machine Payments Protocol.",
   "license": "MIT",

@@ -1,6 +1,6 @@
 {
   "name": "@agent-gateway/contracts",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "MandateVault: onchain mandates and hard limits for AI agent payments (Solidity, Foundry).",
   "license": "MIT",

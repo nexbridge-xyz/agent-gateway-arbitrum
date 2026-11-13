@@ -1,6 +1,6 @@
 {
   "name": "agent-gateway-arbitrum",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Agent Gateway: mandates, approvals and evidence for AI agent payments, settled in stablecoins on Arbitrum.",
   "license": "MIT",
