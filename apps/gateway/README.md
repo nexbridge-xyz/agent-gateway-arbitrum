@@ -298,14 +298,15 @@ Settings come from the repository's `.env`:
 pnpm --filter @agent-gateway/gateway test
 ```
 
-253 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
+256 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
 tamper checks, every policy rule and its boundaries, the gateway and its HTTP API against an in-memory
 stand-in for the chain, approvals and declines (wrong signer, the executor's own signature, a changed
 amount, an expired deadline, a used approval number, a mandate revoked while the request waited, an
 approver address with contract code), per-call purchases (a challenge for another price, recipient or
 token, a redirect, a resource on another address), the choice among an agent's mandates, the endpoints the
 console reads, the texts of mandates, requests addressed to another host, and the verifier against files
-that were changed in two dozen ways.
+that were changed in two dozen ways. The tests in `test/review` come from the security review before
+publication: each of them failed until its finding was fixed.
 
 Seven more tests make a real purchase from the demo merchant, with settlement, on a local fork of Arbitrum
 Sepolia. They run when a fork is given:
@@ -313,6 +314,15 @@ Sepolia. They run when a fork is given:
 ```bash
 anvil --fork-url https://sepolia-rollup.arbitrum.io/rpc --port 8546
 MPP_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway test
+```
+
+Three more tests, in `test/review`, run the gateway on the same fork against a vault that somebody else
+deployed, and check that its evidence is not taken for evidence of this vault. They need the built
+contracts:
+
+```bash
+pnpm --filter @agent-gateway/contracts run build
+REVIEW_FORK_RPC_URL=http://127.0.0.1:8546 pnpm --filter @agent-gateway/gateway test
 ```
 
 ## Not production-ready

@@ -43,7 +43,7 @@ console and a recorded run. Testnet only, not audited.
   hash-chained ledger.
 - `pnpm verify-evidence` checks evidence files against the chain without trusting the gateway.
 - Read endpoints for the console. The gateway answers local requests only.
-- 253 tests, and seven more that make a real purchase on a fork.
+- 256 tests, and ten more on a fork, seven of which make a real purchase.
 
 ### Demo merchant and agent
 
