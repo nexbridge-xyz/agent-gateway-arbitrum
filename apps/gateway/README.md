@@ -53,6 +53,11 @@ The [console](../console/README.md) also reads these:
 The types of all answers are exported from [`src/server.ts`](src/server.ts), and the console takes its
 types from there.
 
+Storing a text needs no signature, and a text arrives before its mandate exists. The gateway therefore
+keeps for good only the text of a mandate that is in the vault. Of all other texts it keeps at most 2000:
+when one more arrives, it reads the terms hashes of the vault's mandates and drops the older half of the
+texts that none of them refers to. So texts that nobody turned into a mandate cannot keep a new one out.
+
 The gateway answers requests addressed to this machine only (`127.0.0.1`, `localhost`, `[::1]`). A request
 that names another host gets `403`: it has been pointed here by a web page elsewhere.
 

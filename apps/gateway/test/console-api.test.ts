@@ -1,3 +1,4 @@
+import { mkdir, writeFile } from 'node:fs/promises';
 import { request as httpRequest } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -30,7 +31,8 @@ beforeEach(async () => {
     ledger: h.ledger,
     explorerTx: (hash) => `https://explorer.example/tx/${hash}`,
     explorerUrl: 'https://explorer.example',
-    mandateTerms: new MandateTermsStore(join(h.dir, 'mandates')),
+    // No mandate of the test chain refers to a stored text, so every text here is a waiting one.
+    mandateTerms: new MandateTermsStore(join(h.dir, 'mandates'), () => Promise.resolve(new Set())),
     verify: (file) => verifyEvidence(file, { chain: null, ledger: h.ledger.entries }),
   });
   const server = app.listen(0, '127.0.0.1');
@@ -273,6 +275,22 @@ describe('console API: mandate texts', () => {
     // Storing it again changes nothing.
     expect((await put(termsHash, text)).status).toBe(201);
   });
+
+  it('takes a text when as many others wait as may, and still serves it', async () => {
+    // Texts that anybody sent and no mandate refers to. They used to fill the store for good, and the
+    // answer to the next text was "The text does not hash to this terms hash".
+    // 2000 is the store's MAX_WAITING_TEXTS, written out so that this also runs against the old store.
+    const dir = join(h.dir, 'mandates');
+    await mkdir(dir, { recursive: true });
+    for (let index = 0; index < 2000; index += 1) {
+      const waiting = `nobody's mandate ${index}`;
+      await writeFile(join(dir, `${mandateTermsHash(waiting)}.txt`), waiting, 'utf8');
+    }
+    expect((await put(termsHash, text)).status).toBe(201);
+    const served = await fetch(`${baseUrl}/v1/mandate-terms/${termsHash}`);
+    expect(await served.text()).toBe(text);
+    // Two thousand files are written first, which takes its time on a slow or busy disk.
+  }, 60_000);
 
   it('refuses a text under a hash that is not its own', async () => {
     const other = mandateTermsHash(`${text}One more line.\n`);

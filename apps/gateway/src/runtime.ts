@@ -19,6 +19,7 @@ import deployment from '@agent-gateway/contracts/deployments/arbitrum-sepolia.js
 import { createPaymentExecutor } from './chain/executor';
 import { createPurchaseClient } from './chain/purchases';
 import { createChainReader } from './chain/reader';
+import { createTermsInUse } from './chain/termsInUse';
 import { Gateway } from './gateway';
 import type { AppOptions } from './server';
 import { EvidenceStore } from './store/evidenceStore';
@@ -120,7 +121,11 @@ export async function createRuntime(config: GatewayConfig) {
   const ledger = await Ledger.open(join(config.dataDir, 'ledger.jsonl'));
   const evidence = new EvidenceStore(join(config.dataDir, 'evidence'));
   const payeesPath = join(config.dataDir, 'payees.json');
-  const mandateTerms = new MandateTermsStore(join(config.dataDir, 'mandates'));
+  // A text that a mandate in the vault refers to is kept for good. The store asks the vault which.
+  const mandateTerms = new MandateTermsStore(
+    join(config.dataDir, 'mandates'),
+    createTermsInUse(publicClient, config.vault),
+  );
 
   const info = await chain.info();
   const purchases =

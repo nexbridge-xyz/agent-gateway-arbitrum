@@ -539,6 +539,11 @@ function CreateMandate({
       });
       setBusy('wait');
       await client.waitForTransactionReceipt({ hash });
+      // And once more now that the mandate exists. Until then the text only waited, and the gateway
+      // makes room among waiting texts when too many arrive. The text of a mandate in the vault it
+      // keeps. If this does not get through, the first copy is most likely still there, and the
+      // mandate's row says so if it is not.
+      await api.storeTerms(termsHash, text).catch(() => undefined);
       await queryClient.invalidateQueries({ queryKey: ['mandates'] });
       onClose();
     } catch (error) {

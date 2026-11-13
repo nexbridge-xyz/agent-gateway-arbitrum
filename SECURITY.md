@@ -126,7 +126,9 @@ elsewhere cannot have a browser read from it through a made-up host name. Everyt
 gateway does needs a signature: the agent's on a request, the approver's on an approval or a decline. Two
 things are written for a caller who signed nothing. A request that the agent's wallet did not sign is
 refused, and the refusal is recorded like any other decision; it cannot use up the agent's own request, even
-if it carries the same intent. And a mandate's text is stored, but only under the text's own hash.
+if it carries the same intent. And a mandate's text is stored, but only under the text's own hash; a text
+that no mandate in the vault refers to is kept only while there is room, so such texts cannot keep the
+principal's next one out.
 
 ### A record is changed after the fact
 

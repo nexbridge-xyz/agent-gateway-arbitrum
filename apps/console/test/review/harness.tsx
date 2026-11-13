@@ -88,7 +88,10 @@ export function useLyingGateway(chainState: ChainState): World {
       ledger: h.ledger,
       explorerTx: (hash) => `https://explorer.example/tx/${hash}`,
       explorerUrl: 'https://explorer.example',
-      mandateTerms: new MandateTermsStore(join(h.dir, 'mandates')),
+      // No mandate of the test chain refers to a stored text, so every text here is a waiting one.
+      mandateTerms: new MandateTermsStore(join(h.dir, 'mandates'), () =>
+        Promise.resolve(new Set()),
+      ),
       verify: (file) => verifyEvidence(file, { chain: null, ledger: h.ledger.entries }),
     }).listen(0, '127.0.0.1');
     await new Promise((resolve) => server.once('listening', resolve));

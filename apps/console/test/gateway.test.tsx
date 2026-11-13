@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { join } from 'node:path';
@@ -50,9 +51,31 @@ vi.mock('@/lib/vault', async (original) => ({
 const TERMS_HASH: Hex = `0x${'11'.repeat(32)}`;
 const TX_HASH: Hex = `0x${'ab'.repeat(32)}`;
 
+/** The receipt of the one transaction the console sends in these tests. */
+const RECEIPT = () => ({
+  transactionHash: TX_HASH,
+  transactionIndex: '0x0',
+  blockHash: `0x${'cd'.repeat(32)}`,
+  blockNumber: '0x3e9',
+  from: h.world.principal,
+  to: VAULT,
+  cumulativeGasUsed: '0x5208',
+  gasUsed: '0x5208',
+  effectiveGasPrice: '0x1',
+  contractAddress: null,
+  logs: [],
+  logsBloom: `0x${'00'.repeat(256)}`,
+  status: '0x1',
+  type: '0x2',
+});
+
 let h: Harness;
 let server: Server;
 let node: ReturnType<typeof fakeNode>;
+/** Runs just before the node hands out a transaction's receipt. */
+let beforeReceipt: () => Promise<void>;
+/** No mandate of the test chain refers to a stored text, so every text here is a waiting one. */
+const noTermsInUse = () => Promise.resolve(new Set<Hex>());
 
 const asMandate = (mandate: FakeMandate): Mandate => ({
   id: mandate.id,
@@ -77,6 +100,7 @@ beforeEach(async () => {
   vi.setSystemTime(NOW * 1000);
 
   h = await createHarness();
+  beforeReceipt = () => Promise.resolve();
   chainState.mandates = () =>
     [h.world.spendMandate, h.world.mandate].filter((mandate) => mandate !== null).map(asMandate);
   chainState.facts = async () => {
@@ -94,7 +118,7 @@ beforeEach(async () => {
     ledger: h.ledger,
     explorerTx: (hash) => `https://explorer.example/tx/${hash}`,
     explorerUrl: 'https://explorer.example',
-    mandateTerms: new MandateTermsStore(join(h.dir, 'mandates')),
+    mandateTerms: new MandateTermsStore(join(h.dir, 'mandates'), noTermsInUse),
     verify: (file) => verifyEvidence(file, { chain: null, ledger: h.ledger.entries }),
   }).listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
@@ -112,22 +136,10 @@ beforeEach(async () => {
       );
     },
     eth_sendTransaction: () => TX_HASH,
-    eth_getTransactionReceipt: () => ({
-      transactionHash: TX_HASH,
-      transactionIndex: '0x0',
-      blockHash: `0x${'cd'.repeat(32)}`,
-      blockNumber: '0x3e9',
-      from: h.world.principal,
-      to: VAULT,
-      cumulativeGasUsed: '0x5208',
-      gasUsed: '0x5208',
-      effectiveGasPrice: '0x1',
-      contractAddress: null,
-      logs: [],
-      logsBloom: `0x${'00'.repeat(256)}`,
-      status: '0x1',
-      type: '0x2',
-    }),
+    eth_getTransactionReceipt: async () => {
+      await beforeReceipt();
+      return RECEIPT();
+    },
     eth_getBlockByNumber: () => ({
       number: '0x3e8',
       hash: `0x${'cd'.repeat(32)}`,
@@ -479,7 +491,7 @@ describe('mandates', () => {
     // The gateway holds the text the principal approved, under the hash that went to the vault.
     const stored = await h.gateway
       .payees()
-      .then(() => new MandateTermsStore(join(h.dir, 'mandates')).get(termsHash));
+      .then(() => new MandateTermsStore(join(h.dir, 'mandates'), noTermsInUse).get(termsHash));
     expect(stored).not.toBeNull();
     expect(keccak256(stringToHex(stored ?? ''))).toBe(termsHash);
     expect(stored).toContain('AGENT PAYMENT MANDATE: VENDOR INVOICES');
@@ -488,6 +500,37 @@ describe('mandates', () => {
     expect(stored).not.toContain('Hatsuka Research');
     expect(stored).toContain('up to 2 USDC per payment and 8 USDC per UTC day.');
     expect(stored).toContain(`Approver: ${h.world.approver}`);
+  });
+
+  it('stores the text once more when the mandate exists, in case it was pushed out meanwhile', async () => {
+    // Before the mandate exists its text only waits at the gateway, and the gateway makes room among
+    // waiting texts when too many arrive. Here every stored text is gone by the time the transaction is
+    // confirmed, as if 2000 others had arrived in between.
+    let pushedOut = false;
+    beforeReceipt = async () => {
+      if (pushedOut) return;
+      pushedOut = true;
+      await rm(join(h.dir, 'mandates'), { recursive: true, force: true });
+    };
+    const user = userEvent.setup();
+    await open('#/mandates', [h.world.principal]);
+    await screen.findByRole('region', { name: 'Mandate 1' });
+    await user.click(await ready(screen.getByRole('button', { name: /New mandate/ })));
+    const dialog = await screen.findByRole('dialog', { name: 'New mandate' });
+    await user.type(within(dialog).getByLabelText('Agent id (ERC-8004)'), '354');
+    await user.click(within(dialog).getByRole('button', { name: /Create mandate/ }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(pushedOut).toBe(true);
+
+    const [sent] = node.sent('eth_sendTransaction');
+    const { data } = sent?.params[0] as { data: Hex };
+    const termsHash = decodeFunctionData({ abi: mandateVaultAbi, data }).args?.[8] as Hex;
+    const stored = await new MandateTermsStore(join(h.dir, 'mandates'), noTermsInUse).get(
+      termsHash,
+    );
+    expect(keccak256(stringToHex(stored ?? ''))).toBe(termsHash);
   });
 
   it('checks the form before anything is sent', async () => {
