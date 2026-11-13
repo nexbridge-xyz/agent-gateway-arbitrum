@@ -246,7 +246,7 @@ Save each file under its name in `docs/console`, and update the table in
 - **The tag.** `v0.1.0` is pushed after that pull request is merged: set the date in
   [`CHANGELOG.md`](../CHANGELOG.md) and the version in the `package.json` files first.
 - **Going public.** When the repository becomes public, switch on "Private vulnerability reporting" in its
-  settings (Settings, Code security). [`SECURITY.md`](../SECURITY.md) points reporters to it.
+  settings (Settings, Advanced Security). [`SECURITY.md`](../SECURITY.md) points reporters to it.
 
 ## Recording the screen
 
