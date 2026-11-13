@@ -85,6 +85,12 @@ jobs:
           corepack enable
           pnpm install --frozen-lockfile
 
+      # The dependencies that run with the gateway, the merchant, the agent and the console. An advisory
+      # for one of them fails the build, unless pnpm-workspace.yaml lists it with the reason. If the
+      # registry cannot be asked, the step passes: that is not a fault of this repository.
+      - name: Dependency audit
+        run: pnpm audit --prod --ignore-registry-errors
+
       - name: Format
         run: pnpm exec prettier --check .
 

@@ -42,6 +42,8 @@ CI runs the same checks on every pull request and on every push to `main`, and a
 - a check that the exported ABI matches the contract (`pnpm --filter @agent-gateway/contracts run abi:check`);
 - a production build of the console;
 - every evidence file in `docs/sepolia-run`, checked against itself;
+- `pnpm audit --prod`: an advisory for a dependency that runs fails the build, unless
+  `pnpm-workspace.yaml` lists it under `auditConfig` with the reason;
 - a secret scan of the full history with gitleaks.
 
 Two more suites need a fork of Arbitrum Sepolia and so a network. CI skips them with a warning when the

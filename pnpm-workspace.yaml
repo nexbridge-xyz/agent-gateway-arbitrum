@@ -35,3 +35,16 @@ overrides:
 # No dependency runs an install script. esbuild (used by tsx and vitest) works without its script.
 allowBuilds:
   esbuild: false
+
+# Advisories that `pnpm audit` passes over, each with the reason. CI runs `pnpm audit --prod`, and any
+# advisory that is not listed here fails the build. Take an id out when its pin moves past the fix.
+auditConfig:
+  ignoreGhsas:
+    # mppx below 0.8.2, "Gas Draining with access list". It is in mppx's Tempo method, where a server
+    # co-signs a client's transaction as its fee payer. Nothing here registers that method: the gateway
+    # and the merchant use only the `charge` method of @arbitrum/mpp, and the merchant builds its
+    # settlement transaction itself. The fix needs mppx 0.8, which @arbitrum/mpp 0.1.0 cannot use.
+    - GHSA-vc9j-9wph-qghj
+    # mppx below 0.8.1, "Gas Draining with padding". The same fee-payer path of the Tempo method, and
+    # the same reason.
+    - GHSA-727h-3vm5-qwq6
