@@ -45,9 +45,21 @@ local fork use a stand-in for the wallet, and cannot show the wallet's own windo
 This pass was last made on 12 November 2026, with MetaMask and the approver's key imported into it. The
 approval was signed in the built console and
 [paid through `payWithApproval`](https://sepolia.arbiscan.io/tx/0x6f9d1361603ec1e4d6694ac3e285a7b774321dceb91ed6a67262d7cb8a9964e5).
-Make it again if the wallet, the browser or the approver's key has changed since then. Before a second
-pass, run `pnpm demo --steps recycle`: the first one left its 6 USDC with the vendor, and the principal
-needs them to fill the vault again.
+
+Make it again if the wallet, the browser, the approver's key or the console's code has changed since then.
+The code has: the fixes of the security review went in on 13 November, and the console now checks more
+before it hands a request to the wallet. A rehearsal with a stand-in wallet has passed on that code. A real
+wallet has not signed in it yet, so make this pass once more before recording.
+
+Before a second pass, bring the 6 USDC of the first one back from the vendor. The principal needs them to
+fill the vault again:
+
+```bash
+pnpm demo --steps recycle
+```
+
+A second pass keeps the two mandates of the first one, so its approval is the mandate's second, and the
+terminal calls it `approval number 1`.
 
 In one terminal, build the console and serve it on <http://127.0.0.1:5173>:
 
@@ -65,8 +77,9 @@ pnpm demo --console --steps gas,1,4
 the gateway and the chain and nothing else. `pnpm console` is the development build, with a "Data shown"
 switch for made-up data at the bottom left. Do not record that one.
 
-Step 1 creates fresh mandates and fills the vault. At step 4 the terminal prints
-`waiting  for the approver in the console` and waits, for up to 30 minutes. Then, in the browser:
+Step 1 fills the vault. A first pass also creates the agent's two mandates there; a second pass finds
+them active and keeps them. At step 4 the terminal prints `waiting  for the approver in the console` and
+waits, for up to 30 minutes. Then, in the browser:
 
 1. Open <http://127.0.0.1:5173/#/approvals>. A 6.00 USDC payment to Nagikumo Research is waiting.
 2. Open the wallet menu at the top right and choose your wallet by its name. (A wallet that does not
@@ -86,12 +99,16 @@ What a good pass looks like:
 
 If the console says something else:
 
-| The console says                                      | What to do                                                                                                                                                                               |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "The wallet is on another network"                    | Wallet menu, "Switch to Arbitrum Sepolia".                                                                                                                                               |
-| "The connected wallet is not this mandate's approver" | The wrong account is selected in the wallet. Select the approver.                                                                                                                        |
-| "The approver's address … has contract code"          | The account was made a smart account. See [step 4 above](#1-set-up-the-wallet); remove the delegation in the wallet, or record with the approver's key in the terminal (no `--console`). |
-| "The wallet did not sign"                             | The request was rejected or closed. Choose "Sign approval" again.                                                                                                                        |
+| The console says                                                                | What to do                                                                                                                                                                               |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "The wallet is on another network"                                              | Wallet menu, "Switch to Arbitrum Sepolia".                                                                                                                                               |
+| "The connected wallet is not this mandate's approver"                           | The wrong account is selected in the wallet. Select the approver.                                                                                                                        |
+| "The approver's address … has contract code"                                    | The account was made a smart account. See [step 4 above](#1-set-up-the-wallet); remove the delegation in the wallet, or record with the approver's key in the terminal (no `--console`). |
+| "The wallet did not sign"                                                       | The request was rejected or closed. Choose "Sign approval" again.                                                                                                                        |
+| "Checking what the gateway says about the vault against the chain…"             | Wait a moment. The console reads the vault from the chain before it lets anything be signed.                                                                                             |
+| "The vault could not be read from the chain"                                    | The public RPC endpoint did not answer. Reload the page.                                                                                                                                 |
+| "The gateway serves vault … That is not the vault this console was started for" | The console was built for another vault. Look for `MANDATE_VAULT_ADDRESS` in the shell that ran `pnpm console:built`, unset it, and start the console again.                             |
+| "… Signing is switched off."                                                    | Do not sign. The console found that what the gateway wants signed is not the payment the page shows. Stop the run and say so.                                                            |
 
 Stop the demo with Ctrl+C when it has finished. The 6 USDC come back with `recycle` below.
 
@@ -154,10 +171,10 @@ With `--pause` the run waits for Enter before each step. That is the easy way to
 pictures below and record at your own pace. Nothing times out while it waits. Without `--pause` it runs
 straight through and only stops at step 4, for the approver.
 
-After one live pass of step 4, a good run ends with `Done. 19 transactions:`. Sixteen of them succeed, and
-three are the reverts of step 6. (It revokes the two mandates of the live pass first. Without them it is
-17.) The purposes in the feed are the agent's own words when the agent is Claude, so they differ a little
-from run to run and from the pictures taken with the scripted agent.
+With the two mandates of the live pass still active, a good run ends with `Done. 19 transactions:`.
+Sixteen of them succeed, and three are the reverts of step 6. (The run revokes those two mandates first.
+Without them it is 17.) The purposes in the feed are the agent's own words when the agent is Claude, so
+they differ a little from run to run and from the pictures taken with the scripted agent.
 
 | Step    | What the terminal does                                                      | What the console shows                                                      |
 | ------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
