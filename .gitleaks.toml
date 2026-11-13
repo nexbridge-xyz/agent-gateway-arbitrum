@@ -40,8 +40,15 @@ secretGroup = 1
   regexes = ['''0{16}''']
 
   [[rules.allowlists]]
-  description = "Public constants: the order of the secp256k1 curve."
-  regexes = ['''(?i)^fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141$''']
+  description = "Public constants: the order of the secp256k1 curve, and the storage slot of an ERC-1967 proxy's implementation."
+  regexes = [
+    '''(?i)^fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141$''',
+    '''(?i)^360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc$''',
+  ]
+
+  [[rules.allowlists]]
+  description = "The evidence hash of the approved payment in the run recorded on 12 November 2026. It is onchain, and the fork test of the deployed vault names it."
+  regexes = ['''(?i)^0dab8c64d117ba5bbed56fc9e48d7244803a2659835c5934c8670b924f58362a$''']
 
 # A phrase is recognised by its shape: 12 to 24 short lowercase words and nothing else on the line, or
 # after a word that names it.

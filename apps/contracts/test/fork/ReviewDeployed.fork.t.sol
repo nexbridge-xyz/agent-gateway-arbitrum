@@ -37,8 +37,9 @@ contract ReviewDeployedForkTest is Test {
 
     uint256 internal constant USDC = 1e6;
 
-    // docs/sepolia-run: the recorded run's mandates and the approved payment of step 4, as written in
-    // evidence/0x1c49838c6d8d52a6ff41684f6a463fa1b1a0914f9b9ccc31cd01ce4c721cb7d4.json.
+    // The run recorded on 12 November 2026: its two mandates and the approved payment of its step 4, as
+    // written in docs/sepolia-run/evidence/0x1c49838c6d8d52a6ff41684f6a463fa1b1a0914f9b9ccc31cd01ce4c721cb7d4.json
+    // at commit 3c90889. A later recorded run replaces that folder. These facts stay onchain.
     uint256 internal constant RECORDED_VENDOR_MANDATE = 3;
     uint256 internal constant RECORDED_SPEND_MANDATE = 4;
     address internal constant RECORDED_EXECUTOR = 0xB0aA521c777F8363DaA0446DD05807347d2f08B9;
@@ -85,6 +86,13 @@ contract ReviewDeployedForkTest is Test {
         registry = IRegistryView(address(vault.identityRegistry()));
         principal = vault.principal();
         (approver, approverKey) = makeAddrAndKey("review approver");
+
+        // These tests are about what the vault does while it runs. If the principal has paused the live
+        // vault, that is their business and no fault of this repository: the fork carries on unpaused.
+        if (vault.paused()) {
+            vm.prank(principal);
+            vault.unpause();
+        }
     }
 
     modifier onlyOnFork() {
@@ -261,9 +269,19 @@ contract ReviewDeployedForkTest is Test {
     // The identity registry the vault and the gateway rely on
     // ------------------------------------------------------------------------------------------------
 
+    /// This one is about state that the agent's owner can change. It is here on purpose:
+    /// `pnpm verify-evidence` asks the registry, as it is today, which wallet signs for the agent. If the
+    /// wallet of agent 354 changes, the recorded evidence stops verifying against the chain, and this test
+    /// says so before a reader finds out.
     function test_Fork_Review_Agent354IsOwnedByThePrincipalAndSignsWithTheAgentKey() public onlyOnFork {
-        assertEq(registry.ownerOf(RECORDED_AGENT_ID), principal);
-        assertEq(registry.getAgentWallet(RECORDED_AGENT_ID), RECORDED_AGENT_WALLET);
+        assertEq(
+            registry.ownerOf(RECORDED_AGENT_ID), principal, "agent 354 has another owner than the vault's principal"
+        );
+        assertEq(
+            registry.getAgentWallet(RECORDED_AGENT_ID),
+            RECORDED_AGENT_WALLET,
+            "agent 354 signs with another wallet than in the recorded run: its evidence no longer verifies online"
+        );
     }
 
     /// The registry is an upgradeable proxy. Whoever can upgrade it can change which wallet "is" an
