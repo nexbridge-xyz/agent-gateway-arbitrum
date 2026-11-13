@@ -6,7 +6,7 @@ Agent Gateway works like a corporate card program for AI agents, settled in USDC
 gives each agent an identity and a mandate: whom it may pay, how much per payment and per day, and until
 when. A vault contract on Arbitrum holds the money and enforces the limits.
 
-- **Video, 2 minutes:** to be added.
+- **Video, 1 minute 40 seconds:** [youtu.be/KgRkZ8JX1Bc](https://youtu.be/KgRkZ8JX1Bc).
 - **Live on Arbitrum Sepolia:** `MandateVault` at
   [`0x7293763f6b73783834484cd976528D01Cb6c8CCf`](https://sepolia.arbiscan.io/address/0x7293763f6b73783834484cd976528D01Cb6c8CCf#code),
   source verified on Arbiscan.

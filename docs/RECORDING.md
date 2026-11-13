@@ -239,9 +239,9 @@ Save each file under its name in `docs/console`, and update the table in
 
 ## 6. Afterwards
 
-- **The video.** The script and the shot list are in [`docs/video/SCRIPT.md`](video/SCRIPT.md). When the
-  video is online, put its link into the README: replace "to be added" in the
-  line that starts with "Video, 2 minutes".
+- **The video.** The script and the shot list are in [`docs/video/SCRIPT.md`](video/SCRIPT.md). The
+  video's link and its length are in the README, in the line that starts with "Video". A new video needs
+  both changed there, and its captions in [`docs/video/captions.srt`](video/captions.srt).
 - **A pull request** with the recorded run, the pictures and the link, as for every change.
 - **The tag.** `v0.1.0` is pushed after that pull request is merged: set the date in
   [`CHANGELOG.md`](../CHANGELOG.md) and the version in the `package.json` files first.
