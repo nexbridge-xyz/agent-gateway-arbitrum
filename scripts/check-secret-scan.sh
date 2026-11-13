@@ -34,6 +34,25 @@ phrase() {
 failures=0
 count=0
 
+# Draws 20-byte values until the default rules alone report one in the given line, and prints that line.
+# The defaults pass over a value whose characters are not varied enough, or that happens to spell a common
+# word: about one value in a hundred. A check of this repository's own exceptions must not rest on that.
+reported_by_defaults() {
+  local line dir attempt
+  for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+    line="${1/VALUE/0x$(hex 20)}"
+    dir="$work/draw-$count-$attempt"
+    mkdir -p "$dir"
+    printf '%s\n' "$line" >"$dir/config.toml"
+    if ! (cd "$dir" && "$gitleaks" dir --no-banner --redact . >/dev/null 2>&1); then
+      printf '%s\n' "$line"
+      return
+    fi
+  done
+  echo "The default rules reported none of 20 made-up values in: $1" >&2
+  exit 1
+}
+
 # check <found|passed> <what it is> <file, relative to a scratch folder> <content>
 check() {
   local want="$1" what="$2" file="$3" content="$4" dir got
@@ -68,8 +87,9 @@ check found "a recovery phrase in an .env file" "notes/.env" "MNEMONIC=\"$(phras
 check found "a recovery phrase handed to a command" "README.md" "cast wallet import deployer --mnemonic \"$(phrase)\""
 check found "an Alchemy address with its key" ".env.example" "ARBITRUM_SEPOLIA_RPC_URL=https://arb-sepolia.g.alchemy.com/v2/$(hex 16)"
 check found "an Infura address with its key" "docs/setup.md" "Use https://arbitrum-sepolia.infura.io/v3/$(hex 16) as the endpoint."
-check found "an access token of 20 bytes" "config.toml" "access_token = \"0x$(hex 20)\""
-check found "a 20-byte value in a token field that is not a known token" "config.json" "{ \"token\": \"0x$(hex 20)\" }"
+# These two are found by the default rules. The exception this file used to make hid both.
+check found "an access token of 20 bytes" "config.toml" "$(reported_by_defaults 'access_token = "VALUE"')"
+check found "a 20-byte value in a token field that is not a known token" "config.json" "$(reported_by_defaults '{ "token": "VALUE" }')"
 
 # --- What must be passed over ---------------------------------------------------------------------
 
