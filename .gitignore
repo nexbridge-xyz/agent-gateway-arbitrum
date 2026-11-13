@@ -2,10 +2,20 @@
 .env
 .env.*
 !.env.example
+# Other files that hold keys: direnv settings, key and certificate files, and keystores.
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx
+keystore*/
+*keystore*.json
+UTC--*
 
 # Node
 node_modules/
 dist/
+coverage/
 *.tsbuildinfo
 
 # Foundry

@@ -45,7 +45,8 @@ CI runs the same checks on every pull request and on every push to `main`, and a
 - `pnpm audit --prod`: an advisory for a dependency that runs fails the build, unless
   `pnpm-workspace.yaml` lists it under `auditConfig` with the reason;
 - a secret scan of the full history with gitleaks, after a test of its rules on made-up secrets
-  (`bash scripts/check-secret-scan.sh`, which needs gitleaks).
+  (`bash scripts/check-secret-scan.sh`, which needs gitleaks);
+- a check that git ignores the files keys live in (`bash scripts/check-ignored-files.sh`).
 
 Two more suites need a fork of Arbitrum Sepolia and so a network. CI skips them with a warning when the
 public endpoint does not answer. When it answers, a failing test fails the build:

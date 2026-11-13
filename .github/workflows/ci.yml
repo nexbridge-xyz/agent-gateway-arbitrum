@@ -172,3 +172,8 @@ jobs:
       # Every commit on every branch that was fetched, with the rules in .gitleaks.toml.
       - name: Scan the full history
         run: '"$RUNNER_TEMP/gitleaks/gitleaks" git --config .gitleaks.toml --redact --no-banner .'
+
+      # .gitignore names the files that keys live in and hides nothing that is tracked, and the key
+      # generator writes only where git does not look.
+      - name: Key files are ignored
+        run: bash scripts/check-ignored-files.sh

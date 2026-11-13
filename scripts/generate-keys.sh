@@ -6,13 +6,32 @@
 # - Never prints a private key. It prints the addresses, which are what you fund at a faucet.
 # - Never replaces a key that is already set: run it again at any time to fill in new roles.
 # - .env is git-ignored and readable only by you (mode 600).
+# - ENV_FILE=<file> writes to another file. Inside this repository it must be one that git ignores
+#   (.env.<something>), or the script stops before it creates a key.
 #
 # Do not send real funds to these addresses and do not reuse these keys anywhere else.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="${ENV_FILE:-$ROOT/.env}"
+case "$ENV_FILE" in
+  /*) ;;
+  *) ENV_FILE="$PWD/$ENV_FILE" ;;
+esac
 ROLES="DEPLOYER PRINCIPAL EXECUTOR APPROVER SPEND_WALLET MERCHANT AGENT VENDOR_A VENDOR_B"
+
+# Keys go only into a file that git ignores. `git check-ignore` answers 1 for a file inside this
+# repository that is not ignored. A file outside it, or a copy of the code without git, is not git's
+# business and gets another answer.
+ignored=0
+if command -v git >/dev/null 2>&1; then
+  git -C "$ROOT" check-ignore -q --no-index -- "$ENV_FILE" 2>/dev/null || ignored=$?
+fi
+if [ "$ignored" -eq 1 ]; then
+  echo "$ENV_FILE is inside this repository and git does not ignore it, so the next commit could carry" >&2
+  echo "the keys. Use .env, a name that starts with .env., or a file outside the repository." >&2
+  exit 1
+fi
 
 CAST="$(command -v cast || true)"
 [ -n "$CAST" ] || CAST="$HOME/.foundry/bin/cast"
