@@ -301,6 +301,11 @@ carries the hash of that file's record.
 | ---- | ------- | ------- | ------- | -------- | ------ | -------- | ---------------------- |
 ${decisionRows.join('\n')}
 
+The last column counts the checks of \`pnpm verify-evidence\` on the evidence file, as the demo made them
+when the run was recorded: the file against itself, the chain and the ledger. A later version of the
+verifier may make more. They are not the gateway's checks on the request, which are in each file under
+\`record.why.checks\`.
+
 A market-data purchase is two transactions. First the vault pays the gateway's spend wallet exactly the
 price, inside the spend wallet's mandate: that payment carries the evidence hash onchain. Then the merchant
 settles the spend wallet's signed payment: that is a plain USDC transfer and does not carry the hash. The

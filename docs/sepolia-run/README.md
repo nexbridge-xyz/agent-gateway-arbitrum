@@ -43,14 +43,19 @@ is not on the vendor mandate's list, so the vault itself limits what can reach i
 Every request, and what became of it. Each has an evidence file. When the vault paid, the vault's event
 carries the hash of that file's record.
 
-| Step | Request | Sent by | Mandate | Decision | Result | Evidence | Checks passed |
-| ---- | ------- | ------- | ------- | -------- | ------ | -------- | ------------- |
+| Step | Request | Sent by | Mandate | Decision | Result | Evidence | Evidence checks passed |
+| ---- | ------- | ------- | ------- | -------- | ------ | -------- | ---------------------- |
 | 2 | 0.10 USDC to Tsukimi Data | the agent | 4 | `auto` | paid | [`0x805667fa…ef622600`](evidence/0x805667fa1d559a7282f269941fd4a458fcc4e2fabd59d4c1a52bb0e0ef622600.json) | 20 of 20 |
 | 3 | 1.50 USDC to Koishi Supply | the agent | 3 | `auto` | paid | [`0xfacad653…98fc784b`](evidence/0xfacad653072d66e63d4b85c38a44eb72b2ce7c7c48cfb84af60a10e298fc784b.json) | 18 of 18 |
 | 4 | 6.00 USDC to Nagikumo Research | the agent | 3 | `needs_approval`<br>The amount is above the per-payment cap of 2 USDC | paid | [`0x1c49838c…721cb7d4`](evidence/0x1c49838c6d8d52a6ff41684f6a463fa1b1a0914f9b9ccc31cd01ce4c721cb7d4.json) | 21 of 21 |
 | 5 | 0.10 USDC to Tsukimi Data | the agent | 4 | `auto` | paid | [`0xaf9fb401…98b8ba5d`](evidence/0xaf9fb4016d47d3c26b4b88e3fc8610c295bbd24f01b27e5d786bae3f98b8ba5d.json) | 20 of 20 |
 | 5 | 4.00 USDC to an address in no registry (`0xfEc38508…124Cc813`) | the agent | 3 | `refused`<br>The payee is not in the principal's vendor registry. The address appears only in content the agent read (market-data response for TSK-FOOD30 from http://127.0.0.1:8788), which is not a trusted source | refused | [`0x5484e6fa…be2bb0bc`](evidence/0x5484e6faecfaae477bd3f70c5409f52aac1e52b7c87fcce71e10d565be2bb0bc.json) | 11 of 11 |
 | 7 | 1.50 USDC to Koishi Supply | the agent | 3 | `refused`<br>Mandate 3 has been revoked | refused | [`0xfae67c5b…90876c7a`](evidence/0xfae67c5b58053592e2254e8696b6514ca053de8ca7a61b43e1e3a79f90876c7a.json) | 11 of 11 |
+
+The last column counts the checks of `pnpm verify-evidence` on the evidence file, as the demo made them
+when the run was recorded: the file against itself, the chain and the ledger. A later version of the
+verifier may make more. They are not the gateway's checks on the request, which are in each file under
+`record.why.checks`.
 
 A market-data purchase is two transactions. First the vault pays the gateway's spend wallet exactly the
 price, inside the spend wallet's mandate: that payment carries the evidence hash onchain. Then the merchant
