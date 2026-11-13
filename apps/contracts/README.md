@@ -97,6 +97,7 @@ the check of the live deployment on a fork of Arbitrum Sepolia.
 | `test/MandateVault.fuzz.t.sol`      | 22 property tests over random inputs: caps, expiry, allowlist, roles, approvals, revoke, pause.                                                                                                  |
 | `test/MandateVault.invariant.t.sol` | 5 invariants over random call sequences by every role, checked against the test's own books.                                                                                                     |
 | `test/MandateVault.split.t.sol`     | 8 tests of the demo's two mandates: what a stolen executor key can do with a vendor mandate and a small spend wallet mandate, including a fuzz test over arbitrary payment sequences.            |
+| `test/review/ReviewRoles.t.sol`     | 3 tests of which roles one address may hold: the executor cannot be its own approver, and the vault refuses no other pair.                                                                       |
 | `test/fork/`                        | 5 tests on a fork of Arbitrum Sepolia: the demo's onchain steps against Circle's test USDC and the live ERC-8004 Identity Registry, and a check that the deployed vault matches this repository. |
 
 Coverage of `src/MandateVault.sol` (`pnpm coverage`):
