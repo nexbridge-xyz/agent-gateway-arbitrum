@@ -1,56 +1,63 @@
 {
   "format": "agent-gateway-arbitrum/evidence/v1",
-  "evidenceHash": "0xef03d1ae743e9a22ae0de2047fa1ba36dc87fcc5245e84b2e793ecc8ae7de1c3",
+  "evidenceHash": "0x15c12d846d08f7ec872ce793a9f168e5747087c6a292f817c7fb57f266018529",
   "record": {
     "format": "agent-gateway-arbitrum/evidence-record/v1",
-    "intentId": "0x5484e6faecfaae477bd3f70c5409f52aac1e52b7c87fcce71e10d565be2bb0bc",
-    "decidedAt": "2026-11-12T03:42:04.888Z",
+    "intentId": "0x70f8dc5ab5e5d3db72313540e0c9d1d12aa33ad3ceae80109dd15cd2f9200d59",
+    "decidedAt": "2026-11-13T15:47:02.902Z",
     "chain": {
       "chainId": 421614,
       "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
       "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
       "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-      "blockNumber": "328388383",
-      "blockTimestamp": 1794454923
+      "blockNumber": "328865152",
+      "blockTimestamp": 1794584821
     },
     "who": {
       "agentId": "354",
       "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
       "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
-      "mandateId": "3",
+      "mandateId": "8",
       "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
       "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
     },
     "what": {
-      "payee": "0xfEc38508E4BE025D9eba7Beb02663043124Cc813",
-      "payeeName": null,
-      "amount": "4000000",
+      "payee": "0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD",
+      "payeeName": "Tsukimi Data",
+      "amount": "100000",
       "tokenSymbol": "USDC",
       "tokenDecimals": 6,
-      "purpose": "Priority access fee, as asked in a vendor note",
+      "purpose": "Market data: one TSK-FOOD30 quote",
       "invoiceId": ""
     },
     "request": {
       "intent": {
         "agentId": "354",
-        "payee": "0xfEc38508E4BE025D9eba7Beb02663043124Cc813",
-        "amount": "4000000",
-        "purpose": "Priority access fee, as asked in a vendor note",
+        "payee": "0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD",
+        "amount": "100000",
+        "purpose": "Market data: one TSK-FOOD30 quote",
         "invoiceId": "",
         "context": {
-          "payeeSource": "market-data response for TSK-FOOD30 from http://127.0.0.1:8788"
+          "mpp": {
+            "resource": "http://127.0.0.1:8788/v1/quotes/TSK-FOOD30"
+          },
+          "payeeSource": "payment request from http://127.0.0.1:8788"
         },
-        "nonce": "0x8dad8a224ff0b58897454507fd391f2cc7588b5f80108fa1f35ae6b7c814b860",
-        "expiresAt": 1794455224
+        "nonce": "0x73b078792a3444214da50217c3f298360db19e4cfb9a463bc153c6e30b7c57f4",
+        "expiresAt": 1794585122
       },
-      "signature": "0x2c3f6b89a9bb3abcb70fa5684cef8dd24084a8e43b7058120beffe81d04230b534cff1ebe479b68fdb88330a0e6b86d3e8b7dffcd15515e8853f7891cbd0de301b",
+      "signature": "0xfa8bcc1b7281dede5635ebf68b8a062f4149d579981315d3d68a66659d7f16546c4bb166ba75f4087b6c11f1509b8d9bdb112ec369d8a14fd7c59519e5c3c74d1c",
       "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
     },
-    "purchase": null,
+    "purchase": {
+      "protocol": "mpp",
+      "resource": "http://127.0.0.1:8788/v1/quotes/TSK-FOOD30",
+      "spendWallet": "0xcd08ecaA7FF642ffEdc77514C1442E59ddbb4CF9"
+    },
     "why": {
-      "decision": "refused",
+      "decision": "auto",
       "reasons": [
-        "The payee is not in the principal's vendor registry. The address appears only in content the agent read (market-data response for TSK-FOOD30 from http://127.0.0.1:8788), which is not a trusted source"
+        "All 17 checks passed"
       ],
       "checks": [
         {
@@ -86,7 +93,7 @@
           "kind": "hard",
           "result": "pass",
           "label": "Agent has an active mandate with this gateway as executor",
-          "detail": "mandate 3, valid until 2026-12-12T03:41:36Z"
+          "detail": "mandate 8, valid until 2027-02-11T15:31:20Z"
         },
         {
           "key": "vault_open",
@@ -105,58 +112,89 @@
         {
           "key": "payee_in_vendor_registry",
           "kind": "hard",
-          "result": "fail",
+          "result": "pass",
           "label": "Payee is in the principal's vendor registry",
-          "detail": "not registered; the agent says the address came from: market-data response for TSK-FOOD30 from http://127.0.0.1:8788"
+          "detail": "registered as Tsukimi Data"
         },
         {
           "key": "amount_positive",
           "kind": "hard",
           "result": "pass",
           "label": "Amount is more than zero",
-          "detail": "4 USDC"
+          "detail": "0.1 USDC"
         },
         {
           "key": "within_hard_ceiling",
           "kind": "hard",
           "result": "pass",
           "label": "Day total stays within the mandate's hard ceiling",
-          "detail": "7.5 USDC paid today + 4 USDC vs ceiling 20 USDC"
+          "detail": "0.1 USDC paid today + 0.1 USDC vs ceiling 1 USDC"
         },
         {
           "key": "vault_funded",
           "kind": "hard",
           "result": "pass",
           "label": "Vault holds enough funds",
-          "detail": "vault holds 4.3 USDC"
+          "detail": "vault holds 4.4 USDC"
+        },
+        {
+          "key": "purchase_spend_wallet",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Gateway has a spend wallet for per-call purchases",
+          "detail": "configured"
+        },
+        {
+          "key": "purchase_origin_registered",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Resource is on the merchant's registered API",
+          "detail": "asked for http://127.0.0.1:8788; registered: http://127.0.0.1:8788"
+        },
+        {
+          "key": "purchase_within_call_cap",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Price is within the gateway's per-call cap",
+          "detail": "0.1 USDC vs cap 0.5 USDC"
         },
         {
           "key": "payee_on_allowlist",
-          "kind": "soft",
-          "result": "fail",
-          "label": "Payee is on the mandate's allowlist",
-          "detail": "not on the allowlist"
+          "kind": "hard",
+          "result": "pass",
+          "label": "Gateway's spend wallet is on the mandate's allowlist",
+          "detail": "on the allowlist"
         },
         {
           "key": "within_per_payment_cap",
-          "kind": "soft",
-          "result": "fail",
+          "kind": "hard",
+          "result": "pass",
           "label": "Amount is within the per-payment cap",
-          "detail": "4 USDC vs cap 2 USDC"
+          "detail": "0.1 USDC vs cap 0.5 USDC"
         },
         {
           "key": "within_daily_cap",
-          "kind": "soft",
-          "result": "fail",
+          "kind": "hard",
+          "result": "pass",
           "label": "Day total stays within the daily cap",
-          "detail": "7.5 USDC paid today + 4 USDC vs cap 8 USDC"
+          "detail": "0.1 USDC paid today + 0.1 USDC vs cap 1 USDC"
         }
       ]
     }
   },
   "approval": null,
   "result": {
-    "status": "refused"
+    "status": "paid",
+    "transactionHash": "0x057912c0b682654fa0ca3216f36e46e890d59e7a7af7073d23a731a059a4363e",
+    "blockNumber": "328865161",
+    "event": "MandatePayment",
+    "executedAt": "2026-11-13T15:47:05.034Z",
+    "purchase": {
+      "status": "settled",
+      "settlementTransactionHash": "0x2d1aeda712ca2b06f7a38d6a01e33d26e66be72674cb890bf45049f2e7218dcb",
+      "settledAt": "2026-11-13T15:47:07.597Z",
+      "responseHash": "0x57c08c4cb9fe4fba29acf9c1372a8540dbeaf7ac15d9f73de356023f39558230"
+    }
   },
-  "updatedAt": "2026-11-12T03:42:04.888Z"
+  "updatedAt": "2026-11-13T15:47:07.601Z"
 }

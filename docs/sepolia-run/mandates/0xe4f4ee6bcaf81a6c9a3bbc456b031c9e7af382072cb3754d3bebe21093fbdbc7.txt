@@ -13,5 +13,5 @@ up to 2 USDC per payment and 8 USDC per UTC day.
 Any other payment needs the approver's signature. No more than 20 USDC may leave
 under this mandate in one UTC day, approved payments included.
 
-Valid until 2026-12-12T03:41:36Z. The principal may revoke this mandate at any time.
+Valid until 2027-02-11T15:31:15Z. The principal may revoke this mandate at any time.
 Vault: 0x7293763f6b73783834484cd976528D01Cb6c8CCf on Arbitrum Sepolia (421614). Token: USDC (0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d).

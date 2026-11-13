@@ -1,54 +1,63 @@
 {
   "format": "agent-gateway-arbitrum/evidence/v1",
-  "evidenceHash": "0x0dab8c64d117ba5bbed56fc9e48d7244803a2659835c5934c8670b924f58362a",
+  "evidenceHash": "0x8fc69c2e837d25f7376b289b5dfd392a1ab60155eebafad2981a0b90de32d791",
   "record": {
     "format": "agent-gateway-arbitrum/evidence-record/v1",
-    "intentId": "0x1c49838c6d8d52a6ff41684f6a463fa1b1a0914f9b9ccc31cd01ce4c721cb7d4",
-    "decidedAt": "2026-11-12T03:41:54.055Z",
+    "intentId": "0xb187b292d3f4440fae67e77c79d7a27c4c5b3b3803063cfa06ad81f6695e9153",
+    "decidedAt": "2026-11-13T15:34:12.016Z",
     "chain": {
       "chainId": 421614,
       "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
       "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
       "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-      "blockNumber": "328388344",
-      "blockTimestamp": 1794454912
+      "blockNumber": "328862220",
+      "blockTimestamp": 1794584050
     },
     "who": {
       "agentId": "354",
       "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
       "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
-      "mandateId": "3",
+      "mandateId": "8",
       "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
       "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
     },
     "what": {
-      "payee": "0xDd76243f8563ea5D6E6186C0e26804F761A18792",
-      "payeeName": "Nagikumo Research",
-      "amount": "6000000",
+      "payee": "0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD",
+      "payeeName": "Tsukimi Data",
+      "amount": "100000",
       "tokenSymbol": "USDC",
       "tokenDecimals": 6,
-      "purpose": "Invoice NR-2026-0042: quarterly sector report",
-      "invoiceId": "NR-2026-0042"
+      "purpose": "Market data: one TSK-LOGI20 quote",
+      "invoiceId": ""
     },
     "request": {
       "intent": {
         "agentId": "354",
-        "payee": "0xDd76243f8563ea5D6E6186C0e26804F761A18792",
-        "amount": "6000000",
-        "purpose": "Invoice NR-2026-0042: quarterly sector report",
-        "invoiceId": "NR-2026-0042",
-        "context": {},
-        "nonce": "0xf72a9de5498e6729607dfe1277befdf8846140d37866462143ec63183aaee7d1",
-        "expiresAt": 1794455213
+        "payee": "0x68213E015912D89aA99E6Dfc5FEd426CCcC691aD",
+        "amount": "100000",
+        "purpose": "Market data: one TSK-LOGI20 quote",
+        "invoiceId": "",
+        "context": {
+          "mpp": {
+            "resource": "http://127.0.0.1:8788/v1/quotes/TSK-LOGI20"
+          },
+          "payeeSource": "payment request from http://127.0.0.1:8788"
+        },
+        "nonce": "0x88f525dd389c9f70495270a504f23171d6e6669234e8b3c6446f26b69707d222",
+        "expiresAt": 1794584351
       },
-      "signature": "0xb5d59a50329a0723f9ccb3a576b076c056444db3aa46a41d94ae584d6aa13d564401ba5dc44a4c2783e0727e0adedcf2cdf9d8c4b3842effe55cd114962d279d1b",
+      "signature": "0x59bcfe7b8ee803e74001206963be8536fbda204a663c86bcbfbfe333196917cb13ae889ed124def6b714eee883e96bc0f96f99f66918ef7fb815ff5c9a9829221c",
       "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
     },
-    "purchase": null,
+    "purchase": {
+      "protocol": "mpp",
+      "resource": "http://127.0.0.1:8788/v1/quotes/TSK-LOGI20",
+      "spendWallet": "0xcd08ecaA7FF642ffEdc77514C1442E59ddbb4CF9"
+    },
     "why": {
-      "decision": "needs_approval",
+      "decision": "auto",
       "reasons": [
-        "The amount is above the per-payment cap of 2 USDC"
+        "All 17 checks passed"
       ],
       "checks": [
         {
@@ -84,7 +93,7 @@
           "kind": "hard",
           "result": "pass",
           "label": "Agent has an active mandate with this gateway as executor",
-          "detail": "mandate 3, valid until 2026-12-12T03:41:36Z"
+          "detail": "mandate 8, valid until 2027-02-11T15:31:20Z"
         },
         {
           "key": "vault_open",
@@ -105,66 +114,87 @@
           "kind": "hard",
           "result": "pass",
           "label": "Payee is in the principal's vendor registry",
-          "detail": "registered as Nagikumo Research"
+          "detail": "registered as Tsukimi Data"
         },
         {
           "key": "amount_positive",
           "kind": "hard",
           "result": "pass",
           "label": "Amount is more than zero",
-          "detail": "6 USDC"
+          "detail": "0.1 USDC"
         },
         {
           "key": "within_hard_ceiling",
           "kind": "hard",
           "result": "pass",
           "label": "Day total stays within the mandate's hard ceiling",
-          "detail": "1.5 USDC paid today + 6 USDC vs ceiling 20 USDC"
+          "detail": "0 USDC paid today + 0.1 USDC vs ceiling 1 USDC"
         },
         {
           "key": "vault_funded",
           "kind": "hard",
           "result": "pass",
           "label": "Vault holds enough funds",
-          "detail": "vault holds 10.4 USDC"
+          "detail": "vault holds 12 USDC"
+        },
+        {
+          "key": "purchase_spend_wallet",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Gateway has a spend wallet for per-call purchases",
+          "detail": "configured"
+        },
+        {
+          "key": "purchase_origin_registered",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Resource is on the merchant's registered API",
+          "detail": "asked for http://127.0.0.1:8788; registered: http://127.0.0.1:8788"
+        },
+        {
+          "key": "purchase_within_call_cap",
+          "kind": "hard",
+          "result": "pass",
+          "label": "Price is within the gateway's per-call cap",
+          "detail": "0.1 USDC vs cap 0.5 USDC"
         },
         {
           "key": "payee_on_allowlist",
-          "kind": "soft",
+          "kind": "hard",
           "result": "pass",
-          "label": "Payee is on the mandate's allowlist",
+          "label": "Gateway's spend wallet is on the mandate's allowlist",
           "detail": "on the allowlist"
         },
         {
           "key": "within_per_payment_cap",
-          "kind": "soft",
-          "result": "fail",
+          "kind": "hard",
+          "result": "pass",
           "label": "Amount is within the per-payment cap",
-          "detail": "6 USDC vs cap 2 USDC"
+          "detail": "0.1 USDC vs cap 0.5 USDC"
         },
         {
           "key": "within_daily_cap",
-          "kind": "soft",
+          "kind": "hard",
           "result": "pass",
           "label": "Day total stays within the daily cap",
-          "detail": "1.5 USDC paid today + 6 USDC vs cap 8 USDC"
+          "detail": "0 USDC paid today + 0.1 USDC vs cap 1 USDC"
         }
       ]
     }
   },
-  "approval": {
-    "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69",
-    "nonce": "0",
-    "deadline": "1794455514",
-    "signature": "0xc2a46c8747b559e5d1c9a3abbf3937be0833e0fce8116898107a37b3a3ddd388690a479e7b47448d5f891e21d591333ce37ffcd77f135888e1c15feee5b332d51c",
-    "receivedAt": "2026-11-12T03:41:56.031Z"
-  },
+  "approval": null,
   "result": {
     "status": "paid",
-    "transactionHash": "0xbee13c055e60c50105b6415fd9302bd44d71f728777f57b5e3aa0385a379d187",
-    "blockNumber": "328388359",
-    "event": "ApprovedPayment",
-    "executedAt": "2026-11-12T03:41:58.247Z"
+    "transactionHash": "0x6a5668fb9b35d5a15db6e25906765d356b87e57dc53c41977bfa5d54b16e9aef",
+    "blockNumber": "328862229",
+    "event": "MandatePayment",
+    "executedAt": "2026-11-13T15:34:14.194Z",
+    "purchase": {
+      "status": "settled",
+      "settlementTransactionHash": "0xf37bf859641b38734ef9a20b9ddb118e9e971e73f27362bb9152816db97b7c9f",
+      "settledAt": "2026-11-13T15:34:17.420Z",
+      "responseHash": "0xcbc1de7a1bedca7d3018823bdfa9675c163d7829d675aebd5fe02773835a5104"
+    }
   },
-  "updatedAt": "2026-11-12T03:41:58.248Z"
+  "updatedAt": "2026-11-13T15:34:17.425Z"
 }

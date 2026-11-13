@@ -1,54 +1,54 @@
 {
   "format": "agent-gateway-arbitrum/evidence/v1",
-  "evidenceHash": "0xaec6fba15318433c24396aa2160e0ebd9d84c98aa0e03e8b834eea9655af517b",
+  "evidenceHash": "0x3ad4d94fb38efb860f75aaf713e6b4c8c7bfe47e79600302c264367ec9ed4f79",
   "record": {
     "format": "agent-gateway-arbitrum/evidence-record/v1",
-    "intentId": "0xfacad653072d66e63d4b85c38a44eb72b2ce7c7c48cfb84af60a10e298fc784b",
-    "decidedAt": "2026-11-12T03:41:49.879Z",
+    "intentId": "0x6716e95603ce0f9ff161220fd9f8e9ececffbef89b8c19993c7c384e9900fa72",
+    "decidedAt": "2026-11-13T15:37:56.991Z",
     "chain": {
       "chainId": 421614,
       "vault": "0x7293763f6b73783834484cd976528D01Cb6c8CCf",
       "token": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
       "identityRegistry": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
-      "blockNumber": "328388327",
-      "blockTimestamp": 1794454908
+      "blockNumber": "328863088",
+      "blockTimestamp": 1794584275
     },
     "who": {
       "agentId": "354",
       "agentWallet": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a",
       "principal": "0xd42f974802a327789F217Db9f61DeA26EA5418A5",
-      "mandateId": "3",
+      "mandateId": "7",
       "executor": "0xB0aA521c777F8363DaA0446DD05807347d2f08B9",
       "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69"
     },
     "what": {
-      "payee": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
-      "payeeName": "Koishi Supply",
-      "amount": "1500000",
+      "payee": "0xDd76243f8563ea5D6E6186C0e26804F761A18792",
+      "payeeName": "Nagikumo Research",
+      "amount": "6000000",
       "tokenSymbol": "USDC",
       "tokenDecimals": 6,
-      "purpose": "Invoice KS-2026-1107: packing materials, November",
-      "invoiceId": "KS-2026-1107"
+      "purpose": "Quarterly sector report - Nagikumo Research invoice NR-2026-0042",
+      "invoiceId": "NR-2026-0042"
     },
     "request": {
       "intent": {
         "agentId": "354",
-        "payee": "0x84d6943216c05bc96b72791d5a76875e08D539F0",
-        "amount": "1500000",
-        "purpose": "Invoice KS-2026-1107: packing materials, November",
-        "invoiceId": "KS-2026-1107",
+        "payee": "0xDd76243f8563ea5D6E6186C0e26804F761A18792",
+        "amount": "6000000",
+        "purpose": "Quarterly sector report - Nagikumo Research invoice NR-2026-0042",
+        "invoiceId": "NR-2026-0042",
         "context": {},
-        "nonce": "0x9f6d99178ee641b9e805118ee527f97439c59c73864aea7fc95ec8bbaad321a0",
-        "expiresAt": 1794455209
+        "nonce": "0x8ddee7c3cffe54d608829ab68301d70ddd6a5f92b63277373dbec016ae2cc7c1",
+        "expiresAt": 1794584576
       },
-      "signature": "0xfa526e20120b4a70e94d0125100c8901ca63092b96f2b115607c4b05ad8d2a5629e9ac7106d532a9e2c5b35e8dc1d7bb4d5750a6d289e03404c0ac51be94b81a1b",
+      "signature": "0xabe598dd36ddb103287eb79326c59a521a5dadb93b6d1d9533ef42a8080aba305312439fc2eb445dfd6b91f9a99bb7eeb01ee7271e1f93a7850f19859715d09a1b",
       "signer": "0x277F7fcBEf2886A6b5F114DeeCaD52aaAE794B2a"
     },
     "purchase": null,
     "why": {
-      "decision": "auto",
+      "decision": "needs_approval",
       "reasons": [
-        "All 14 checks passed"
+        "The amount is above the per-payment cap of 2 USDC"
       ],
       "checks": [
         {
@@ -84,7 +84,7 @@
           "kind": "hard",
           "result": "pass",
           "label": "Agent has an active mandate with this gateway as executor",
-          "detail": "mandate 3, valid until 2026-12-12T03:41:36Z"
+          "detail": "mandate 7, valid until 2027-02-11T15:31:15Z"
         },
         {
           "key": "vault_open",
@@ -105,28 +105,28 @@
           "kind": "hard",
           "result": "pass",
           "label": "Payee is in the principal's vendor registry",
-          "detail": "registered as Koishi Supply"
+          "detail": "registered as Nagikumo Research"
         },
         {
           "key": "amount_positive",
           "kind": "hard",
           "result": "pass",
           "label": "Amount is more than zero",
-          "detail": "1.5 USDC"
+          "detail": "6 USDC"
         },
         {
           "key": "within_hard_ceiling",
           "kind": "hard",
           "result": "pass",
           "label": "Day total stays within the mandate's hard ceiling",
-          "detail": "0 USDC paid today + 1.5 USDC vs ceiling 20 USDC"
+          "detail": "1.5 USDC paid today + 6 USDC vs ceiling 20 USDC"
         },
         {
           "key": "vault_funded",
           "kind": "hard",
           "result": "pass",
           "label": "Vault holds enough funds",
-          "detail": "vault holds 11.9 USDC"
+          "detail": "vault holds 10.4 USDC"
         },
         {
           "key": "payee_on_allowlist",
@@ -138,27 +138,33 @@
         {
           "key": "within_per_payment_cap",
           "kind": "soft",
-          "result": "pass",
+          "result": "fail",
           "label": "Amount is within the per-payment cap",
-          "detail": "1.5 USDC vs cap 2 USDC"
+          "detail": "6 USDC vs cap 2 USDC"
         },
         {
           "key": "within_daily_cap",
           "kind": "soft",
           "result": "pass",
           "label": "Day total stays within the daily cap",
-          "detail": "0 USDC paid today + 1.5 USDC vs cap 8 USDC"
+          "detail": "1.5 USDC paid today + 6 USDC vs cap 8 USDC"
         }
       ]
     }
   },
-  "approval": null,
+  "approval": {
+    "approver": "0x062Ac773F7470034411A7f739a5664F6B3cfcE69",
+    "nonce": "0",
+    "deadline": "1794585181",
+    "signature": "0x2bc3848eaa8dad57c82d0503843db67bfdc78b0cf23e416402038106ba90d934191b2d0f51ebda424c62a785524d7a8b646f865c394ffef6624259a2d3fd1ba31c",
+    "receivedAt": "2026-11-13T15:43:15.865Z"
+  },
   "result": {
     "status": "paid",
-    "transactionHash": "0x88770bd71e5ec6fb055ebb4dda67cab69fc7bd163f760702c35706e97cbae77f",
-    "blockNumber": "328388337",
-    "event": "MandatePayment",
-    "executedAt": "2026-11-12T03:41:51.899Z"
+    "transactionHash": "0x96ed2f5fb5e17afaae2f723777527649b1245b8c1e7732552aed928723285868",
+    "blockNumber": "328864324",
+    "event": "ApprovedPayment",
+    "executedAt": "2026-11-13T15:43:18.065Z"
   },
-  "updatedAt": "2026-11-12T03:41:51.901Z"
+  "updatedAt": "2026-11-13T15:43:18.065Z"
 }

@@ -14,5 +14,5 @@ It is funded one call at a time, with exactly the price of that call.
 
 No more than 1 USDC may leave under this mandate in one UTC day.
 
-Valid until 2026-12-12T03:41:38Z. The principal may revoke this mandate at any time.
+Valid until 2027-02-11T15:50:53Z. The principal may revoke this mandate at any time.
 Vault: 0x7293763f6b73783834484cd976528D01Cb6c8CCf on Arbitrum Sepolia (421614). Token: USDC (0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d).
