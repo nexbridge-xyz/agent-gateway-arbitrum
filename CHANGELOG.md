@@ -81,4 +81,4 @@ console and a recorded run. Testnet only, not audited.
 
 ### Known limits
 
-See "Not production-ready" in [`SECURITY.md`](SECURITY.md).
+See "Known limitations of the deployed contract" and "Not production-ready" in [`SECURITY.md`](SECURITY.md).
