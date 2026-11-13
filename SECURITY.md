@@ -136,6 +136,20 @@ USDC transfer and does **not** carry the hash: the evidence file names it, and `
 that it moved the same amount from the spend wallet to the merchant. The gateway's ledger is hash-chained,
 but whoever holds it could rebuild it or cut it short. The vault's events are the part nobody can rewrite.
 
+## Known limitations of the deployed contract
+
+The deployed vault stays as it is: it has no upgrade path. Two limits can only be closed in the contract.
+Both wait for its next version, which comes before any use on mainnet.
+
+- **A signed request that is minutes old can stand behind a second payment.** The vault takes each evidence
+  hash once, not each request once (see "The gateway is compromised, or its keys are stolen" above). The
+  verifier narrows this to requests that were still current; closing it needs the request's id in the
+  vault, so that each request pays once.
+- **Evidence hashes are one namespace for the whole vault**, not one per mandate. In the demo every mandate
+  has the same executor. In a vault with a second executor, that executor could use up the evidence hash of
+  a payment that is waiting for its approver (the hash is public), and the approval would have to be asked
+  for again.
+
 ## Not production-ready
 
 - No audit. The contract is small and tested (unit, fuzz, invariant and fork tests), which is not the same.
@@ -154,10 +168,6 @@ but whoever holds it could rebuild it or cut it short. The vault's events are th
   wallet until whoever holds that wallet's key sends it back. The gateway holds it, not the principal. In
   the demo `pnpm demo --steps recycle` returns it.
 - USDC itself can be paused or an address blocked by its issuer. Nothing here changes that.
-- Evidence hashes are one namespace for the whole vault, not one per mandate. In the demo every mandate has
-  the same executor. In a vault with a second executor, that executor could use up the evidence hash of a
-  payment that is waiting for its approver (the hash is public), and the approval would have to be asked
-  for again.
 - The payment library `mppx` is pinned to a line with two open advisories. They concern a method this
   project does not use; the README says which.
 
