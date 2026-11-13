@@ -23,8 +23,9 @@ console and a recorded run. Testnet only, not audited.
   through ERC-1271.
 - Every payment carries an evidence hash in its event, and the vault accepts each hash once.
 - No upgrade path and no admin role.
-- 114 tests: unit, fuzz, invariant, and the bound on a stolen executor key. Every line, statement, branch
-  and function of `MandateVault` is covered. Five more tests run on a fork of Arbitrum Sepolia.
+- 157 tests: unit, fuzz, invariant, the bound on a stolen executor key, and the tests of the security
+  review before publication. Every line, statement, branch and function of `MandateVault` is covered.
+  Sixteen more tests run on a fork of Arbitrum Sepolia.
 
 ### Gateway
 
