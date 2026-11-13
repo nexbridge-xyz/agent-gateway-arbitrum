@@ -302,7 +302,7 @@ Settings come from the repository's `.env`:
 pnpm --filter @agent-gateway/gateway test
 ```
 
-269 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
+272 tests: canonical JSON against the RFC 8785 examples, intent signing, the evidence hash, the ledger's
 tamper checks, every policy rule and its boundaries, the gateway and its HTTP API against an in-memory
 stand-in for the chain, approvals and declines (wrong signer, the executor's own signature, a changed
 amount, an expired deadline, a used approval number, a mandate revoked while the request waited, an
