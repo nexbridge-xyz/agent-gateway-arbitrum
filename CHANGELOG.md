@@ -75,7 +75,7 @@ console and a recorded run. Testnet only, not audited.
 ### Repository
 
 - CI: contract tests with coverage, lint, typecheck, the TypeScript tests, a build of the console, a
-  self-check of the recorded evidence, and a secret scan of the full history.
+  self-check of the recorded evidence, a dependency audit, and a secret scan of the full history.
 - Docs: [`README`](README.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`SECURITY.md`](SECURITY.md),
   [`CONTRIBUTING.md`](CONTRIBUTING.md), and a README for each package.
 
